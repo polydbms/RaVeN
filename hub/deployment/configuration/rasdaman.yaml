@@ -1,0 +1,14 @@
+config:
+  variables:
+    - TF_VAR_resource_group_name: rasdaman
+    - TF_VAR_vm_name: rasdaman
+  scripts:
+    - sudo apt update
+    - curl -fsSL https://get.docker.com -o get-docker.sh
+    - sudo sh get-docker.sh
+    - sudo chmod 666 /var/run/docker.sock
+    - sudo apt install unzip -y
+    - wget https://download.rasdaman.org/installer/install.sh
+    - echo 0 | bash  install.sh
+    - source /etc/profile.d/rasdaman.sh
+    - sudo apt install docker-compose -y

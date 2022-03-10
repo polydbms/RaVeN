@@ -1,0 +1,43 @@
+experiments:
+  project_id: 33530191
+  public_key_path: ~/.ssh/rasdaman.pub
+  machine_size: Standard_B2ms
+  data: # if undefined cmd parameters can be used to manually define data
+    raster: /data/percepitation_tiff
+    vector: /data/states
+  # ssh_connection: ssh user@ip # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
+  workload: 
+    get: 
+      vector:
+        - name
+      raster: 
+        - sval:
+            aggregations:
+              - avg
+              - max
+              - min
+              - count
+              - sum
+    join:
+      table1: vector
+      table2: raster
+      condition: intersect(raster, vector)
+    condition: 
+      vector: 
+        - iso_a2 = 'US'
+      raster:
+        - sval >= 0
+    group:
+      vector: 
+        - name
+    order:
+      vector: 
+        - name
+  systems: 
+    - name: postgis
+      port: 25432
+    - name: omnisci
+      port: 6274
+    - name: rasdaman
+      port: 8080
+    - name: sedona

@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  gdal_env:
+    build:
+      context: .
+      target: base
+    volumes:
+      - .:/hub
+      - ../data:/data
+    tty: true
+    environment:
+      PYTHONPATH: /hub
+      PERSONAL_TOKEN: ${PERSONAL_TOKEN}
+      TRIGGER_TOKEN: ${TRIGGER_TOKEN}

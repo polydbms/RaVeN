@@ -1,0 +1,12 @@
+config:
+  variables:
+    - TF_VAR_resource_group_name: omniscu
+    - TF_VAR_vm_name: omniscu
+  files:
+    - ./hub/deployment/files/omniscu/docker-compose.yml
+  scripts:
+    - sudo apt update
+    - curl -fsSL https://get.docker.com -o get-docker.sh
+    - sudo sh get-docker.sh
+    - sudo apt install docker-compose -y
+    - sudo chmod 666 /var/run/docker.sock

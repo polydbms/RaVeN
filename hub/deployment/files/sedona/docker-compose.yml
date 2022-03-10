@@ -1,0 +1,12 @@
+version: '2.1'
+
+services:
+
+  pyspark:
+    image: laertnuhu/sedona
+    volumes:
+      - ~/data:/data
+    user: root
+    environment:
+      - GRANT_SUDO=yes
+    tty: true

@@ -1,0 +1,34 @@
+experiments:
+  project_id: 33530191
+  public_key_path: ~/.ssh/rasdaman.pub
+  machine_size: Standard_B2ms
+  data: # if undefined cmd parameters can be used to manually define data
+    raster: /data/greece_pop_density
+    vector: /data/greece_poi
+  # ssh_connection: ssh user@ip # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
+  workload: 
+    get: 
+      vector:
+        - name
+        - fclass 
+      raster: 
+        - sval
+    join:
+      table1: vector
+      table2: raster
+      condition: contains(raster, vector)
+    condition: 
+      vector: 
+        - name is not null
+    order:
+      vector: 
+        - name
+    limit: 100
+  systems: 
+    - name: postgis
+      port: 25432
+    - name: omnisci
+      port: 6274
+    - name: rasdaman
+      port: 8080
+    - name: sedona

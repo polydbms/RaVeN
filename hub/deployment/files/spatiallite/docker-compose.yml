@@ -1,0 +1,15 @@
+version: '2.1'
+
+services:
+
+  sqlite:
+    image: terranodo/spatialite:latest
+    working_dir: /app
+    volumes:
+      - ../data:/data
+      - ./:/app
+    command: spatial.db
+    tty: true
+    # docker exec spatiallite_sqlite_1 spatialite_tool -i -shp /data/states/states -d spatial.db -t states -c UTF-8 -s 4326 
+    # docker exec spatiallite_sqlite_1 spatialite_tool -i -shp /data/percepitation_vector/PRISM_ppt_early_4kmD2_20210901_shp -d spatial.db -t percepitation -c UTF-8 -s 4326
+    # docker exec spatiallite_sqlite_1 spatialite -cmd 'select s.name, avg(p."values") as avg, max(p."values") as max, min(p."values") as min, count(p."values") as count from states as s, percepitation as p where st_intersects(s.geometry,p.geometry) = 1 and p."values" >= 0 group by s.name' spatial.db

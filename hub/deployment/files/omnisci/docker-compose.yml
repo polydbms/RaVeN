@@ -1,0 +1,17 @@
+version: '2.1'
+
+services:
+
+  omni:
+    image: omnisci/core-os-cpu:v5.10.2
+    volumes:
+      - ~/data:/data
+      - ./omnisci.conf:/omnisci-storage/omnisci.conf
+      - omnisci-storage:/omnisci-storage
+    restart: on-failure
+    ports:
+      - 6274:6274
+    tty: true
+
+volumes:
+  omnisci-storage: null

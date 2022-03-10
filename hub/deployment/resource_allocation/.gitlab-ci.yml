@@ -1,0 +1,69 @@
+stages:
+  - validate
+  - plan
+  - apply
+  - cleanup
+  
+image:
+  name: hashicorp/terraform:1.1.5
+  entrypoint:
+    - '/usr/bin/env'
+    - 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+
+before_script:
+  - rm -rf .terraform
+  - terraform --version
+  - terraform init
+
+validate:
+  stage: validate
+  script:
+    - terraform validate
+  allow_failure: true
+  rules:
+    - if: '$DESTROY == "false" && $CI_PIPELINE_SOURCE == "trigger"'
+      when: always
+    - when: manual
+
+plan:
+  stage: plan
+  script:
+    - terraform plan -out plan
+  allow_failure: true
+  dependencies:
+    - validate
+  artifacts:
+    paths:
+      - ./plan
+  rules:
+    - if: '$DESTROY == "false" && $CI_PIPELINE_SOURCE == "trigger"'
+      when: always
+    - when: manual
+
+apply:
+  stage: apply
+  script:
+    - terraform apply -input=false plan
+    - terraform output -raw ssh_connection
+  allow_failure: true
+  dependencies:
+    - plan
+  artifacts:
+    paths:
+      - terraform.tfstate
+  rules:
+    - if: '$DESTROY == "false" && $CI_PIPELINE_SOURCE == "trigger"'
+      when: always
+    - when: manual
+
+
+cleanup:
+  stage: cleanup
+  script:
+    - terraform destroy --auto-approve
+  allow_failure: true
+  when: manual
+  rules:
+    - if: '$DESTROY == "true" && $CI_PIPELINE_SOURCE == "trigger"'
+      when: always
+    - when: manual
