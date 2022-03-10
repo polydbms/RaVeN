@@ -1,3 +1,5 @@
+Copy gitlab pipeline and the terraform pipelines into a new gitlab project. The project should be private as Cloud Environment Critical Information can be  shown on the CI/CD pipeline logs. 
+
 # Deployment
 The deployment process is done through a gitlab ci/cd pipeline. For this reason it is required to create a new gitlab project and upload the content of resource_allocation into the new project. Once uploaded you need to go to settings -> CI/CD -> Variables and add the following variables:
 - ARM_CLIENT_ID
