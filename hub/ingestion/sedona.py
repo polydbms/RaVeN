@@ -7,9 +7,9 @@ CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
 class Ingestor:
-    def __init__(self, vector_path, raster_path, configurator) -> None:
+    def __init__(self, vector_path, raster_path, network_manager) -> None:
         self.logger = {}
-        self.configurator = configurator
+        self.network_manager = network_manager
         self.vector_path = None
         self.raster_path = None
         if Path(vector_path).exists() and Path(vector_path).is_dir():

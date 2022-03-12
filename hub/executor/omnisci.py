@@ -5,10 +5,10 @@ from hub.evaluation.main import measure_time
 
 
 class Executor:
-    def __init__(self, vector_path, raster_path, configurator) -> None:
+    def __init__(self, vector_path, raster_path, network_manager) -> None:
         self.logger = {}
-        self.configurator = configurator
-        self.transporter = FileTransporter(configurator)
+        self.configurator = network_manager
+        self.transporter = FileTransporter(network_manager)
         if Path(vector_path).exists() and Path(vector_path).is_dir():
             vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
         if Path(raster_path).exists() and Path(raster_path).is_dir():

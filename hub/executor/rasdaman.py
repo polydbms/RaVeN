@@ -11,10 +11,10 @@ from hub.utils.preprocess import FileTransporter
 
 
 class Executor:
-    def __init__(self, vector_path, raster_path, configurator) -> None:
+    def __init__(self, vector_path, raster_path, network_manager) -> None:
         self.logger = {}
-        self.configurator = configurator
-        self.transporter = FileTransporter(configurator)
+        self.network_manager = network_manager
+        self.transporter = FileTransporter(network_manager)
         if Path(vector_path).exists() and Path(vector_path).is_dir():
             self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
         if Path(raster_path).exists() and Path(raster_path).is_dir():
@@ -24,7 +24,7 @@ class Executor:
         self.transporter.get_file(
             f"~/data/{self.vector_path.stem}.json", f"{self.vector_path.stem}.json"
         )
-        ssh_ip = self.configurator.ssh_connection.split("@")[-1]
+        ssh_ip = self.network_manager.ssh_connection.split("@")[-1]
         self.url = f"http://{ssh_ip}:8080/rasdaman/ows"
         self.coverage = f"{Path(self.raster_path).stem}".split(".")[0]
         wkt = Path(f"{Path(self.vector_path).stem}.json").read_bytes()
@@ -229,7 +229,7 @@ class Executor:
         if limit:
             vector_features = vector_features[: int(limit)]
         f = open(
-            f"{os.environ['HOME']}/results_{self.configurator.system}.csv",
+            f"{os.environ['HOME']}/results_{self.network_manager.system}.csv",
             "w",
             encoding="UTF8",
             newline="",

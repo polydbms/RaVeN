@@ -44,12 +44,12 @@ INGREDIENTS = {
 
 
 class Ingestor:
-    def __init__(self, vector_path, raster_path, configurator) -> None:
+    def __init__(self, vector_path, raster_path, network_manager) -> None:
         self.logger = {}
-        self.configurator = configurator
+        self.network_manager = network_manager
         self.vector_path = None
         self.raster_path = None
-        self.transporter = FileTransporter(configurator)
+        self.transporter = FileTransporter(network_manager)
         if Path(vector_path).exists() and Path(vector_path).is_dir():
             self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
         if Path(raster_path).exists() and Path(raster_path).is_dir():
@@ -68,7 +68,7 @@ class Ingestor:
         with open("ingredients.json", "w") as f:
             json.dump(INGREDIENTS, f)
         self.transporter.send_file("ingredients.json", "~/config/ingredients.json")
-        self.configurator.run_ssh(
+        self.network_manager.run_ssh(
             f"/opt/rasdaman/bin/wcst_import.sh ~/config/ingredients.json"
         )
         Path("ingredients.json").unlink()

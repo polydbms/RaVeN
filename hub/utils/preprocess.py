@@ -7,7 +7,7 @@ import rioxarray as rxr
 import geopandas as gpd
 from pathlib import Path
 from hub.evaluation.main import measure_time
-from hub.utils.configurator import Configurator
+from hub.utils.network import NetworkManager
 
 
 class Preprocessor:
@@ -141,10 +141,10 @@ class DataModelProcessor(Preprocessor):
 
 
 class FileTransporter:
-    def __init__(self, configurator: Configurator) -> None:
-        self.configurator = configurator
-        remote = self.configurator.ssh_connection.split("ssh ")[-1]
-        private_key_path = self.configurator.private_key_path
+    def __init__(self, network_manager: NetworkManager) -> None:
+        self.network_manager = network_manager
+        remote = self.network_manager.ssh_connection.split("ssh ")[-1]
+        private_key_path = self.network_manager.private_key_path
         self.ssh_command = (
             f"ssh {remote} -o 'StrictHostKeyChecking=no' -i {private_key_path}"
         )
@@ -159,7 +159,7 @@ class FileTransporter:
                 .replace("from", local)
                 .replace("to", remote)
             )
-            return self.configurator.run_command(command)
+            return self.network_manager.run_command(command)
         raise FileNotFoundError(local)
 
     @measure_time
@@ -170,7 +170,7 @@ class FileTransporter:
                 .replace("from", local)
                 .replace("to", remote)
             )
-            return self.configurator.run_command(command)
+            return self.network_manager.run_command(command)
         raise FileNotFoundError(local)
 
     @measure_time
@@ -181,7 +181,7 @@ class FileTransporter:
                 .replace("from", local)
                 .replace("to", remote)
             )
-            return self.configurator.run_command(command)
+            return self.network_manager.run_command(command)
         raise FileNotFoundError(local)
 
     @measure_time
@@ -191,7 +191,7 @@ class FileTransporter:
             .replace("from", remote)
             .replace("to", local)
         )
-        return self.configurator.run_command(command)
+        return self.network_manager.run_command(command)
 
     @measure_time
     def get_folder(self, remote, local, **kwargs):
@@ -200,19 +200,19 @@ class FileTransporter:
             .replace("from", remote)
             .replace("to", local)
         )
-        return self.configurator.run_command(command)
+        return self.network_manager.run_command(command)
 
     @measure_time
     def send_configs(self, rootPath, **kwargs):
         self.send_folder(
-            f"{rootPath}/hub/deployment/files/{self.configurator.system}", "~/config"
+            f"{rootPath}/hub/deployment/files/{self.network_manager.system}", "~/config"
         )
 
     @measure_time
     def send_data(self, local, **kwargs):
         """Method for sending data to remote."""
         name = Path(local).stem
-        self.configurator.run_command(f"{self.ssh_command} mkdir -p ./data")
+        self.network_manager.run_command(f"{self.ssh_command} mkdir -p ./data")
         if Path(local).is_file():
             self.send_file(local, f"./data/{name}")
         if Path(local).is_dir():

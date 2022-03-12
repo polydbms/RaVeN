@@ -6,6 +6,7 @@ import json
 import argparse
 from hub.deployment.main import Deployer
 from hub.utils.configurator import Configurator
+from hub.utils.network import NetworkManager
 from hub.utils.preprocess import FileTransporter
 from datetime import datetime
 
@@ -84,37 +85,42 @@ class Setup:
             deployer = Deployer(resource)
             print(f"Deploying {system}")
             deployer.deploy(log_time=self.logger)
+        network_manager = NetworkManager(system)
         print(f"Configuring {system}")
         configurator = Configurator(system)
         configurator.run_instructions(log_time=self.logger)
-        transporter = FileTransporter(configurator)
+        transporter = FileTransporter(network_manager)
         transporter.send_configs(CURRENT_PATH, log_time=self.logger)
         if vector:
             transporter.send_data(vector, log_time=self.logger)
         if raster:
             transporter.send_data(raster, log_time=self.logger)
         # Give execute permission
-        configurator.run_ssh("chmod +x ~/config/preprocess.sh", log_time=self.logger)
-        configurator.run_ssh("chmod +x ~/config/ingest.sh", log_time=self.logger)
-        configurator.run_ssh("chmod +x ~/config/execute.sh", log_time=self.logger)
+        network_manager.run_ssh("chmod +x ~/config/*.sh", log_time=self.logger)
 
         with open("out.log", "a") as f:
             f.write(f"--------------------- Benchmark ------------------- \n")
+        with open("out.log", "a") as f:
+            f.write(f"Preprocesing data\n")
         print("Preprocesing data")
-        configurator.run_ssh(
+        network_manager.run_ssh(
             f'~/config/preprocess.sh "--system {system} --vector_path {vector} --raster_path {raster} --output {raster}"',
             log_time=self.logger,
         )
         print("Wait 30s until docker is ready")
         sleep(30)
+        with open("out.log", "a") as f:
+            f.write(f"Ingesting data\n")
         print("Ingesting data")
         Ingestor = self.__importer(f"hub.ingestion.{system}", "Ingestor")
-        ingestor = Ingestor(vector, raster, configurator)
+        ingestor = Ingestor(vector, raster, network_manager)
         ingestor.ingest_raster(log_time=self.logger)
         ingestor.ingest_vector(log_time=self.logger)
+        with open("out.log", "a") as f:
+            f.write(f"Run query\n")
         print("Run query")
         Executor = self.__importer(f"hub.executor.{system}", "Executor")
-        executor = Executor(vector, raster, configurator)
+        executor = Executor(vector, raster, network_manager)
         executor.run_query(resource["workload"], log_time=self.logger)
         with open("out.log", "a") as f:
             f.write(f"--------------------- Post-Benchmark ------------------- \n")

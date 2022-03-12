@@ -4,10 +4,10 @@ from hub.evaluation.main import measure_time
 
 
 class Executor:
-    def __init__(self, vector_path, raster_path, configurator) -> None:
+    def __init__(self, vector_path, raster_path, network_manager) -> None:
         self.logger = {}
-        self.configurator = configurator
-        self.transporter = FileTransporter(configurator)
+        self.network_manager = network_manager
+        self.transporter = FileTransporter(network_manager)
         if Path(vector_path).exists() and Path(vector_path).is_dir():
             vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
         if Path(raster_path).exists() and Path(raster_path).is_dir():
@@ -16,7 +16,7 @@ class Executor:
         self.table2 = f"{raster_path.stem}".split(".")[0]
 
     def __translate(self, workload):
-        print(f"translating to {self.configurator.system} query language")
+        print(f"translating to {self.network_manager.system} query language")
         return workload
 
     @measure_time
@@ -30,7 +30,9 @@ class Executor:
         group = "group by t1.name"
         order = "order by t1.name"
         query = f"{selection} {join} {condition} {group} {order}"
-        self.configurator.run_ssh(f"~/config/execute.sh -q '{query}'", **kwargs)
+        self.network_manager.run_ssh(f"~/config/execute.sh -q '{query}'", **kwargs)
         self.transporter.get_file(
-            "~/data/results.csv", f"~/results_{self.configurator.system}.csv", **kwargs
+            "~/data/results.csv",
+            f"~/results_{self.network_manager.system}.csv",
+            **kwargs,
         )
