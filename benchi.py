@@ -8,6 +8,7 @@ from hub.deployment.main import Deployer
 from hub.utils.configurator import Configurator
 from hub.utils.network import NetworkManager
 from hub.utils.preprocess import FileTransporter
+from hub.evaluation.main import Evaluator
 from datetime import datetime
 
 CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -54,7 +55,7 @@ class Setup:
                 print(exc)
                 return {}
 
-    def __run_tasks(self, resource, vector, raster):
+    def __run_tasks(self, resource, vector, raster, repeat):
         system = resource["system"]
         now = datetime.now()
         with open("out.log", "a") as f:
@@ -83,12 +84,16 @@ class Setup:
             ssh_connection_available = False
         if not ssh_connection_available:
             deployer = Deployer(resource)
+            with open("out.log", "a") as f:
+                f.write(f"Deploying {system}\n")
             print(f"Deploying {system}")
             deployer.deploy(log_time=self.logger)
+            configurator = Configurator(system)
+            with open("out.log", "a") as f:
+                f.write(f"Configuring {system}\n")
+            print(f"Configuring {system}")
+            configurator.run_instructions(log_time=self.logger)
         network_manager = NetworkManager(system)
-        print(f"Configuring {system}")
-        configurator = Configurator(system)
-        configurator.run_instructions(log_time=self.logger)
         transporter = FileTransporter(network_manager)
         transporter.send_configs(CURRENT_PATH, log_time=self.logger)
         if vector:
@@ -121,19 +126,28 @@ class Setup:
         print("Run query")
         Executor = self.__importer(f"hub.executor.{system}", "Executor")
         executor = Executor(vector, raster, network_manager)
-        executor.run_query(resource["workload"], log_time=self.logger)
+        if repeat:
+            for i in range(repeat):
+                executor.run_query(resource["workload"], log_time=self.logger)
+        else:
+            executor.run_query(resource["workload"], log_time=self.logger)
         with open("out.log", "a") as f:
             f.write(f"--------------------- Post-Benchmark ------------------- \n")
             f.write(f'Finished {now.strftime("%d/%m/%Y %H:%M:%S")} \n')
 
-    def benchmark(self, system=None, vector=None, raster=None):
+    def benchmark(self, system=None, vector=None, raster=None, repeat=None):
         experiments = self.read_experiments_config()
         if system is not None:
-            self.__run_tasks(experiments[system], vector, raster)
+            self.__run_tasks(experiments[system], vector, raster, repeat)
         else:
             for system in experiments:
-                self.__run_tasks(experiments[system], vector, raster)
+                self.__run_tasks(experiments[system], vector, raster, repeat)
                 self.clean(system)
+
+    def evaluate(self):
+        systems_list = list(self.read_experiments_config().keys())
+        evaluator = Evaluator(systems_list)
+        evaluator.get_accuracy()
 
     def clean(self, system=None):
         experiments = self.read_experiments_config()
@@ -152,10 +166,14 @@ def main():
     parser.add_argument("--system", help="Specify which system should be benchmarked")
     parser.add_argument("--vector", help="Specify the path to vector dataset")
     parser.add_argument("--raster", help="Specify the path to raster dataset")
+    parser.add_argument(
+        "--repeat", help="Specify number of iterations an experiment will be repeated"
+    )
     args = parser.parse_args()
     setup = Setup()
     if args.command == "start":
-        setup.benchmark(args.system, args.vector, args.raster)
+        setup.benchmark(args.system, args.vector, args.raster, args.repeat)
+        setup.evaluate()
     if args.command == "clean":
         setup.clean(args.system)
 

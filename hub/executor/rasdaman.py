@@ -88,7 +88,7 @@ class Executor:
                 "&FORMAT=application/json"
             )
             response = requests.request("GET", url, headers=self.headers)
-            result.append("error" if "xml" in response.text else response.text)
+            result.append("0" if "xml" in response.text else response.text)
         else:
             result.append("No poit")
             print("Geometry contains no points")
@@ -110,7 +110,7 @@ class Executor:
             response = requests.request(
                 "POST", self.url, headers=self.headers, data=parsed_payload
             )
-            result.append("error" if "xml" in response.text else response.text)
+            result.append("0" if "xml" in response.text else response.text)
         yield result
 
     def __handle_aggregations(self, features):

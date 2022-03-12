@@ -112,7 +112,7 @@ class Executor:
         if "intersect" in query:
             query = re.sub(
                 "(intersect\(\w*, \w*\))",
-                "ST_Intersects(raster.rast, vector.geom), ST_ValueCount(raster.rast, 1) as pvc",
+                "ST_Intersects(raster.rast, vector.geom), ST_ValueCount(st_clip(raster.rast, vector.geom), 1) as pvc",
                 query,
             )
             query = re.sub(
