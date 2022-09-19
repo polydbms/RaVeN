@@ -6,8 +6,8 @@ import backoff
 
 from hub.evaluation.main import measure_time
 
-TRIGGER_TOKEN = os.environ["TRIGGER_TOKEN"]
-PERSONAL_TOKEN = os.environ["PERSONAL_TOKEN"]
+# TRIGGER_TOKEN = os.environ["TRIGGER_TOKEN"]
+# PERSONAL_TOKEN = os.environ["PERSONAL_TOKEN"]
 
 
 class Deployer:

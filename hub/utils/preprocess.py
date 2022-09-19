@@ -1,4 +1,6 @@
 import json
+import zipfile
+
 from osgeo import ogr, gdal
 import re
 import argparse
@@ -7,22 +9,18 @@ import rioxarray as rxr
 import geopandas as gpd
 from pathlib import Path
 from hub.evaluation.main import measure_time
+from hub.utils.datalocation import DataLocation, FileType
 from hub.utils.network import NetworkManager
 
 
 class Preprocessor:
+    vector_path: str
+    raster_path: str
+
     def __init__(self, vector_path=None, raster_path=None) -> None:
         self.logger = {}
-        self.vector_path = None
-        self.raster_path = None
-        if vector_path and (Path(vector_path).exists() and Path(vector_path).is_dir()):
-            self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
-        if raster_path and (Path(raster_path).exists() and Path(raster_path).is_dir()):
-            self.raster_path = [
-                raster
-                for raster in Path(raster_path).glob("*.tif*")
-                if "tif" in raster.suffix
-            ][0]
+        self.vector_path = vector_path.find_file(vector_path, "*.shp")
+        self.raster_path = raster_path.find_file(raster_path, "*.tif*")
 
     def get_vector(self):
         vector = gpd.read_file(self.vector_path)
@@ -52,7 +50,7 @@ class CRSPreprocessor(Preprocessor):
         vector_crs = self.get_vector_crs()
         raster = self.get_raster()
         out = raster.rio.reproject(vector_crs)
-        out.rio.to_raster(f"{self.output}/{self.raster_path.name}")
+        out.rio.to_raster(self.raster_path)
         print(
             f"Transfered {self.raster_path} CRS from {raster.rio.crs} to {out.rio.crs}"
         )
@@ -115,7 +113,7 @@ class DataModelProcessor(Preprocessor):
 
     @measure_time
     def rasterize(
-        self, file: str, pixel_size=10, nod_data=0, options=None, filters=None, **kwargs
+            self, file: str, pixel_size=10, nod_data=0, options=None, filters=None, **kwargs
     ):
         output = f"{self.output}/{self.vector_path.stem}.tif"
         open_shp = ogr.Open(file)
@@ -146,29 +144,29 @@ class FileTransporter:
         remote = self.network_manager.ssh_connection.split("ssh ")[-1]
         private_key_path = self.network_manager.private_key_path
         self.ssh_command = (
-            f"ssh {remote} -o 'StrictHostKeyChecking=no' -i {private_key_path}"
+            f"ssh {remote} -o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {private_key_path}"
         )
-        self.scp_command_send = f"scp -o 'StrictHostKeyChecking=no' -i {private_key_path} options from {remote}:to"
-        self.scp_command_recieve = f"scp -o 'StrictHostKeyChecking=no' -i {private_key_path} options {remote}:from to"
+        self.scp_command_send = f"scp -o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {private_key_path} options from_File_plch {remote}:to_File_plch"
+        self.scp_command_recieve = f"scp -o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {private_key_path} options {remote}:from_File_plch to_File_plch"
+        print(self.ssh_command)
+        print(self.scp_command_send)
 
     @measure_time
     def send_folder(self, local, remote, **kwargs):
-        if Path(local).exists():
-            command = (
-                self.scp_command_send.replace("options", "-r")
-                .replace("from", local)
-                .replace("to", remote)
-            )
-            return self.network_manager.run_command(command)
-        raise FileNotFoundError(local)
+        command = (
+            self.scp_command_send.replace("options", "-r")
+            .replace("from_File_plch", local)
+            .replace("to_File_plch", remote)
+        )
+        return self.network_manager.run_command(command)
 
     @measure_time
     def send_file(self, local, remote, **kwargs):
         if Path(local).exists():
             command = (
                 self.scp_command_send.replace("options", "")
-                .replace("from", local)
-                .replace("to", remote)
+                .replace("from_File_plch", local)
+                .replace("to_File_plch", remote)
             )
             return self.network_manager.run_command(command)
         raise FileNotFoundError(local)
@@ -178,8 +176,8 @@ class FileTransporter:
         if Path(local).exists():
             command = (
                 self.scp_command_send.replace("options", "-r")
-                .replace("from", local)
-                .replace("to", remote)
+                .replace("from_File_plch", local)
+                .replace("to_File_plch", remote)
             )
             return self.network_manager.run_command(command)
         raise FileNotFoundError(local)
@@ -188,8 +186,8 @@ class FileTransporter:
     def get_file(self, remote, local, **kwargs):
         command = (
             self.scp_command_recieve.replace("options", "")
-            .replace("from", remote)
-            .replace("to", local)
+            .replace("from_File_plch", remote)
+            .replace("to_File_plch", local)
         )
         return self.network_manager.run_command(command)
 
@@ -197,8 +195,8 @@ class FileTransporter:
     def get_folder(self, remote, local, **kwargs):
         command = (
             self.scp_command_recieve.replace("options", "-r")
-            .replace("from", remote)
-            .replace("to", local)
+            .replace("from_File_plch", remote)
+            .replace("to_File_plch", local)
         )
         return self.network_manager.run_command(command)
 
@@ -209,14 +207,20 @@ class FileTransporter:
         )
 
     @measure_time
-    def send_data(self, local, **kwargs):
+    def send_data(self, file: DataLocation, **kwargs):
         """Method for sending data to remote."""
-        name = Path(local).stem
-        self.network_manager.run_command(f"{self.ssh_command} mkdir -p ./data")
-        if Path(local).is_file():
-            self.send_file(local, f"./data/{name}")
-        if Path(local).is_dir():
-            self.send_folder(local, f"./data/{name}")
+        print(file)
+        self.network_manager.run_command(f"{self.ssh_command} mkdir -p {file.host_dir}")
+        if file.type == FileType.FILE:
+            raise NotImplementedError("Single Files are currently not supported")
+            # self.send_file(file.controller_location, file.host_dir)
+        elif file.type == FileType.FOLDER:
+            self.send_folder(file.controller_location, file.host_dir)
+        elif file.type == FileType.ZIP_ARCHIVE:
+            self.send_file(file.controller_location, file.host_dir)
+            self.network_manager.run_command(f"{self.ssh_command} unzip")
+        else:
+            print("sent nothing")
 
 
 def main():
@@ -230,6 +234,7 @@ def main():
     parser.add_argument("--output", help="Specify the output path")
     parser.add_argument("--system", help="Specify which system should be benchmarked")
     args = parser.parse_args()
+    print(args)
     crs_preprocessor = CRSPreprocessor(
         vector_path=args.vector_path,
         raster_path=args.raster_path,

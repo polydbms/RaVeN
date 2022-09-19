@@ -1,0 +1,46 @@
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgis-service
+  namespace: benchi
+spec:
+  selector:
+    benchsystem: postgis
+  ports:
+    - port: 5432
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgis-deployment
+  labels:
+    benchsystem: postgis
+  namespace: benchi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      sut: postgis
+  template:
+    metadata:
+      labels:
+        sut: postgis
+    spec:
+      containers:
+        - name: postgis-benchi
+          image: kartoza/postgis:13-3.1
+          ports:
+            - containerPort: 5432
+          env:
+            - name: "POSTGRES_DB"
+              value: "gis"
+            - name: "POSTGRES_USER"
+              value: "docker"
+            - name: "POSTGRES_PASS"
+              value: "docker"
+            - name: "ALLOW_IP_RANGE"
+              value: "0.0.0.0/0"

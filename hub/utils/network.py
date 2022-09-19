@@ -8,9 +8,11 @@ class NetworkManager:
         try:
             with open(f"{system}.json") as f:
                 resource = json.load(f)
+            print(resource)
             self.ssh_connection = resource["ssh_connection"]
             self.system = resource["system"]
             self.private_key_path = resource["public_key_path"].split(".pub")[0]
+            print(self.private_key_path)
         except FileNotFoundError:
             print(f"{system}.json not found")
 
@@ -38,5 +40,5 @@ class NetworkManager:
     @measure_time
     def run_ssh(self, command, **kwargs):
         self.run_command(
-            f"{self.ssh_connection} -o 'StrictHostKeyChecking=no' -i {self.private_key_path} '{command}'"
+            f"{self.ssh_connection} -o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {self.private_key_path} '{command}'"
         )

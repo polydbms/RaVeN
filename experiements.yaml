@@ -1,11 +1,10 @@
 experiments:
-  project_id: 33530191
-  public_key_path: ~/.ssh/rasdaman.pub
-  machine_size: Standard_B2ms
+  public_key_path: ~/.ssh/lrv.pub
   data: # if undefined cmd parameters can be used to manually define data
-    raster: /data/percepitation_tiff
-    vector: /data/states
-  # ssh_connection: ssh user@ip # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
+    raster: ~/git/master-raster-vector/data/raster
+    vector: ~/git/master-raster-vector/data/vector
+  results_folder: ~/git/master-raster-vector/data/results
+  ssh_connection: ssh postgis@192.168.122.168 # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
   workload: 
     get: 
       vector:
@@ -36,8 +35,8 @@ experiments:
   systems: 
     - name: postgis
       port: 25432
-    - name: omnisci
-      port: 6274
-    - name: rasdaman
-      port: 8080
-    - name: sedona
+#    - name: omnisci
+#      port: 6274
+#    - name: rasdaman
+#      port: 8080
+#    - name: sedona

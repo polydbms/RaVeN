@@ -6,9 +6,9 @@ services:
       target: base
     volumes:
       - .:/hub
-      - ../data:/data
+      - ~/git/master-raster-vector/data:/data
     tty: true
     environment:
       PYTHONPATH: /hub
-      PERSONAL_TOKEN: ${PERSONAL_TOKEN}
-      TRIGGER_TOKEN: ${TRIGGER_TOKEN}
+#      PERSONAL_TOKEN: ${PERSONAL_TOKEN}
+#      TRIGGER_TOKEN: ${TRIGGER_TOKEN}

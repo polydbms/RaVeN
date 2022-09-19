@@ -1,20 +1,20 @@
 import re
+from datetime import datetime
 from pathlib import Path
+
+from hub.utils.datalocation import DataLocation
 from hub.utils.preprocess import FileTransporter
 from hub.evaluation.main import measure_time
 
 
 class Executor:
-    def __init__(self, vector_path, raster_path, network_manager) -> None:
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager, results_folder: str) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
-        if Path(vector_path).exists() and Path(vector_path).is_dir():
-            vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
-        if Path(raster_path).exists() and Path(raster_path).is_dir():
-            raster_path = [raster for raster in Path(raster_path).glob("*.tif*")][0]
-        self.table1 = f"{vector_path.stem}".split(".")[0].lower()
-        self.table2 = f"{raster_path.stem}".split(".")[0].lower()
+        self.table_vector = Path(vector_path.docker_file).stem
+        self.table_raster = Path(raster_path.docker_file).stem
+        self.results_folder = results_folder
 
     def __handle_aggregations(self, type, features):
         return ", ".join(
@@ -136,16 +136,16 @@ class Executor:
     @measure_time
     def run_query(self, workload, **kwargs):
         query = self.__translate(workload)
-        query = query.replace("{self.table1}", self.table1)
-        query = query.replace("{self.table2}", self.table2)
+        query = query.replace("{self.table1}", self.table_vector)
+        query = query.replace("{self.table2}", self.table_raster)
         query = f"\copy ({query}) To '/data/results.csv' CSV HEADER;"
         with open("query.sql", "w") as f:
             f.write(query)
         self.transporter.send_file("query.sql", "~/data/query.sql", **kwargs)
-        self.network_manager.run_ssh("~/config/execute.sh", **kwargs)
+        self.network_manager.run_ssh("~/config/postgis/execute.sh", **kwargs)
         Path("query.sql").unlink()
         self.transporter.get_file(
             "~/data/results.csv",
-            f"~/results_{self.network_manager.system}.csv",
+            f"{self.results_folder}/results_{self.network_manager.system}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv",
             **kwargs,
         )
