@@ -34,7 +34,7 @@ get_filename () {
 }
 
 echo "Get docker container name"
-export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}')
+export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}' | grep postgis)
 echo "Ingesting data"
 if [ ! -z ${raster+x} ]; then
     name=$(get_filename $raster | cut -d'.' -f1)

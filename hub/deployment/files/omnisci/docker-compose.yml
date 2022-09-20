@@ -2,7 +2,7 @@ version: '2.1'
 
 services:
 
-  omni:
+  omnisci:
     image: omnisci/core-os-cpu:v5.10.2
     volumes:
       - ~/data:/data

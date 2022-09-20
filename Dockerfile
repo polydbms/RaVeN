@@ -15,9 +15,10 @@ WORKDIR /preprocess
 COPY --from=requirements /root/.local /root/.local
 COPY ./hub/evaluation/main.py hub/evaluation/main.py
 COPY ./hub/utils/configurator.py hub/utils/configurator.py
-COPY ./hub/utils/datalocation.py hub/utils/datalocation.py
+COPY ./hub/utils/fileio.py hub/utils/fileio.py
 COPY ./hub/utils/network.py hub/utils/network.py
 COPY ./hub/utils/preprocess.py preprocess.py
+COPY ./capabilities.yaml capabilities.yaml
 CMD [ "/bin/bash" ]
 
 

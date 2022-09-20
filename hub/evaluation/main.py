@@ -1,4 +1,7 @@
 import time
+from datetime import datetime
+from pathlib import Path
+
 import pandas as pd
 
 
@@ -20,9 +23,10 @@ def measure_time(method):
 
 
 class Evaluator:
-    def __init__(self, systems_list) -> None:
+    def __init__(self, systems_list, result_files: list[Path], results_folder: Path) -> None:
         self.system_list = systems_list
-        self.data_path = "~/results_"
+        self.result_files = result_files
+        self.results_folder = results_folder
 
     @staticmethod
     def __read_result(file):
@@ -40,7 +44,7 @@ class Evaluator:
 
     def __get_base(self):
         base_system = self.system_list[0]
-        path = f"{self.data_path}{base_system}.csv"
+        path = next(f for f in self.result_files if base_system in f.stem)
         df = self.__read_result(path)
         index = self.__get_index(df)
         df = df.sort_values(by=[index])
@@ -52,7 +56,7 @@ class Evaluator:
         secondary_system = self.system_list[1:]
         df_list = []
         for system in secondary_system:
-            path = f"{self.data_path}{system}.csv"
+            path = next(f for f in self.result_files if system in f.stem)
             df = self.__read_result(path)
             index = self.__get_index(df)
             df = df.sort_values(by=[index])
@@ -87,11 +91,12 @@ class Evaluator:
     def get_accuracy(self):
         base_df, base_index, base_columns, base_system = self.__get_base()
         secondary = self.__get_secondary()
+        timestring = datetime.now().strftime('%Y%m%d-%H%M%S')
         for system_df, system_index, system_columns, system in secondary:
             out = pd.DataFrame()
             out = pd.merge(base_df, system_df, on=base_index)
             out.drop_duplicates(subset=[base_index], keep="last", inplace=True)
             out, average_diff = self.get_diff(out, base_columns, system_columns)
-            out.to_csv(f"~/{base_system}_vs_{system}.csv")
+            out.to_csv(self.results_folder.joinpath(f"{base_system}_vs_{system}.{timestring}.csv"))
             accuracy = pd.DataFrame(average_diff, columns=["Feature", "Accuracy"])
-            accuracy.to_csv(f"~/{base_system}_vs_{system}_accuracy.csv")
+            accuracy.to_csv(self.results_folder.joinpath(f"{base_system}_vs_{system}_accuracy.{timestring}.csv"))

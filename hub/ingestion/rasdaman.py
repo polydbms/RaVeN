@@ -1,6 +1,6 @@
 from pathlib import Path
 from hub.evaluation.main import measure_time
-from hub.utils.preprocess import FileTransporter
+from hub.utils.filetransporter import FileTransporter
 import json
 
 INGREDIENTS = {

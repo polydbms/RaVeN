@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from hub.utils.preprocess import FileTransporter
+from hub.utils.filetransporter import FileTransporter
 from jinja2 import Template
 from hub.evaluation.main import measure_time
 

@@ -1,0 +1,6 @@
+systems:
+  rasterize:
+    - rasdaman
+  vectorize:
+    - omnisci
+    - sedona

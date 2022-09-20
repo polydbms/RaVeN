@@ -18,6 +18,6 @@ done
 
 
 echo "Get docker container name"
-export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}')
+export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}' | grep postgis)
 echo "Running query"
 docker exec $DOCKER_CONTAINER bash -c 'time PGPASSWORD=${POSTGRES_PASS} psql -d gis -f /data/query.sql -h localhost -U ${POSTGRES_USER}'

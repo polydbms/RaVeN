@@ -1,26 +1,28 @@
 import json
-import zipfile
 
 from osgeo import ogr, gdal
 import re
 import argparse
-from os import mkdir
 import rioxarray as rxr
 import geopandas as gpd
 from pathlib import Path
 from hub.evaluation.main import measure_time
-from hub.utils.datalocation import DataLocation, FileType
-from hub.utils.network import NetworkManager
+from hub.utils.fileio import FileIO
 
 
 class Preprocessor:
-    vector_path: str
-    raster_path: str
-
     def __init__(self, vector_path=None, raster_path=None) -> None:
         self.logger = {}
-        self.vector_path = vector_path.find_file(vector_path, "*.shp")
-        self.raster_path = raster_path.find_file(raster_path, "*.tif*")
+        self.vector_path = None
+        self.raster_path = None
+        if vector_path and (Path(vector_path).exists() and Path(vector_path).is_dir()):
+            self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
+        if raster_path and (Path(raster_path).exists() and Path(raster_path).is_dir()):
+            self.raster_path = [
+                raster
+                for raster in Path(raster_path).glob("*.tif*")
+                if "tif" in raster.suffix
+            ][0]
 
     def get_vector(self):
         vector = gpd.read_file(self.vector_path)
@@ -50,7 +52,7 @@ class CRSPreprocessor(Preprocessor):
         vector_crs = self.get_vector_crs()
         raster = self.get_raster()
         out = raster.rio.reproject(vector_crs)
-        out.rio.to_raster(self.raster_path)
+        out.rio.to_raster(f"{self.output}/{self.raster_path.name}")
         print(
             f"Transfered {self.raster_path} CRS from {raster.rio.crs} to {out.rio.crs}"
         )
@@ -138,92 +140,8 @@ class DataModelProcessor(Preprocessor):
         gdal.RasterizeLayer(new_raster, [1], shp_layer, options=options)
 
 
-class FileTransporter:
-    def __init__(self, network_manager: NetworkManager) -> None:
-        self.network_manager = network_manager
-        remote = self.network_manager.ssh_connection.split("ssh ")[-1]
-        private_key_path = self.network_manager.private_key_path
-        self.ssh_command = (
-            f"ssh {remote} -o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {private_key_path}"
-        )
-        self.scp_command_send = f"scp -o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {private_key_path} options from_File_plch {remote}:to_File_plch"
-        self.scp_command_recieve = f"scp -o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {private_key_path} options {remote}:from_File_plch to_File_plch"
-        print(self.ssh_command)
-        print(self.scp_command_send)
-
-    @measure_time
-    def send_folder(self, local, remote, **kwargs):
-        command = (
-            self.scp_command_send.replace("options", "-r")
-            .replace("from_File_plch", local)
-            .replace("to_File_plch", remote)
-        )
-        return self.network_manager.run_command(command)
-
-    @measure_time
-    def send_file(self, local, remote, **kwargs):
-        if Path(local).exists():
-            command = (
-                self.scp_command_send.replace("options", "")
-                .replace("from_File_plch", local)
-                .replace("to_File_plch", remote)
-            )
-            return self.network_manager.run_command(command)
-        raise FileNotFoundError(local)
-
-    @measure_time
-    def send_folder(self, local, remote, **kwargs):
-        if Path(local).exists():
-            command = (
-                self.scp_command_send.replace("options", "-r")
-                .replace("from_File_plch", local)
-                .replace("to_File_plch", remote)
-            )
-            return self.network_manager.run_command(command)
-        raise FileNotFoundError(local)
-
-    @measure_time
-    def get_file(self, remote, local, **kwargs):
-        command = (
-            self.scp_command_recieve.replace("options", "")
-            .replace("from_File_plch", remote)
-            .replace("to_File_plch", local)
-        )
-        return self.network_manager.run_command(command)
-
-    @measure_time
-    def get_folder(self, remote, local, **kwargs):
-        command = (
-            self.scp_command_recieve.replace("options", "-r")
-            .replace("from_File_plch", remote)
-            .replace("to_File_plch", local)
-        )
-        return self.network_manager.run_command(command)
-
-    @measure_time
-    def send_configs(self, rootPath, **kwargs):
-        self.send_folder(
-            f"{rootPath}/hub/deployment/files/{self.network_manager.system}", "~/config"
-        )
-
-    @measure_time
-    def send_data(self, file: DataLocation, **kwargs):
-        """Method for sending data to remote."""
-        print(file)
-        self.network_manager.run_command(f"{self.ssh_command} mkdir -p {file.host_dir}")
-        if file.type == FileType.FILE:
-            raise NotImplementedError("Single Files are currently not supported")
-            # self.send_file(file.controller_location, file.host_dir)
-        elif file.type == FileType.FOLDER:
-            self.send_folder(file.controller_location, file.host_dir)
-        elif file.type == FileType.ZIP_ARCHIVE:
-            self.send_file(file.controller_location, file.host_dir)
-            self.network_manager.run_command(f"{self.ssh_command} unzip")
-        else:
-            print("sent nothing")
-
-
 def main():
+    capabilities = FileIO.read_capabilities()
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--vector_path", help="Specify the path to vector dataset", required=True
@@ -246,11 +164,11 @@ def main():
         output=args.output,
     )
     crs_preprocessor.reproject_raster(log_time=crs_preprocessor.logger)
-    if args.system != "postgis" and args.system != "rasdaman":
+    if args.system in capabilities["vectorize"]:
         data_preprocessor.vectorize()
     print(crs_preprocessor.logger)
     print(data_preprocessor.logger)
-    if args.system == "rasdaman":
+    if args.system in capabilities["rasterize"]:
         file_type_preprocessor = FileTypeProcessor(
             vector_path=args.vector_path, output=args.output
         )

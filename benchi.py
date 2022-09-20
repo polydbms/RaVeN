@@ -1,18 +1,17 @@
-import os
-from time import sleep
-import importlib
-import yaml
-import json
 import argparse
-from hub.deployment.main import Deployer
-from hub.utils.configurator import Configurator
-from hub.utils.datalocation import DataLocation, DataType
-from hub.utils.network import NetworkManager
-from hub.utils.preprocess import FileTransporter
-from hub.evaluation.main import Evaluator
+import importlib
 from datetime import datetime
+from pathlib import Path
+from time import sleep
+from typing import List, Any
 
-CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
+from configuration import PROJECT_ROOT
+from hub.deployment.main import Deployer
+from hub.evaluation.main import Evaluator
+from hub.utils.datalocation import DataLocation, DataType
+from hub.utils.fileio import FileIO
+from hub.utils.filetransporter import FileTransporter
+from hub.utils.network import NetworkManager
 
 
 class Setup:
@@ -25,35 +24,9 @@ class Setup:
         module = importlib.import_module(module)
         return getattr(module, class_name)
 
-    @staticmethod
-    def read_experiments_config():
-        with open(f"{CURRENT_PATH}/experiements.yaml") as c:
-            try:
-                experiments = yaml.safe_load(c)["experiments"]
-                public_key_path = experiments["public_key_path"]
-                ssh_connection = experiments["ssh_connection"]
-                workload = experiments["workload"]
-                data = experiments["data"] if "data" in experiments else None
-                results_folder = experiments["results_folder"]
-                resource = {
-                    system["name"]: {
-                        "system": system["name"],
-                        "public_key_path": public_key_path,
-                        "ssh_connection": ssh_connection,
-                        "workload": workload,
-                        "raster": data["raster"],
-                        "vector": data["vector"],
-                        "results_folder": results_folder
-                    }
-                    for system in experiments["systems"]
-                }
-                return resource
-            except yaml.YAMLError as exc:
-                print(exc)
-                return {}
-
-    def __run_tasks(self, resource, vector, raster, repeat):
+    def __run_tasks(self, resource, vector, raster, repeat) -> list[Path]:
         system = resource["system"]
+        print(system)
         now = datetime.now()
         with open("out.log", "a") as f:
             f.write(f'{system} {now.strftime("%d/%m/%Y %H:%M:%S")} \n')
@@ -70,18 +43,10 @@ class Setup:
             raise ValueError(
                 "Vector directory path was not provided. Either add it to experiments or add to cli --vector option"
             )
-        # try:
-        #     with open(f"{system}.json") as f:
-        #         sys_resource = json.load(f)
-        #         ssh_connection_available = (
-        #             True if sys_resource["ssh_connection"] else False
-        #         )
-        # except:
-        #     print("Creating resources")
-        #     exit(1)
+
         network_manager = NetworkManager(system)
         transporter = FileTransporter(network_manager)
-        transporter.send_configs(CURRENT_PATH, log_time=self.logger)
+        transporter.send_configs(log_time=self.logger)
         if vector:
             print(vector)
             transporter.send_data(vector, log_time=self.logger)
@@ -115,38 +80,52 @@ class Setup:
         print("Run query")
         Executor = self.__importer(f"hub.executor.{system}", "Executor")
         executor = Executor(vector, raster, network_manager, resource["results_folder"])
+
+        result_files: list[Path] = []
         if repeat:
             for i in range(repeat):
-                executor.run_query(resource["workload"], log_time=self.logger)
+                result_files.append(executor.run_query(resource["workload"], log_time=self.logger))
         else:
-            executor.run_query(resource["workload"], log_time=self.logger)
+            result_files.append(executor.run_query(resource["workload"], log_time=self.logger))
         with open("out.log", "a") as f:
             f.write(f"--------------------- Post-Benchmark ------------------- \n")
             f.write(f'Finished {now.strftime("%d/%m/%Y %H:%M:%S")} \n')
 
-    def benchmark(self, system=None, vector=None, raster=None, repeat=None):
-        experiments = self.read_experiments_config()
+        return result_files
+
+    def benchmark(self, system=None, vector=None, raster=None, repeat=None) -> list[Path]:
+        experiments = FileIO.read_experiments_config()
+
+        result_files = []
         if system is not None:
-            self.__run_tasks(experiments[system], vector, raster, repeat)
+            result_files.extend(self.__run_tasks(experiments[system], vector, raster, repeat))
         else:
             for system in experiments:
-                self.__run_tasks(experiments[system], vector, raster, repeat)
-                self.clean(system)
+                result_files.extend(self.__run_tasks(experiments[system], vector, raster, repeat))
+                # self.clean(system) # TODO replace
 
-    def evaluate(self):
-        systems_list = list(self.read_experiments_config().keys())
-        evaluator = Evaluator(systems_list)
+        return result_files
+
+    def evaluate(self, result_files: list[Path]):
+        config = FileIO.read_experiments_config()
+        systems_list = list(config.keys())
+        print(result_files)
+        evaluator = Evaluator(systems_list, result_files, config[systems_list[0]]["results_folder"])
         evaluator.get_accuracy()
 
     def clean(self, system=None):
-        experiments = self.read_experiments_config()
-        if system is not None:
-            deployer = Deployer(experiments[system])
-            deployer.clean_up() #TODO replace
-        else:
-            for system in experiments:
-                deployer = Deployer(experiments[system])
-                deployer.clean_up()
+        experiments = FileIO.read_experiments_config()
+
+        # if system is not None:
+        #     network_manager = NetworkManager(system)
+        #     deployer = clea(experiments[system])
+        #     deployer.clean_up()  # TODO replace
+        # else:
+        for system in experiments:
+            network_manager = NetworkManager(system)
+            network_manager.run_ssh("docker stop $(docker ps -q)")
+            network_manager.run_ssh("docker rm $(docker ps -aq)")
+            network_manager.run_ssh("docker volume rm $(docker volume ls -q)")
 
 
 def main():
@@ -161,8 +140,8 @@ def main():
     args = parser.parse_args()
     setup = Setup()
     if args.command == "start":
-        setup.benchmark(args.system, args.vector, args.raster, args.repeat)
-        setup.evaluate()
+        result_files = setup.benchmark(args.system, args.vector, args.raster, args.repeat)
+        setup.evaluate(result_files)
     if args.command == "clean":
         setup.clean(args.system)
 

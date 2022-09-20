@@ -4,7 +4,7 @@ experiments:
     raster: ~/git/master-raster-vector/data/raster
     vector: ~/git/master-raster-vector/data/vector
   results_folder: ~/git/master-raster-vector/data/results
-  ssh_connection: ssh postgis@192.168.122.168 # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
+  ssh_connection: "ssh postgis@192.168.122.168" # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
   workload: 
     get: 
       vector:
@@ -35,8 +35,8 @@ experiments:
   systems: 
     - name: postgis
       port: 25432
-#    - name: omnisci
-#      port: 6274
+    - name: omnisci
+      port: 6274
 #    - name: rasdaman
 #      port: 8080
 #    - name: sedona

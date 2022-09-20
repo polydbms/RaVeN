@@ -10,10 +10,6 @@ class Ingestor:
         self.vector_path = vector.docker_file
         self.raster_path = raster.docker_file
 
-        print(vector, self.vector_path)
-        print(raster, self.raster_path)
-
-
     @measure_time
     def ingest_raster(self, **kwargs):
         self.network_manager.run_ssh(

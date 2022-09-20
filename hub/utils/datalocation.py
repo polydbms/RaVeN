@@ -15,7 +15,7 @@ class FileType(Enum):
 
 
 class DataLocation:
-    _file: str
+    _file: Path
     _data_type: DataType
     _name: str
     _preprocessed: bool
@@ -39,31 +39,31 @@ class DataLocation:
         self._data_type = data_type
         self._file = self._find_file("*.shp" if self._data_type == DataType.VECTOR else "*.tif*")
 
-    def _find_file(self, ending: str) -> str:
+    def _find_file(self, ending: str) -> Path:
         if self.type == FileType.FILE:
             raise NotImplementedError("Single Files are currently not supported")
         elif self.type == FileType.FOLDER:
-            return f"{'preprocessed.' if self._preprocessed else ''}{[f for f in self._controller_location.glob(ending)][0].name}"
+            return Path([f for f in self._controller_location.glob(ending)][0].name)
         elif self.type == FileType.ZIP_ARCHIVE:
-            return f"{'preprocessed.' if self._preprocessed else ''}{[f for f in zipfile.Path(self._controller_location).iterdir() if Path(f.name).match(ending)][0].name}"
+            return Path([f for f in zipfile.Path(self._controller_location).iterdir() if Path(f.name).match(ending)][0].name)
         else:
             raise FileNotFoundError(f"Could not find file with ending {ending} at/in {self}")
 
     @property
-    def docker_dir(self) -> str:
-        return f"/data/{self._name}/"
+    def docker_dir(self) -> Path:
+        return Path("/data").joinpath(Path(self._name))
 
     @property
-    def docker_file(self) -> str:
-        return f"{self.docker_dir}/{self._file}"
+    def docker_file(self) -> Path:
+        return self.docker_dir.joinpath(self._file)
 
     @property
-    def host_dir(self) -> str:
-        return f"~/data/{self._name}/"
+    def host_dir(self) -> Path:
+        return Path("~/data").joinpath(Path(self._name))
 
     @property
-    def host_file(self) -> str:
-        return f"{self.host_dir}/{self._file}"
+    def host_file(self) -> Path:
+        return self.host_dir.joinpath(self._file)
 
     @property
     def name(self) -> str:
@@ -84,7 +84,7 @@ class DataLocation:
         return ",".join(
             [str(self._controller_location),
              str(self._data_type),
-             self._file,
+             str(self._file),
              self._name,
              str(self._preprocessed)]
         )

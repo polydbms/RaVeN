@@ -17,6 +17,6 @@ esac
 done
 
 echo "Get docker container name"
-export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}')
+export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}' | grep omnisci)
 echo "Running query"
 docker exec $DOCKER_CONTAINER bash -c "cat /data/query.sql | /omnisci/bin/omnisql -p HyperInteractive"

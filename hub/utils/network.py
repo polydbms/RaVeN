@@ -1,20 +1,15 @@
 import json
 import subprocess
 from hub.evaluation.main import measure_time
+from hub.utils.system import System
 
 
 class NetworkManager:
-    def __init__(self, system) -> None:
-        try:
-            with open(f"{system}.json") as f:
-                resource = json.load(f)
-            print(resource)
-            self.ssh_connection = resource["ssh_connection"]
-            self.system = resource["system"]
-            self.private_key_path = resource["public_key_path"].split(".pub")[0]
-            print(self.private_key_path)
-        except FileNotFoundError:
-            print(f"{system}.json not found")
+    def __init__(self, system: System) -> None:
+        self.ssh_connection = system.ssh_connection
+        self.system = system.name
+        self.private_key_path = system.public_key_path.with_suffix("")
+        print(self.private_key_path)
 
     @staticmethod
     @measure_time
@@ -26,10 +21,12 @@ class NetworkManager:
             )
             while True:
                 output = process.stdout.readline()
-                print(output.strip())
+                if not output == "":
+                    print(output.strip())
                 return_code = process.poll()
                 if return_code is not None:
                     print("RETURN CODE", return_code)
+                    print("\n\n")
                     # Process has finished, read rest of the output
                     for output in process.stdout.readlines():
                         print(output.strip())

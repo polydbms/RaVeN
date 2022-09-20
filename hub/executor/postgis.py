@@ -3,12 +3,13 @@ from datetime import datetime
 from pathlib import Path
 
 from hub.utils.datalocation import DataLocation
-from hub.utils.preprocess import FileTransporter
+from hub.utils.filetransporter import FileTransporter
 from hub.evaluation.main import measure_time
 
 
 class Executor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager, results_folder: str) -> None:
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager,
+                 results_folder: Path) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
@@ -134,7 +135,7 @@ class Executor:
         return query
 
     @measure_time
-    def run_query(self, workload, **kwargs):
+    def run_query(self, workload, **kwargs) -> Path:
         query = self.__translate(workload)
         query = query.replace("{self.table1}", self.table_vector)
         query = query.replace("{self.table2}", self.table_raster)
@@ -144,8 +145,12 @@ class Executor:
         self.transporter.send_file("query.sql", "~/data/query.sql", **kwargs)
         self.network_manager.run_ssh("~/config/postgis/execute.sh", **kwargs)
         Path("query.sql").unlink()
+
+        result_path = self.results_folder.joinpath(f"results_{self.network_manager.system}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv")
         self.transporter.get_file(
             "~/data/results.csv",
-            f"{self.results_folder}/results_{self.network_manager.system}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv",
+            result_path,
             **kwargs,
         )
+
+        return result_path
