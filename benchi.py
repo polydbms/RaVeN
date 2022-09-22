@@ -121,11 +121,10 @@ class Setup:
         #     deployer = clea(experiments[system])
         #     deployer.clean_up()  # TODO replace
         # else:
-        for system in experiments:
-            network_manager = NetworkManager(system)
-            network_manager.run_ssh("docker stop $(docker ps -q)")
-            network_manager.run_ssh("docker rm $(docker ps -aq)")
-            network_manager.run_ssh("docker volume rm $(docker volume ls -q)")
+        network_manager = NetworkManager(experiments[list(experiments.keys())[0]]["system"])
+        network_manager.run_ssh("docker stop $(docker ps -q)")
+        network_manager.run_ssh("docker rm $(docker ps -aq)")
+        network_manager.run_ssh("docker volume rm $(docker volume ls -q)")
 
 
 def main():
