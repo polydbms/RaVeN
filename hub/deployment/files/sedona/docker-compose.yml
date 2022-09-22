@@ -2,10 +2,11 @@ version: '2.1'
 
 services:
 
-  pyspark:
+  sedona:
     image: laertnuhu/sedona
     volumes:
       - ~/data:/data
+      - ~/config:/config
     user: root
     environment:
       - GRANT_SUDO=yes

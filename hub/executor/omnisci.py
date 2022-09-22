@@ -8,7 +8,8 @@ from hub.evaluation.main import measure_time
 
 
 class Executor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager, results_folder: str) -> None:
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager,
+                 results_folder: Path) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
@@ -146,7 +147,8 @@ class Executor:
         self.network_manager.run_ssh("~/config/omnisci/execute.sh", **kwargs)
         Path("query.sql").unlink()
 
-        result_path = self.results_folder.joinpath(f"results_{self.network_manager.system}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv")
+        result_path = self.results_folder.joinpath(
+            f"results_{self.network_manager.system}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv")
         self.transporter.get_file(
             "~/data/results.csv",
             result_path,

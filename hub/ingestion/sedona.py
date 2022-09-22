@@ -1,23 +1,16 @@
 from pathlib import Path
+
+from configuration import PROJECT_ROOT
 from hub.evaluation.main import measure_time
 from jinja2 import Template
-import os
-
-CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
-
 
 class Ingestor:
     def __init__(self, vector_path, raster_path, network_manager) -> None:
         self.logger = {}
         self.network_manager = network_manager
-        self.vector_path = None
-        self.raster_path = None
-        if Path(vector_path).exists() and Path(vector_path).is_dir():
-            self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
-        if Path(raster_path).exists() and Path(raster_path).is_dir():
-            self.raster_path = [raster for raster in Path(raster_path).glob("*.tif*")][
-                0
-            ]
+        self.vector_path = vector_path.docker_file
+        self.raster_path = raster_path.docker_file
+
         rendered = self.render_template()
         self.__save_template(rendered)
 
@@ -38,10 +31,10 @@ class Ingestor:
             print(f"{path} not found")
 
     def render_template(self):
-        template_path = Path(f"{CURRENT_PATH}/../deployment/files/sedona/sedona.py.j2")
+        template_path = Path(PROJECT_ROOT.joinpath("hub/deployment/files/sedona/sedona.py.j2"))
         template = self.__read_template(template_path)
-        raster_name = f"{self.raster_path.stem}".split(".")[0]
-        vector_name = f"{self.vector_path.stem}".split(".")[0]
+        raster_name = self.raster_path.stem
+        vector_name = self.vector_path.stem
         payload = {
             "vector_path": self.vector_path.parent,
             "raster_path": self.raster_path.parent,
@@ -53,6 +46,6 @@ class Ingestor:
         return rendered
 
     def __save_template(self, template):
-        template_path = Path(f"sedona_ingested.py.j2")
+        template_path = Path(f"hub/deployment/files/sedona/sedona_ingested.py.j2")
         with open(template_path, "w") as f:
             f.write(template)

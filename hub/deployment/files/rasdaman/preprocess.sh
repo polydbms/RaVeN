@@ -1,5 +1,5 @@
 #!/bin/bash
 
 echo "Preprocessing data"
-docker pull laertnuhu/preprocessor
-docker run -v ~/data:/data laertnuhu/preprocessor python preprocess.py $1
+docker pull registry.gitlab.com/zergar/benchi/preprocess:0.1.0-2
+docker run -v ~/data:/data registry.gitlab.com/zergar/benchi/preprocess:0.1.0-2 python preprocess.py $1

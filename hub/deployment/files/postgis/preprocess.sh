@@ -8,7 +8,7 @@ echo "Starting Container in background"
 cd ~/config/postgis && docker-compose up -d
 
 echo "Get docker container name"
-export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}')
+export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}' | grep postgis)
 
 echo "Config"
 docker exec $DOCKER_CONTAINER bash -c "apt update"

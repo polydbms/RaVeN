@@ -1,8 +1,8 @@
 experiments:
   public_key_path: ~/.ssh/lrv.pub
   data: # if undefined cmd parameters can be used to manually define data
-    raster: ~/git/master-raster-vector/data/raster
-    vector: ~/git/master-raster-vector/data/vector
+    raster: /home/gereon/git/master-raster-vector/benchi/data/PRISM_ppt_stable_4kmD2_20210901
+    vector: /home/gereon/git/master-raster-vector/benchi/data/ne_10m_admin_1_states_provinces
   results_folder: ~/git/master-raster-vector/data/results
   ssh_connection: "ssh postgis@192.168.122.168" # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
   workload: 
@@ -39,4 +39,4 @@ experiments:
       port: 6274
 #    - name: rasdaman
 #      port: 8080
-#    - name: sedona
+    - name: sedona

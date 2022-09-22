@@ -18,6 +18,7 @@ done
 
 
 echo "Get docker container name"
-export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}')
+export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}' | grep sedona)
+echo $DOCKER_CONTAINER
 echo "Running query"
-docker exec $DOCKER_CONTAINER bash -c 'python /data/executor.py'
+docker exec $DOCKER_CONTAINER bash -c 'python /config/sedona/executor.py'

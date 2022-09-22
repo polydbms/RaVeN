@@ -1,21 +1,28 @@
 import re
+from datetime import datetime
 from pathlib import Path
+
+from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 from jinja2 import Template
 from hub.evaluation.main import measure_time
 
 
 class Executor:
-    def __init__(self, vector_path, raster_path, network_manager) -> None:
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager,
+                 results_folder: Path) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
-        if Path(vector_path).exists() and Path(vector_path).is_dir():
-            vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
-        if Path(raster_path).exists() and Path(raster_path).is_dir():
-            raster_path = [raster for raster in Path(raster_path).glob("*.tif*")][0]
-        self.table1 = f"{vector_path.stem}".split(".")[0]
-        self.table2 = f"{raster_path.stem}".split(".")[0]
+        # if Path(vector_path).exists() and Path(vector_path).is_dir():
+        #     vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
+        # if Path(raster_path).exists() and Path(raster_path).is_dir():
+        #     raster_path = [raster for raster in Path(raster_path).glob("*.tif*")][0]
+        # self.table_vector = f"{vector_path.stem}".split(".")[0]
+        # self.table_raster = f"{raster_path.stem}".split(".")[0]
+        self.table_vector = Path(vector_path.docker_file).stem
+        self.table_raster = Path(raster_path.docker_file).stem
+        self.results_folder = results_folder
 
     def __handle_aggregations(self, type, features):
         return ", ".join(
@@ -133,19 +140,26 @@ class Executor:
     @measure_time
     def run_query(self, workload, **kwargs):
         query = self.__translate(workload)
-        query = query.replace("{self.table1}", self.table1)
-        query = query.replace("{self.table2}", self.table2)
+        query = query.replace("{self.table1}", self.table_vector)
+        query = query.replace("{self.table2}", self.table_raster)
         rendered = self.__render_template(query)
         self.__save_template(rendered)
-        self.transporter.send_file("sedona.py", "~/data/executor.py", **kwargs)
-        self.network_manager.run_ssh("~/config/execute.sh", **kwargs)
-        Path("sedona.py").unlink()
-        Path("sedona_ingested.py.j2").unlink()
+        self.transporter.send_file("hub/deployment/files/sedona/sedona_prep.py", "~/config/sedona/executor.py", **kwargs)
+        self.network_manager.run_ssh("~/config/sedona/execute.sh", **kwargs)
+        Path("hub/deployment/files/sedona/sedona_prep.py").unlink()
+        Path("hub/deployment/files/sedona/sedona_ingested.py.j2").unlink()
+
+
+        result_path = self.results_folder.joinpath(
+            f"results_{self.network_manager.system}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv")
         self.transporter.get_file(
             "~/data/results.csv",
-            f"~/results_{self.network_manager.system}.csv",
+            result_path,
             **kwargs,
         )
+
+        return result_path
+
 
     def __read_template(self, path):
         try:
@@ -156,7 +170,7 @@ class Executor:
             print(f"{path} not found")
 
     def __render_template(self, query):
-        template_path = Path("sedona_ingested.py.j2")
+        template_path = Path("hub/deployment/files/sedona/sedona_ingested.py.j2")
         template = self.__read_template(template_path)
         payload = {
             "query": query,
@@ -165,6 +179,6 @@ class Executor:
         return rendered
 
     def __save_template(self, template):
-        template_path = Path(f"sedona.py")
+        template_path = Path(f"hub/deployment/files/sedona/sedona_prep.py")
         with open(template_path, "w") as f:
             f.write(template)
