@@ -37,6 +37,6 @@ experiments:
       port: 25432
     - name: omnisci
       port: 6274
-#    - name: rasdaman
-#      port: 8080
+    - name: rasdaman
+      port: 8080
     - name: sedona

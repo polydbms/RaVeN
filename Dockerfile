@@ -13,10 +13,12 @@ CMD [ "/bin/bash" ]
 FROM osgeo/gdal:ubuntu-small-3.4.1 as preprocess
 WORKDIR /preprocess
 COPY --from=requirements /root/.local /root/.local
-COPY ./hub/evaluation/main.py hub/evaluation/main.py
+COPY ./configuration.py configuration.py
+COPY ./hub/evaluation/measure_time.py hub/evaluation/measure_time.py
 COPY ./hub/utils/configurator.py hub/utils/configurator.py
 COPY ./hub/utils/fileio.py hub/utils/fileio.py
 COPY ./hub/utils/network.py hub/utils/network.py
+COPY ./hub/utils/system.py hub/utils/system.py
 COPY ./hub/utils/preprocess.py preprocess.py
 COPY ./capabilities.yaml capabilities.yaml
 CMD [ "/bin/bash" ]

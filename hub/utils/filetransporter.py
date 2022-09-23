@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from configuration import PROJECT_ROOT
-from hub.evaluation.main import measure_time
+from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation, FileType
 from hub.utils.network import NetworkManager
 

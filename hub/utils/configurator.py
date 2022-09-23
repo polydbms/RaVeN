@@ -1,5 +1,5 @@
 import yaml
-from hub.evaluation.main import measure_time
+from hub.evaluation.measure_time import measure_time
 from hub.utils.network import NetworkManager
 
 

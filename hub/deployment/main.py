@@ -4,7 +4,8 @@ import json
 import requests
 import backoff
 
-from hub.evaluation.main import measure_time
+from hub.evaluation.measure_time import measure_time
+
 
 # TRIGGER_TOKEN = os.environ["TRIGGER_TOKEN"]
 # PERSONAL_TOKEN = os.environ["PERSONAL_TOKEN"]
