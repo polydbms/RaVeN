@@ -1,30 +1,31 @@
 version: '3.8'
 
 services:
-  petascope:
-    image: postgres:9.3
-    environment:
-      POSTGRES_USER: "petascope"
-      POSTGRES_PASSWORD: "petascope"
-      POSTGRES_DB: "petascope"
-    ports:
-      - "5428:5432"
-    networks:
-      - rasdaman
-
+  #  petascope:
+  #    image: postgres:9.3
+  #    environment:
+  #      POSTGRES_USER: "petascope"
+  #      POSTGRES_PASSWORD: "petascope"
+  #      POSTGRES_DB: "petascope"
+  #    ports:
+  #      - "5428:5432"
+  #    networks:
+  #        - rasdaman
 
   rasdaman:
-    image: lucapaganotti/rasdaman:latest
+    image: registry.gitlab.com/zergar/benchi/rasdaman:try1.0.0-1
 #    links:
 #      - petascope
-    depends_on:
-      - petascope
+#    depends_on:
+#      - petascope
     ports:
       - "48080:8080"
       - "40080:80"
-      - "47010:7010"
+      - "47001:7001"
     volumes:
       - ~/data:/data
+      - ~/config:/config
+#      - ~/git/master-raster-vector/rasdaman/data/tomcat8_webapps:/var/lib/tomcat9/webapps
     networks:
       - rasdaman
 

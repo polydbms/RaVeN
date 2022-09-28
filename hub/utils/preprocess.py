@@ -80,14 +80,14 @@ class FileTypeProcessor(Preprocessor):
             for geom in vector.geometry
         ]
         vector["wkt"] = wkt
-        output = f"/data/{self.vector_path.stem}.json"
+        output = f"/data/{self.vector_path.stem}.json"  # TODO maybe change
         json_out = vector.to_json()
         with open(output, "w") as f:
             f.write(json_out)
 
     @measure_time
     def read_wkt(self, **kwargs):
-        output = f"/data/{self.vector_path.stem}.json"
+        output = f"/data/{self.vector_path.stem}.json"  # TODO maybe change
         wkt = Path(output).read_bytes()
         return json.loads(wkt)
 

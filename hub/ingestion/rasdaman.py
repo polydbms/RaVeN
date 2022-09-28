@@ -1,5 +1,6 @@
 from pathlib import Path
 from hub.evaluation.measure_time import measure_time
+from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 import json
 
@@ -44,34 +45,35 @@ INGREDIENTS = {
 
 
 class Ingestor:
-    def __init__(self, vector_path, raster_path, network_manager) -> None:
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager) -> None:
         self.logger = {}
         self.network_manager = network_manager
-        self.vector_path = None
-        self.raster_path = None
+        self.vector_path = vector_path
+        self.raster_path = raster_path
+        # self.vector_path = None
+        # self.raster_path = None
         self.transporter = FileTransporter(network_manager)
-        if Path(vector_path).exists() and Path(vector_path).is_dir():
-            self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
-        if Path(raster_path).exists() and Path(raster_path).is_dir():
-            self.raster_path = [raster for raster in Path(raster_path).glob("*.tif*")][
-                0
-            ]
+        # if Path(vector_path).exists() and Path(vector_path).is_dir():
+        #     self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
+        # if Path(raster_path).exists() and Path(raster_path).is_dir():
+        #     self.raster_path = [raster for raster in Path(raster_path).glob("*.tif*")][
+        #         0
+        #     ]
 
     @measure_time
     def ingest_raster(self, **kwargs):
-        raster_name = f"{self.raster_path.stem}".split(".")[0]
-        raster_path = f"/home/azureuser/{self.raster_path}"
         INGREDIENTS["input"] = {
-            "coverage_id": raster_name,
-            "paths": [raster_path],
+            "coverage_id": str(self.raster_path.name),
+            "paths": [str(self.raster_path.docker_file)],
         }
-        with open("ingredients.json", "w") as f:
+        with open("hub/deployment/files/rasdaman/ingredients.json", "w") as f:
             json.dump(INGREDIENTS, f)
-        self.transporter.send_file("ingredients.json", "~/config/ingredients.json")
+        self.transporter.send_file("hub/deployment/files/rasdaman/ingredients.json", "~/config/rasdaman/ingredients.json")
         self.network_manager.run_ssh(
-            f"/opt/rasdaman/bin/wcst_import.sh ~/config/ingredients.json"
+            # f"/opt/rasdaman/bin/wcst_import.sh ~/config/rasdaman/ingredients.json"
+            f"~/config/rasdaman/ingest.sh"
         )
-        Path("ingredients.json").unlink()
+        Path("hub/deployment/files/rasdaman/ingredients.json").unlink()
 
     @measure_time
     def ingest_vector(self, **kwargs):

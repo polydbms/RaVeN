@@ -16,8 +16,8 @@ class FileTransporter:
         )
         self.scp_command_send = f"scp -o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {private_key_path} options from_File_plch {remote}:to_File_plch"
         self.scp_command_recieve = f"scp -o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {private_key_path} options {remote}:from_File_plch to_File_plch"
-        print(self.ssh_command)
-        print(self.scp_command_send)
+        # print(self.ssh_command)
+        # print(self.scp_command_send)
 
     @measure_time
     def send_folder(self, local, remote, **kwargs):
@@ -77,15 +77,15 @@ class FileTransporter:
     @measure_time
     def send_data(self, file: DataLocation, **kwargs):
         """Method for sending data to remote."""
-        print(file)
+        # print(file)
         self.network_manager.run_command(f"{self.ssh_command} mkdir -p {file.host_dir}")
         if file.type == FileType.FILE:
             raise NotImplementedError("Single Files are currently not supported")
             # self.send_file(file.controller_location, file.host_dir)
         elif file.type == FileType.FOLDER:
-            self.send_folder(file.controller_location, file.host_dir)
+            self.send_folder(str(file.controller_location), file.host_dir)  # TODO make to use Path()
         elif file.type == FileType.ZIP_ARCHIVE:
-            self.send_file(file.controller_location, file.host_dir)
+            self.send_file(str(file.controller_location), file.host_dir)  # TODO make to use Path()
             self.network_manager.run_command(f"{self.ssh_command} unzip")
         else:
             print("sent nothing")

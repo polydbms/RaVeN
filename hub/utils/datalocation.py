@@ -45,7 +45,8 @@ class DataLocation:
         elif self.type == FileType.FOLDER:
             return Path([f for f in self._controller_location.glob(ending)][0].name)
         elif self.type == FileType.ZIP_ARCHIVE:
-            return Path([f for f in zipfile.Path(self._controller_location).iterdir() if Path(f.name).match(ending)][0].name)
+            return Path(
+                [f for f in zipfile.Path(self._controller_location).iterdir() if Path(f.name).match(ending)][0].name)
         else:
             raise FileNotFoundError(f"Could not find file with ending {ending} at/in {self}")
 
@@ -58,6 +59,10 @@ class DataLocation:
         return self.docker_dir.joinpath(self._file)
 
     @property
+    def docker_wkt(self) -> Path:
+        return self.docker_dir.with_suffix(".json")
+
+    @property
     def host_dir(self) -> Path:
         return Path("~/data").joinpath(Path(self._name))
 
@@ -66,12 +71,20 @@ class DataLocation:
         return self.host_dir.joinpath(self._file)
 
     @property
+    def host_wkt(self) -> Path:
+        return self.host_dir.with_suffix(".json")
+
+    @property
     def name(self) -> str:
         return self._name
 
     @property
-    def controller_location(self) -> str:
-        return str(self._controller_location)
+    def controller_location(self) -> Path:
+        return self._controller_location
+
+    @property
+    def controller_wkt(self) -> Path:
+        return self.controller_location.with_suffix(".json")
 
     def set_preprocessed(self):
         self._preprocessed = True

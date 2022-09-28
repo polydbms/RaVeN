@@ -1,4 +1,5 @@
 import urllib.parse as parser
+from datetime import datetime
 from pathlib import Path
 import requests
 import operator
@@ -7,27 +8,32 @@ import json
 import csv
 import os
 from hub.evaluation.measure_time import measure_time
+from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 
 
 class Executor:
-    def __init__(self, vector_path, raster_path, network_manager) -> None:
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager,
+                 results_folder: Path) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
-        if Path(vector_path).exists() and Path(vector_path).is_dir():
-            self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
-        if Path(raster_path).exists() and Path(raster_path).is_dir():
-            self.raster_path = [raster for raster in Path(raster_path).glob("*.tif*")][
-                0
-            ]
+        self.vector_path = vector_path
+        self.raster_path = raster_path
+        self.results_folder = results_folder
+        # if Path(vector_path).exists() and Path(vector_path).is_dir():
+        #     self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
+        # if Path(raster_path).exists() and Path(raster_path).is_dir():
+        #     self.raster_path = [raster for raster in Path(raster_path).glob("*.tif*")][
+        #         0
+        #     ]
         self.transporter.get_file(
-            f"~/data/{self.vector_path.stem}.json", f"{self.vector_path.stem}.json"
+            vector_path.host_wkt, vector_path.controller_wkt
         )
-        ssh_ip = self.network_manager.ssh_connection.split("@")[-1]
-        self.url = f"http://{ssh_ip}:8080/rasdaman/ows"
-        self.coverage = f"{Path(self.raster_path).stem}".split(".")[0]
-        wkt = Path(f"{Path(self.vector_path).stem}.json").read_bytes()
+        # ssh_ip = self.network_manager.ssh_connection.split("@")[-1]
+        self.url = f"http://192.168.122.168:48080/rasdaman/ows"  # FIXME make dynamic
+        self.coverage = self.raster_path.name
+        wkt = self.vector_path.controller_wkt.read_bytes()
         self.vector_data = json.loads(wkt)
         self.aggregations = {
             "avg": self.__get_avg,
@@ -79,13 +85,13 @@ class Executor:
             lat = search.group(1)
             long = search.group(2)
             url = (
-                self.url + "?SERVICE=WCS"
-                "&VERSION=2.0.1"
-                "&REQUEST=GetCoverage"
-                f"&COVERAGEID={self.coverage}"
-                f"&SUBSET=Lat({lat})"
-                f"&SUBSET=Long({long})"
-                "&FORMAT=application/json"
+                    self.url + "?SERVICE=WCS"
+                               "&VERSION=2.0.1"
+                               "&REQUEST=GetCoverage"
+                               f"&COVERAGEID={self.coverage}"
+                               f"&SUBSET=Lat({lat})"
+                               f"&SUBSET=Long({long})"
+                               "&FORMAT=application/json"
             )
             response = requests.request("GET", url, headers=self.headers)
             result.append("0" if "xml" in response.text else response.text)
@@ -192,14 +198,14 @@ class Executor:
         order = self.__parse_order(workload["order"]) if "order" in workload else ""
         limit = workload["limit"] if "limit" in workload else ""
         has_aggregations = (
-            len(
-                [
-                    ras_feature
-                    for ras_feature in selection[1]
-                    if ras_feature in self.aggregations
-                ]
-            )
-            > 0
+                len(
+                    [
+                        ras_feature
+                        for ras_feature in selection[1]
+                        if ras_feature in self.aggregations
+                    ]
+                )
+                > 0
         )
         return selection, condition, order, limit, has_aggregations
 
@@ -226,10 +232,13 @@ class Executor:
         for o in order[0]:
             vector_features.sort(key=lambda x: x["properties"][o])
 
+        result_path = self.results_folder.joinpath(
+            f"results_{self.network_manager.system}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv")
+
         if limit:
             vector_features = vector_features[: int(limit)]
         f = open(
-            f"{os.environ['HOME']}/results_{self.network_manager.system}.csv",
+            result_path,
             "w",
             encoding="UTF8",
             newline="",
@@ -249,4 +258,6 @@ class Executor:
                 )
             )
         f.close()
-        Path(f"{self.vector_path.stem}.json").unlink()
+        self.vector_path.controller_wkt.unlink()
+
+        return result_path
