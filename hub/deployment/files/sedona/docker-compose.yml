@@ -5,8 +5,8 @@ services:
   sedona:
     image: laertnuhu/sedona
     volumes:
-      - ~/data:/data
-      - ~/config:/config
+      - ../../data:/data
+      - ../../config:/config
     user: root
     environment:
       - GRANT_SUDO=yes

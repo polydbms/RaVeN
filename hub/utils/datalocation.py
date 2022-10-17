@@ -15,14 +15,16 @@ class FileType(Enum):
 
 
 class DataLocation:
+    _host_base_dir: Path
     _file: Path
     _data_type: DataType
     _name: str
     _preprocessed: bool
     _controller_location: Path
 
-    def __init__(self, path: str, data_type: DataType, name: str = None) -> None:
+    def __init__(self, path: str, data_type: DataType, host_base_dir: Path, name: str = None) -> None:
         self._controller_location = Path(path).expanduser()
+        self._host_base_dir = host_base_dir
 
         if not self._controller_location.exists():
             raise FileNotFoundError(f"Path {path} to input for {data_type} data does not exist")
@@ -64,7 +66,7 @@ class DataLocation:
 
     @property
     def host_dir(self) -> Path:
-        return Path("~/data").joinpath(Path(self._name))
+        return self._host_base_dir.joinpath("data").joinpath(self._name)
 
     @property
     def host_file(self) -> Path:

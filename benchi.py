@@ -12,6 +12,7 @@ from hub.utils.datalocation import DataLocation, DataType
 from hub.utils.fileio import FileIO
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.network import NetworkManager
+from hub.utils.system import System
 
 
 class Setup:
@@ -25,16 +26,17 @@ class Setup:
         return getattr(module, class_name)
 
     def __run_tasks(self, resource, vector, raster, repeat) -> list[Path]:
-        system = resource["system"]
+        system: System = resource["system"]
         print(system)
+        print(system.host_base_path)
         now = datetime.now()
         with open("out.log", "a") as f:
             f.write(f'{system} {now.strftime("%d/%m/%Y %H:%M:%S")} \n')
             f.write(f"--------------------- Pre-Benchmark ------------------- \n")
         if "raster" in resource:
-            raster = DataLocation(resource["raster"], data_type=DataType.RASTER)
+            raster = DataLocation(resource["raster"], data_type=DataType.RASTER, host_base_dir=system.host_base_path)
         if "vector" in resource:
-            vector = DataLocation(resource["vector"], data_type=DataType.VECTOR)
+            vector = DataLocation(resource["vector"], data_type=DataType.VECTOR, host_base_dir=system.host_base_path)
         if not raster:
             raise ValueError(
                 "Raster directory path was not provided. Either add it to experiments or add to cli --raster option"
@@ -54,15 +56,17 @@ class Setup:
             print(raster)
             transporter.send_data(raster, log_time=self.logger)
         # Give execute permission
-        network_manager.run_ssh("chmod +x ~/config/**/*.sh", log_time=self.logger)
+        network_manager.run_ssh(f"chmod +x {system.host_base_path.joinpath('config/**/*.sh')}", log_time=self.logger)
 
         with open("out.log", "a") as f:
             f.write(f"--------------------- Benchmark ------------------- \n")
         with open("out.log", "a") as f:
             f.write(f"Preprocesing data\n")
         print("Preprocesing data")
+
+        command = system.host_base_path.joinpath(f'config/{system}/preprocess.sh')
         network_manager.run_ssh(
-            f'~/config/{system}/preprocess.sh "--system {system} --vector_path {vector.docker_dir} --raster_path {raster.docker_dir} --output {raster.docker_dir}"',
+            f'{command} "--system {system} --vector_path {vector.docker_dir} --raster_path {raster.docker_dir} --output {raster.docker_dir}"',
             log_time=self.logger,
         )
         print("Wait 30s until docker is ready")
@@ -102,7 +106,7 @@ class Setup:
         else:
             for system in experiments:
                 result_files.extend(self.__run_tasks(experiments[system], vector, raster, repeat))
-                # self.clean(system) # TODO replace
+                self.clean(system)
 
         return result_files
 

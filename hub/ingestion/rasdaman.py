@@ -4,6 +4,8 @@ from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 import json
 
+from hub.utils.network import NetworkManager
+
 INGREDIENTS = {
     "config": {
         "service_url": "http://localhost:8080/rasdaman/ows",
@@ -45,11 +47,12 @@ INGREDIENTS = {
 
 
 class Ingestor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager) -> None:
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.vector_path = vector_path
         self.raster_path = raster_path
+        self.host_base_path = self.network_manager.system_full.host_base_path
         # self.vector_path = None
         # self.raster_path = None
         self.transporter = FileTransporter(network_manager)
@@ -68,10 +71,13 @@ class Ingestor:
         }
         with open("hub/deployment/files/rasdaman/ingredients.json", "w") as f:
             json.dump(INGREDIENTS, f)
-        self.transporter.send_file("hub/deployment/files/rasdaman/ingredients.json", "~/config/rasdaman/ingredients.json")
+        self.transporter.send_file(
+            Path("hub/deployment/files/rasdaman/ingredients.json"),
+            self.host_base_path.joinpath("config/rasdaman/ingredients.json")
+        )
         self.network_manager.run_ssh(
             # f"/opt/rasdaman/bin/wcst_import.sh ~/config/rasdaman/ingredients.json"
-            f"~/config/rasdaman/ingest.sh"
+            str(self.host_base_path.joinpath("config/rasdaman/ingest.sh"))
         )
         Path("hub/deployment/files/rasdaman/ingredients.json").unlink()
 

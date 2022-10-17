@@ -23,8 +23,8 @@ services:
       - "40080:80"
       - "47001:7001"
     volumes:
-      - ~/data:/data
-      - ~/config:/config
+      - ../../data:/data
+      - ../../config:/config
 #      - ~/git/master-raster-vector/rasdaman/data/tomcat8_webapps:/var/lib/tomcat9/webapps
     networks:
       - rasdaman

@@ -4,12 +4,16 @@ from configuration import PROJECT_ROOT
 from hub.evaluation.measure_time import measure_time
 from jinja2 import Template
 
+from hub.utils.network import NetworkManager
+
+
 class Ingestor:
-    def __init__(self, vector_path, raster_path, network_manager) -> None:
+    def __init__(self, vector_path, raster_path, network_manager: NetworkManager) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.vector_path = vector_path.docker_file
         self.raster_path = raster_path.docker_file
+        self.host_base_path = self.network_manager.system_full.host_base_path
 
         rendered = self.render_template()
         self.__save_template(rendered)

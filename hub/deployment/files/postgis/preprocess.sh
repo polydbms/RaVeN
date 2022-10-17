@@ -2,10 +2,10 @@
 
 echo "Preprocessing data"
 docker pull registry.gitlab.com/zergar/benchi/preprocess:0.1.0-4
-docker run -v ~/data:/data registry.gitlab.com/zergar/benchi/preprocess:0.1.0-4 python preprocess.py $1
+docker run -v $(dirname $0)/../../data:/data registry.gitlab.com/zergar/benchi/preprocess:0.1.0-4 python preprocess.py $1
 
 echo "Starting Container in background"
-cd ~/config/postgis && docker-compose up -d
+cd $(dirname $0) && docker-compose up -d
 
 echo "Get docker container name"
 export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}' | grep postgis)

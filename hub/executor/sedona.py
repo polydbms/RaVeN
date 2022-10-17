@@ -6,14 +6,16 @@ from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 from jinja2 import Template
 from hub.evaluation.measure_time import measure_time
+from hub.utils.network import NetworkManager
 
 
 class Executor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager,
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager,
                  results_folder: Path) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
+        self.host_base_path = self.network_manager.system_full.host_base_path
         # if Path(vector_path).exists() and Path(vector_path).is_dir():
         #     vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
         # if Path(raster_path).exists() and Path(raster_path).is_dir():
@@ -144,22 +146,24 @@ class Executor:
         query = query.replace("{self.table2}", self.table_raster)
         rendered = self.__render_template(query)
         self.__save_template(rendered)
-        self.transporter.send_file("hub/deployment/files/sedona/sedona_prep.py", "~/config/sedona/executor.py", **kwargs)
-        self.network_manager.run_ssh("~/config/sedona/execute.sh", **kwargs)
+        self.transporter.send_file(
+            Path("hub/deployment/files/sedona/sedona_prep.py"),
+            self.host_base_path.joinpath("config/sedona/executor.py"),
+            **kwargs
+        )
+        self.network_manager.run_ssh(str(self.host_base_path.joinpath("config/sedona/execute.sh")), **kwargs)
         Path("hub/deployment/files/sedona/sedona_prep.py").unlink()
         Path("hub/deployment/files/sedona/sedona_ingested.py.j2").unlink()
-
 
         result_path = self.results_folder.joinpath(
             f"results_{self.network_manager.system}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv")
         self.transporter.get_file(
-            "~/data/results.csv",
+            str(self.host_base_path.joinpath("data/results_sedona.csv")),
             result_path,
             **kwargs,
         )
 
         return result_path
-
 
     def __read_template(self, path):
         try:

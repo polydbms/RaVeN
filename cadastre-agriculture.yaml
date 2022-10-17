@@ -1,11 +1,10 @@
 experiments:
   public_key_path: ~/.ssh/lrv.pub
   data: # if undefined cmd parameters can be used to manually define data
-    raster: /home/gereon/git/master-raster-vector/benchi/data/PRISM_ppt_stable_4kmD2_20210901
+    raster:
     vector: /home/gereon/git/master-raster-vector/benchi/data/ne_10m_admin_1_states_provinces
-  host_base_path: /local-ssd/gdusella-ldap
   results_folder: ~/git/master-raster-vector/data/results
-  ssh_connection: "ssh sgx12.dima.tub" # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
+  ssh_connection: "ssh postgis@192.168.122.168" # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
   workload: 
     get: 
       vector:

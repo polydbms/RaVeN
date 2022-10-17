@@ -5,7 +5,7 @@ services:
   omnisci:
     image: omnisci/core-os-cpu:v5.10.2
     volumes:
-      - ~/data:/data
+      - ../../data:/data
       - ./omnisci.conf:/omnisci-storage/omnisci.conf
       - omnisci-storage:/omnisci-storage
     restart: on-failure

@@ -10,10 +10,11 @@ import os
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
+from hub.utils.network import NetworkManager
 
 
 class Executor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager,
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager,
                  results_folder: Path) -> None:
         self.logger = {}
         self.network_manager = network_manager
@@ -21,6 +22,9 @@ class Executor:
         self.vector_path = vector_path
         self.raster_path = raster_path
         self.results_folder = results_folder
+        socks_proxy_url = self.network_manager.open_socks_proxy()
+        self.proxies = dict(http=socks_proxy_url, https=socks_proxy_url)
+
         # if Path(vector_path).exists() and Path(vector_path).is_dir():
         #     self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
         # if Path(raster_path).exists() and Path(raster_path).is_dir():
@@ -31,7 +35,7 @@ class Executor:
             vector_path.host_wkt, vector_path.controller_wkt
         )
         # ssh_ip = self.network_manager.ssh_connection.split("@")[-1]
-        self.url = f"http://192.168.122.168:48080/rasdaman/ows"  # FIXME make dynamic
+        self.url = f"http://0.0.0.0:48080/rasdaman/ows"
         self.coverage = self.raster_path.name
         wkt = self.vector_path.controller_wkt.read_bytes()
         self.vector_data = json.loads(wkt)
@@ -93,7 +97,7 @@ class Executor:
                                f"&SUBSET=Long({long})"
                                "&FORMAT=application/json"
             )
-            response = requests.request("GET", url, headers=self.headers)
+            response = requests.request("GET", url, headers=self.headers, proxies=self.proxies)
             result.append("0" if "xml" in response.text else response.text)
         else:
             result.append("No poit")
@@ -114,7 +118,7 @@ class Executor:
         for aggregation in aggregations:
             parsed_payload = self.aggregations[aggregation](geometry)
             response = requests.request(
-                "POST", self.url, headers=self.headers, data=parsed_payload
+                "POST", self.url, headers=self.headers, data=parsed_payload, proxies=self.proxies
             )
             result.append("0" if "xml" in response.text else response.text)
         yield result
@@ -259,5 +263,6 @@ class Executor:
             )
         f.close()
         self.vector_path.controller_wkt.unlink()
+        self.network_manager.stop_socks_proxy()
 
         return result_path

@@ -2,8 +2,9 @@
 
 echo "Preprocessing data"
 docker pull registry.gitlab.com/zergar/benchi/preprocess:0.1.0-4
-docker run -v ~/data:/data registry.gitlab.com/zergar/benchi/preprocess:0.1.0-4 python preprocess.py $1
+docker run -v $(dirname $0)/../../data:/data registry.gitlab.com/zergar/benchi/preprocess:0.1.0-4 python preprocess.py $1
 
+echo $(dirname $0)
 
 echo "Starting Container in background"
-cd ~/config/rasdaman && docker-compose up -d
+cd $(dirname $0) && docker-compose up -d

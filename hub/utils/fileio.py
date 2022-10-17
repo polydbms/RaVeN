@@ -19,12 +19,14 @@ class FileIO:
                 ssh_connection = experiments["ssh_connection"]
                 workload = experiments["workload"]
                 data = experiments["data"] if "data" in experiments else None
+                host_base_path = experiments["host_base_path"]
                 results_folder = experiments["results_folder"]
                 resource = {
                     system["name"]: {
                         "system": System(system["name"],
                                          public_key_path,
-                                         ssh_connection),
+                                         ssh_connection,
+                                         host_base_path),
                         "workload": workload,
                         "raster": data["raster"],
                         "vector": data["vector"],
