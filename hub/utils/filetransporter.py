@@ -11,7 +11,7 @@ class FileTransporter:
     def __init__(self, network_manager: NetworkManager) -> None:
         self.network_manager = network_manager
         self.system = network_manager.system_full
-        remote = self.network_manager.ssh_connection.split("ssh ")[-1]
+        remote = self.network_manager.ssh_connection
         private_key_path = self.network_manager.private_key_path
         self.ssh_options = f"-o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {private_key_path}"
         self.ssh_command = (
@@ -67,7 +67,7 @@ class FileTransporter:
     def send_configs(self, **kwargs):
         host_config_path = self.system.host_base_path.joinpath("config")
         print(host_config_path)
-        self.network_manager.run_command(f"{self.ssh_command} mkdir -p {host_config_path}")
+        self.network_manager.run_remote_mkdir(host_config_path)
         self.send_folder(
             Path(f"{PROJECT_ROOT}/hub/deployment/files/{self.network_manager.system}"),
             host_config_path
@@ -78,7 +78,8 @@ class FileTransporter:
         """Method for sending data to remote."""
         # print(file)
         host_dir_up = file.host_dir.joinpath("../")
-        self.network_manager.run_command(f"{self.ssh_command} mkdir -p {file.host_dir}")
+        self.network_manager.run_remote_mkdir(file.host_dir)
+        self.network_manager.run_remote_mkdir(file.host_dir_preprocessed)
         if file.type == FileType.FILE:
             raise NotImplementedError("Single Files are currently not supported")
             # self.send_file(file.controller_location, file.host_dir)

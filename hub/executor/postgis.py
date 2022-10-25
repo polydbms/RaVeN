@@ -149,7 +149,7 @@ class Executor:
         self.network_manager.run_ssh(self.host_base_path.joinpath("config/postgis/execute.sh"), **kwargs)
         Path("query.sql").unlink()
 
-        result_path = self.results_folder.joinpath(f"results_{self.network_manager.system}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv")
+        result_path = self.results_folder.joinpath(f"results_{self.network_manager.file_prepend}.csv")
         self.transporter.get_file(
             results_path_host,
             result_path,

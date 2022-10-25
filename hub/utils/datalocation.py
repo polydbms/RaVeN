@@ -2,6 +2,8 @@ from enum import Enum
 from pathlib import Path
 import zipfile
 
+from hub.utils.system import System
+
 
 class DataType(Enum):
     RASTER = 1
@@ -15,6 +17,7 @@ class FileType(Enum):
 
 
 class DataLocation:
+    _system: System
     _host_base_dir: Path
     _file: Path
     _data_type: DataType
@@ -22,7 +25,7 @@ class DataLocation:
     _preprocessed: bool
     _controller_location: Path
 
-    def __init__(self, path: str, data_type: DataType, host_base_dir: Path, name: str = None) -> None:
+    def __init__(self, path: str, data_type: DataType, host_base_dir: Path, system: System, name: str = None) -> None:
         self._controller_location = Path(path).expanduser()
         self._host_base_dir = host_base_dir
 
@@ -39,13 +42,20 @@ class DataLocation:
         self._name = self._controller_location.stem if name is None else name
         self._preprocessed = False
         self._data_type = data_type
-        self._file = self._find_file("*.shp" if self._data_type == DataType.VECTOR else "*.tif*")
+        self._file = self._find_file(["*.shp"] if self._data_type == DataType.VECTOR else ["*.tif*", "*.jp2"])
+        self._system = system
 
-    def _find_file(self, ending: str) -> Path:
+        self._host_dir = self._host_base_dir.joinpath("data").joinpath(self._name)
+        self._docker_dir = Path("/data").joinpath(Path(self._name))
+
+    def _find_file(self, ending: [str]) -> Path:
         if self.type == FileType.FILE:
             raise NotImplementedError("Single Files are currently not supported")
         elif self.type == FileType.FOLDER:
-            return Path([f for f in self._controller_location.glob(ending)][0].name)
+            for e in ending:
+                files = [f for f in self._controller_location.glob(e)]
+                if len(files) > 0:
+                    return Path(files[0].name)
         elif self.type == FileType.ZIP_ARCHIVE:
             return Path(
                 [f for f in zipfile.Path(self._controller_location).iterdir() if Path(f.name).match(ending)][0].name)
@@ -54,7 +64,7 @@ class DataLocation:
 
     @property
     def docker_dir(self) -> Path:
-        return Path("/data").joinpath(Path(self._name))
+        return self._docker_dir if not self._preprocessed else self.docker_dir_preprocessed
 
     @property
     def docker_file(self) -> Path:
@@ -65,8 +75,12 @@ class DataLocation:
         return self.docker_dir.with_suffix(".json")
 
     @property
+    def docker_dir_preprocessed(self) -> Path:
+        return self._docker_dir.joinpath(f"preprocessed_{self._system.name}")
+
+    @property
     def host_dir(self) -> Path:
-        return self._host_base_dir.joinpath("data").joinpath(self._name)
+        return self._host_dir if not self._preprocessed else self.host_dir_preprocessed
 
     @property
     def host_file(self) -> Path:
@@ -75,6 +89,10 @@ class DataLocation:
     @property
     def host_wkt(self) -> Path:
         return self.host_dir.with_suffix(".json")
+
+    @property
+    def host_dir_preprocessed(self) -> Path:
+        return self._host_dir.joinpath(f"preprocessed_{self._system.name}")
 
     @property
     def name(self) -> str:

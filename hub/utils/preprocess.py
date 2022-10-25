@@ -18,11 +18,11 @@ class Preprocessor:
         if vector_path and (Path(vector_path).exists() and Path(vector_path).is_dir()):
             self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
         if raster_path and (Path(raster_path).exists() and Path(raster_path).is_dir()):
-            self.raster_path = [
-                raster
-                for raster in Path(raster_path).glob("*.tif*")
-                if "tif" in raster.suffix
-            ][0]
+            for ending in ["*.tif*", "*.jp2"]:
+                files = [f for f in Path(raster_path).glob(ending)]
+                if len(files) > 0:
+                    self.raster_path = Path(files[0])
+                    break
 
     def get_vector(self):
         vector = gpd.read_file(self.vector_path)
@@ -52,7 +52,13 @@ class CRSPreprocessor(Preprocessor):
         vector_crs = self.get_vector_crs()
         raster = self.get_raster()
         out = raster.rio.reproject(vector_crs)
-        out.rio.to_raster(f"{self.output}/{self.raster_path.name}")
+        try:
+            out.rio.to_raster(f"{self.output}/{self.raster_path.name}")
+        except OverflowError:
+            print("Unable to parse nodata value correctly. Setting to 0")
+            out.rio.write_nodata(0, inplace=True)
+            out.rio.to_raster(f"{self.output}/{self.raster_path.name}")
+
         print(
             f"Transfered {self.raster_path} CRS from {raster.rio.crs} to {out.rio.crs}"
         )
@@ -153,21 +159,27 @@ def main():
     parser.add_argument("--system", help="Specify which system should be benchmarked")
     args = parser.parse_args()
     print(args)
+
+    vector_path = args.vector_path
+    raster_path = args.raster_path
+    output_path_reproject = args.raster_path if args.system in capabilities["vectorize"] else args.output
+    output_path_final = args.output
+
     crs_preprocessor = CRSPreprocessor(
-        vector_path=args.vector_path,
-        raster_path=args.raster_path,
-        output=args.output,
-    )
-    data_preprocessor = DataModelProcessor(
-        vector_path=args.vector_path,
-        raster_path=args.raster_path,
-        output=args.output,
+        vector_path=vector_path,
+        raster_path=raster_path,
+        output=output_path_reproject,
     )
     crs_preprocessor.reproject_raster(log_time=crs_preprocessor.logger)
+
+    data_preprocessor = DataModelProcessor(
+        vector_path=vector_path,
+        raster_path=raster_path,
+        output=output_path_final,
+    )
     if args.system in capabilities["vectorize"]:
         data_preprocessor.vectorize()
-    print(crs_preprocessor.logger)
-    print(data_preprocessor.logger)
+
     if args.system in capabilities["rasterize"]:
         file_type_preprocessor = FileTypeProcessor(
             vector_path=args.vector_path, output=args.output

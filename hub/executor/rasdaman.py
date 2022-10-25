@@ -237,7 +237,7 @@ class Executor:
             vector_features.sort(key=lambda x: x["properties"][o])
 
         result_path = self.results_folder.joinpath(
-            f"results_{self.network_manager.system}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv")
+            f"results_{self.network_manager.file_prepend}.csv")
 
         if limit:
             vector_features = vector_features[: int(limit)]

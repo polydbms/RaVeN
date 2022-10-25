@@ -29,14 +29,17 @@ class Setup:
         system: System = resource["system"]
         print(system)
         print(system.host_base_path)
+
         now = datetime.now()
         with open("out.log", "a") as f:
             f.write(f'{system} {now.strftime("%d/%m/%Y %H:%M:%S")} \n')
             f.write(f"--------------------- Pre-Benchmark ------------------- \n")
         if "raster" in resource:
-            raster = DataLocation(resource["raster"], data_type=DataType.RASTER, host_base_dir=system.host_base_path)
+            raster = DataLocation(resource["raster"], data_type=DataType.RASTER, host_base_dir=system.host_base_path,
+                                  system=system)
         if "vector" in resource:
-            vector = DataLocation(resource["vector"], data_type=DataType.VECTOR, host_base_dir=system.host_base_path)
+            vector = DataLocation(resource["vector"], data_type=DataType.VECTOR, host_base_dir=system.host_base_path,
+                                  system=system)
         if not raster:
             raise ValueError(
                 "Raster directory path was not provided. Either add it to experiments or add to cli --raster option"
@@ -62,26 +65,32 @@ class Setup:
             f.write(f"--------------------- Benchmark ------------------- \n")
         with open("out.log", "a") as f:
             f.write(f"Preprocesing data\n")
-        print("Preprocesing data")
-
+        print("Preprocessing data")
+        network_manager.start_measure_docker("preprocess", prerecord=False)
         command = system.host_base_path.joinpath(f'config/{system}/preprocess.sh')
         network_manager.run_ssh(
-            f'{command} "--system {system} --vector_path {vector.docker_dir} --raster_path {raster.docker_dir} --output {raster.docker_dir}"',
+            f'{command} "--system {system} --vector_path {vector.docker_dir} --raster_path {raster.docker_dir} --output {raster.docker_dir_preprocessed}"',
             log_time=self.logger,
         )
-        print("Wait 30s until docker is ready")
-        sleep(30)
+        raster.set_preprocessed()  # todo is it working?
+        network_manager.stop_measure_docker()
+        print("Wait 15s until docker is ready")
+        sleep(15)
+
         with open("out.log", "a") as f:
             f.write(f"Ingesting data\n")
         print("Ingesting data")
-        print(vector, raster)
+        network_manager.start_measure_docker("ingestion")
         Ingestor = self.__importer(f"hub.ingestion.{system}", "Ingestor")
         ingestor = Ingestor(vector, raster, network_manager)
         ingestor.ingest_raster(log_time=self.logger)
         ingestor.ingest_vector(log_time=self.logger)
+        network_manager.stop_measure_docker()
+
         with open("out.log", "a") as f:
             f.write(f"Run query\n")
         print("Run query")
+        network_manager.start_measure_docker("execution")
         Executor = self.__importer(f"hub.executor.{system}", "Executor")
         executor = Executor(vector, raster, network_manager, resource["results_folder"])
 
@@ -95,14 +104,17 @@ class Setup:
             f.write(f"--------------------- Post-Benchmark ------------------- \n")
             f.write(f'Finished {now.strftime("%d/%m/%Y %H:%M:%S")} \n')
 
+        network_manager.stop_measure_docker()
+
         return result_files
 
-    def benchmark(self, system=None, vector=None, raster=None, repeat=None) -> list[Path]:
-        experiments = FileIO.read_experiments_config()
+    def benchmark(self, experiment_file, system=None, vector=None, raster=None, repeat=None) -> list[Path]:
+        experiments = FileIO.read_experiments_config(experiment_file)
 
         result_files = []
         if system is not None:
             result_files.extend(self.__run_tasks(experiments[system], vector, raster, repeat))
+            self.clean(system)
         else:
             for system in experiments:
                 result_files.extend(self.__run_tasks(experiments[system], vector, raster, repeat))
@@ -110,15 +122,15 @@ class Setup:
 
         return result_files
 
-    def evaluate(self, result_files: list[Path]):
-        config = FileIO.read_experiments_config()
+    def evaluate(self, experiment_file, result_files: list[Path]):
+        config = FileIO.read_experiments_config(experiment_file)
         systems_list = list(config.keys())
         print(result_files)
         evaluator = Evaluator(systems_list, result_files, config[systems_list[0]]["results_folder"])
         evaluator.get_accuracy()
 
-    def clean(self, system=None):
-        experiments = FileIO.read_experiments_config()
+    def clean(self, experiment_file, system=None):
+        experiments = FileIO.read_experiments_config(experiment_file)
 
         # if system is not None:
         #     network_manager = NetworkManager(system)
@@ -137,16 +149,19 @@ def main():
     parser.add_argument("--system", help="Specify which system should be benchmarked")
     parser.add_argument("--vector", help="Specify the path to vector dataset")
     parser.add_argument("--raster", help="Specify the path to raster dataset")
+    parser.add_argument("--experiment", help="Specify the path to the experiment definition file", required=True)
     parser.add_argument(
         "--repeat", help="Specify number of iterations an experiment will be repeated"
     )
     args = parser.parse_args()
     setup = Setup()
     if args.command == "start":
-        result_files = setup.benchmark(args.system, args.vector, args.raster, args.repeat)
-        setup.evaluate(result_files)
+        result_files = setup.benchmark(args.experiment, args.system, args.vector, args.raster, args.repeat)
+
+        if len(result_files) > 1:
+            setup.evaluate(args.experiment, result_files)
     if args.command == "clean":
-        setup.clean(args.system)
+        setup.clean(args.experiment, args.system)
 
 
 if __name__ == "__main__":

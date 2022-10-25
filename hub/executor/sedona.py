@@ -156,7 +156,7 @@ class Executor:
         Path("hub/deployment/files/sedona/sedona_ingested.py.j2").unlink()
 
         result_path = self.results_folder.joinpath(
-            f"results_{self.network_manager.system}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv")
+            f"results_{self.network_manager.file_prepend}.csv")
         self.transporter.get_file(
             str(self.host_base_path.joinpath("data/results_sedona.csv")),
             result_path,

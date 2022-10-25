@@ -10,8 +10,8 @@ from hub.utils.system import System
 class FileIO:
 
     @staticmethod
-    def read_experiments_config():
-        with open(PROJECT_ROOT.joinpath("experiements.yaml")) as c:
+    def read_experiments_config(filename):
+        with open(PROJECT_ROOT.joinpath(filename)) as c:
             try:
                 yamlfile = yaml.safe_load(c)
                 experiments = yamlfile["experiments"]
