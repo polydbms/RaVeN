@@ -1,0 +1,43 @@
+{
+  "config": {
+    "service_url": "http://localhost:8080/rasdaman/ows",
+    "tmp_directory": "/tmp/",
+    "crs_resolver": "http://localhost:8080/def/",
+    "default_crs": "http://localhost:8080/def/OGC/0/Index2D",
+    "automated": true,
+    "track_files": false,
+    "mock": false
+  },
+  "input": {
+    "coverage_id": "{{coverage_id}}",
+    "paths": "{{paths}}"
+  },
+  "recipe": {
+    "name": "general_coverage",
+    "options": {
+      "coverage": {
+        "crs": "EPSG/0/{{epsg_crs}}",
+        "metadata": {
+          "type": "xml"
+        },
+        "slicer": {
+          "type": "gdal",
+          "axes": {
+            "Long": {
+              "min": "${gdal:minX}",
+              "max": "${gdal:maxX}",
+              "gridOrder": 0,
+              "resolution": "${gdal:resolutionX}"
+            },
+            "Lat": {
+              "min": "${gdal:minY}",
+              "max": "${gdal:maxY}",
+              "gridOrder": 1,
+              "resolution": "${gdal:resolutionY}"
+            }
+          }
+        }
+      }
+    }
+  }
+}

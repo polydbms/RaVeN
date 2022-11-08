@@ -1,6 +1,8 @@
 import json
 import subprocess
+import time
 from datetime import datetime
+from pathlib import Path
 from subprocess import Popen
 from typing import Any
 
@@ -9,6 +11,8 @@ from hub.utils.system import System
 
 
 class NetworkManager:
+    _system: System
+    host_measurements_folder: Path
     socks_proxy: Popen[bytes] | Popen[Any]
     measure_docker: Popen[bytes] | Popen[Any]
 
@@ -26,6 +30,17 @@ class NetworkManager:
         )
 
         self.file_prepend = f"{system.name}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        self.host_measurements_folder = self.system_full.host_base_path \
+            .joinpath("measurements") \
+            .joinpath(self.file_prepend)
+
+        self.controller_measurements_folder = self._system.controller_result_folder.joinpath(self.file_prepend)
+        self.controller_measurements_folder.mkdir(parents=True, exist_ok=True)
+        self.timings_file = self.controller_measurements_folder.joinpath("timings.csv")
+
+        with self.timings_file.open("a") as f:
+            f.write("marker,timestamp,event,stage,system,dataset,comment,controller_time")
+            f.write("\n")
 
     @property
     def system(self):
@@ -35,18 +50,21 @@ class NetworkManager:
     def system_full(self):
         return self._system
 
-    @staticmethod
     @measure_time
-    def run_command(command, **kwargs):
+    def run_command(self, command, **kwargs):
         try:
             print(f"Running {command}")
             process = subprocess.Popen(
                 command, stdout=subprocess.PIPE, universal_newlines=True, shell=True
             )
             while True:
-                output = process.stdout.readline()
+                output = str(process.stdout.readline())
+                if "benchi_marker" in output:
+                    self.write_timings_marker(output)
+
                 if not output == "":
                     print(output.strip())
+
                 return_code = process.poll()
                 if return_code is not None:
                     print("RETURN CODE", return_code)
@@ -72,7 +90,7 @@ class NetworkManager:
 
     def open_socks_proxy(self, port=59123) -> str:
         print(f"starting new SOCKS5 proxy at port {port}")
-        self.socks_proxy = subprocess.Popen(f"{self.ssh_connection} -D {port} -N -v",
+        self.socks_proxy = subprocess.Popen(f"ssh {self.ssh_connection} -D {port} -N -v",
                                             stdout=subprocess.PIPE,
                                             stderr=subprocess.PIPE,
                                             universal_newlines=True,
@@ -80,6 +98,9 @@ class NetworkManager:
 
         while True:
             output = self.socks_proxy.stderr.readline()
+
+            # if output.strip() != "":
+            #     print(output.strip(), "\n")
 
             if f"Local connections to LOCALHOST:{port} forwarded" in str(output):
                 print(f"SOCKS5 connection established at port {port}")
@@ -93,13 +114,10 @@ class NetworkManager:
         self.socks_proxy.terminate()
 
     def start_measure_docker(self, stage: str, prerecord=True):
-        print(f"starting measuring docker")
-        measurement_folder = self.system_full.host_base_path \
-            .joinpath("measurements") \
-            .joinpath(self.file_prepend)
-        self.run_ssh(f"mkdir -p {measurement_folder}")
+        print(f"starting measuring docker for stage {stage}")
+        self.run_ssh(f"mkdir -p {self.host_measurements_folder}")
 
-        measurement_file = measurement_folder.joinpath(f"{stage}.csv")
+        measurement_file = self.host_measurements_folder.joinpath(f"{stage}.csv")
         init_measurement_flag = "initialized measuring docker"
         self.run_ssh(
             f"echo \"timestamp\tID\tName\tCPUPerc\tMemUsage\tMemPerc\tNetIO\tBlockIO\tPIDs\" | tee {measurement_file}")
@@ -142,3 +160,9 @@ class NetworkManager:
                 print(f"completed docker measurements")
                 self.measure_docker.terminate()
                 break
+
+    def write_timings_marker(self, marker: str):
+        time_now = time.time()
+        with self.timings_file.open("a") as f:
+            f.write(f"{marker.strip()},{time_now}")
+            f.write("\n")

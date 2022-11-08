@@ -39,7 +39,9 @@ export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}' | grep rasdaman)
 echo "Ingesting data"
 
 echo "Ingesting via ingredients.json."
+echo "benchi_marker,$(date +%s.%N),start,ingestion,rasdaman,raster,"
 docker exec $DOCKER_CONTAINER bash -c "/opt/rasdaman/bin/wcst_import.sh /config/rasdaman/ingredients.json"
+echo "benchi_marker,$(date +%s.%N),end,ingestion,rasdaman,raster,"
 
 #if [ ! -z ${raster+x} ]; then
 #    name=$(get_filename $raster | cut -d'.' -f1)

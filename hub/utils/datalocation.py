@@ -71,8 +71,12 @@ class DataLocation:
         return self.docker_dir.joinpath(self._file)
 
     @property
+    def docker_file_preprocessed(self) -> Path:
+        return self.docker_dir_preprocessed.joinpath(self._file)
+
+    @property
     def docker_wkt(self) -> Path:
-        return self.docker_dir.with_suffix(".json")
+        return self.docker_file_preprocessed.with_suffix(".json")
 
     @property
     def docker_dir_preprocessed(self) -> Path:
@@ -87,8 +91,12 @@ class DataLocation:
         return self.host_dir.joinpath(self._file)
 
     @property
+    def host_file_preprocessed(self) -> Path:
+        return self.host_dir_preprocessed.joinpath(self._file)
+
+    @property
     def host_wkt(self) -> Path:
-        return self.host_dir.with_suffix(".json")
+        return self.host_file_preprocessed.with_suffix(".json")
 
     @property
     def host_dir_preprocessed(self) -> Path:
@@ -101,6 +109,10 @@ class DataLocation:
     @property
     def controller_location(self) -> Path:
         return self._controller_location
+
+    @property
+    def controller_file(self) -> Path:
+        return self._controller_location.joinpath(self._file)
 
     @property
     def controller_wkt(self) -> Path:

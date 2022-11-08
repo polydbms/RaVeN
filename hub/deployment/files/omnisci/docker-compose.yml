@@ -3,15 +3,18 @@ version: '2.1'
 services:
 
   omnisci:
-    image: omnisci/core-os-cpu:v5.10.2
+#    image: omnisci/core-os-cpu:v5.10.2
+    image: heavyai/core-os-cpu:v6.1.1
     volumes:
       - ../../data:/data
-      - ./omnisci.conf:/omnisci-storage/omnisci.conf
-      - omnisci-storage:/omnisci-storage
+      - ./heavy.conf:/var/lib/heavyai/heavy.conf
+#      - omnisci-storage:/omnisci-storage
     restart: on-failure
     ports:
-      - 6274:6274
+      - "6274:6274"
     tty: true
+#    environment:
+#      HEAVYAI_BASE:
 
 volumes:
   omnisci-storage: null

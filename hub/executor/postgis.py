@@ -9,14 +9,12 @@ from hub.utils.network import NetworkManager
 
 
 class Executor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager,
-                 results_folder: Path) -> None:
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
         self.table_vector = Path(vector_path.docker_file).stem
         self.table_raster = Path(raster_path.docker_file).stem
-        self.results_folder = results_folder
         self.host_base_path = network_manager.system_full.host_base_path
 
     def __handle_aggregations(self, type, features):
@@ -69,8 +67,15 @@ class Executor:
             if "raster" in condition
             else ""
         )
-        raster = f"and {raster}" if raster else ""
-        return f"where {vector} {raster}"
+
+        if vector and raster:
+            return f"where {vector} and {raster}"
+        elif vector and not raster:
+            return f"where {vector}"
+        elif not vector and raster:
+            return f"where {raster}"
+        elif not vector and not raster:
+            return f""
 
     def __parse_group(self, group):
         vector = (
@@ -149,11 +154,15 @@ class Executor:
         self.network_manager.run_ssh(self.host_base_path.joinpath("config/postgis/execute.sh"), **kwargs)
         Path("query.sql").unlink()
 
-        result_path = self.results_folder.joinpath(f"results_{self.network_manager.file_prepend}.csv")
+        result_path = self.network_manager.system_full.controller_result_folder.joinpath(
+            f"results_{self.network_manager.file_prepend}.csv")
         self.transporter.get_file(
             results_path_host,
             result_path,
             **kwargs,
         )
+
+        self.transporter.get_folder(self.network_manager.host_measurements_folder,
+                                    self.network_manager.controller_measurements_folder)
 
         return result_path

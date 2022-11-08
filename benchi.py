@@ -51,6 +51,7 @@ class Setup:
 
         network_manager = NetworkManager(system)
         transporter = FileTransporter(network_manager)
+
         transporter.send_configs(log_time=self.logger)
         if vector:
             print(vector)
@@ -92,7 +93,7 @@ class Setup:
         print("Run query")
         network_manager.start_measure_docker("execution")
         Executor = self.__importer(f"hub.executor.{system}", "Executor")
-        executor = Executor(vector, raster, network_manager, resource["results_folder"])
+        executor = Executor(vector, raster, network_manager)
 
         result_files: list[Path] = []
         if repeat:
@@ -114,11 +115,11 @@ class Setup:
         result_files = []
         if system is not None:
             result_files.extend(self.__run_tasks(experiments[system], vector, raster, repeat))
-            self.clean(system)
+            self.clean(experiment_file, system)
         else:
             for system in experiments:
                 result_files.extend(self.__run_tasks(experiments[system], vector, raster, repeat))
-                self.clean(system)
+                self.clean(experiment_file, system)
 
         return result_files
 
@@ -126,18 +127,14 @@ class Setup:
         config = FileIO.read_experiments_config(experiment_file)
         systems_list = list(config.keys())
         print(result_files)
-        evaluator = Evaluator(systems_list, result_files, config[systems_list[0]]["results_folder"])
+        evaluator = Evaluator(systems_list, result_files, config[systems_list[0]]["system"].controller_results_folder)
         evaluator.get_accuracy()
 
-    def clean(self, experiment_file, system=None):
+    def clean(self, experiment_file, system):
         experiments = FileIO.read_experiments_config(experiment_file)
 
-        # if system is not None:
-        #     network_manager = NetworkManager(system)
-        #     deployer = clea(experiments[system])
-        #     deployer.clean_up()  # TODO replace
-        # else:
         network_manager = NetworkManager(experiments[list(experiments.keys())[0]]["system"])
+        network_manager.run_ssh("""kill $(ps aux | grep "docker stats" | awk {\\'print $2\\'} )""")
         network_manager.run_ssh("docker stop $(docker ps -q)")
         network_manager.run_ssh("docker rm $(docker ps -aq)")
         network_manager.run_ssh("docker volume rm $(docker volume ls -q)")

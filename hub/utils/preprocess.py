@@ -5,7 +5,7 @@ import re
 import argparse
 import rioxarray as rxr
 import geopandas as gpd
-from pathlib import Path
+from pathlib import Path, PurePath
 from hub.evaluation.measure_time import measure_time
 from hub.utils.fileio import FileIO
 
@@ -78,7 +78,7 @@ class FileTypeProcessor(Preprocessor):
         self.output = self.create_dir(output)
 
     @measure_time
-    def shape_to_wkt(self, **kwargs):
+    def shape_to_wkt(self, system, **kwargs):
         vector = self.get_vector()
         # invert lat with long
         wkt = [
@@ -86,16 +86,18 @@ class FileTypeProcessor(Preprocessor):
             for geom in vector.geometry
         ]
         vector["wkt"] = wkt
-        output = f"/data/{self.vector_path.stem}.json"  # TODO maybe change
+        wkt_out = list(self.vector_path.parts)
+        wkt_out.insert(-1, f"preprocessed_{system}")
+        output = PurePath("").joinpath(*wkt_out).with_suffix(".json")
         json_out = vector.to_json()
         with open(output, "w") as f:
             f.write(json_out)
 
-    @measure_time
-    def read_wkt(self, **kwargs):
-        output = f"/data/{self.vector_path.stem}.json"  # TODO maybe change
-        wkt = Path(output).read_bytes()
-        return json.loads(wkt)
+    # @measure_time
+    # def read_wkt(self, **kwargs):
+    #     output = f"/data/{self.vector_path.stem}.json"  # TODO maybe change
+    #     wkt = Path(output).read_bytes()
+    #     return json.loads(wkt)
 
 
 class DataModelProcessor(Preprocessor):
@@ -104,20 +106,25 @@ class DataModelProcessor(Preprocessor):
         self.output = self.create_dir(output)
         self.shp_driver = ogr.GetDriverByName("ESRI Shapefile")
 
+
     @measure_time
     def vectorize(self, band_nr=1, **kwargs):
-        reprojected_raster_path = Path(f"{self.output}/{self.raster_path.name}")
-        output = f"{self.output}/{reprojected_raster_path.stem}.shp"
-        open_image = gdal.Open(str(reprojected_raster_path))
-        input_band = open_image.GetRasterBand(band_nr)
+        output_file = Path(f"{self.output}/{self.raster_path.stem}.shp")
+        raster_img = gdal.Open(str(self.raster_path))
+        crs = raster_img.GetProjectionRef()
+
+        input_band = raster_img.GetRasterBand(band_nr)
         input_band.SetNoDataValue(0)
 
-        output_shapefile = self.shp_driver.CreateDataSource(output)
-        layer = output_shapefile.CreateLayer(Path(output).stem, srs=None)
+        output_shapefile = self.shp_driver.CreateDataSource(str(output_file))
+        layer = output_shapefile.CreateLayer(output_file.stem, srs=None)
         newField = ogr.FieldDefn("values", ogr.OFTReal)
         layer.CreateField(newField)
         gdal.FPolygonize(input_band, None, layer, 0, [], callback=None)
         layer.SyncToDisk()
+
+        with open(output_file.with_suffix(".prj"), 'w') as f:
+            f.write(crs)
 
     @measure_time
     def rasterize(
@@ -184,7 +191,7 @@ def main():
         file_type_preprocessor = FileTypeProcessor(
             vector_path=args.vector_path, output=args.output
         )
-        file_type_preprocessor.shape_to_wkt(log_time=file_type_preprocessor.logger)
+        file_type_preprocessor.shape_to_wkt(args.system, log_time=file_type_preprocessor.logger)
         print(file_type_preprocessor.logger)
 
 

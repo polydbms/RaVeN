@@ -10,8 +10,7 @@ from hub.utils.network import NetworkManager
 
 
 class Executor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager,
-                 results_folder: Path) -> None:
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
@@ -24,7 +23,6 @@ class Executor:
         # self.table_raster = f"{raster_path.stem}".split(".")[0]
         self.table_vector = Path(vector_path.docker_file).stem
         self.table_raster = Path(raster_path.docker_file).stem
-        self.results_folder = results_folder
 
     def __handle_aggregations(self, type, features):
         return ", ".join(
@@ -76,8 +74,15 @@ class Executor:
             if "raster" in condition
             else ""
         )
-        raster = f"and {raster}" if raster else ""
-        return f"where {vector} {raster}"
+
+        if vector and raster:
+            return f"where {vector} and {raster}"
+        elif vector and not raster:
+            return f"where {vector}"
+        elif not vector and raster:
+            return f"where {raster}"
+        elif not vector and not raster:
+            return f""
 
     def __parse_group(self, group):
         vector = (
@@ -155,13 +160,16 @@ class Executor:
         Path("hub/deployment/files/sedona/sedona_prep.py").unlink()
         Path("hub/deployment/files/sedona/sedona_ingested.py.j2").unlink()
 
-        result_path = self.results_folder.joinpath(
+        result_path = self.network_manager.system_full.controller_result_folder.joinpath(
             f"results_{self.network_manager.file_prepend}.csv")
         self.transporter.get_file(
             str(self.host_base_path.joinpath("data/results_sedona.csv")),
             result_path,
             **kwargs,
         )
+
+        self.transporter.get_folder(self.network_manager.host_measurements_folder,
+                                    self.network_manager.controller_measurements_folder)
 
         return result_path
 

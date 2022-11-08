@@ -1,49 +1,16 @@
 from pathlib import Path
+
+import rasterio
+from jinja2 import Template
+from osgeo import gdal
+
+from configuration import PROJECT_ROOT
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 import json
 
 from hub.utils.network import NetworkManager
-
-INGREDIENTS = {
-    "config": {
-        "service_url": "http://localhost:8080/rasdaman/ows",
-        "tmp_directory": "/tmp/",
-        "crs_resolver": "http://localhost:8080/def/",
-        "default_crs": "http://localhost:8080/def/OGC/0/Index2D",
-        "automated": True,
-        "track_files": False,
-        "mock": False,
-    },
-    "input": {"coverage_id": "", "paths": ""},
-    "recipe": {
-        "name": "general_coverage",
-        "options": {
-            "coverage": {
-                "crs": "EPSG/0/4326",
-                "metadata": {"type": "xml"},
-                "slicer": {
-                    "type": "gdal",
-                    "axes": {
-                        "Long": {
-                            "min": "${gdal:minX}",
-                            "max": "${gdal:maxX}",
-                            "gridOrder": 0,
-                            "resolution": "${gdal:resolutionX}",
-                        },
-                        "Lat": {
-                            "min": "${gdal:minY}",
-                            "max": "${gdal:maxY}",
-                            "gridOrder": 1,
-                            "resolution": "${gdal:resolutionY}",
-                        },
-                    },
-                },
-            }
-        },
-    },
-}
 
 
 class Ingestor:
@@ -65,21 +32,38 @@ class Ingestor:
 
     @measure_time
     def ingest_raster(self, **kwargs):
-        INGREDIENTS["input"] = {
+
+        template_path = Path(PROJECT_ROOT.joinpath("hub/deployment/files/rasdaman/ingestion.json.j2"))
+        try:
+            with open(template_path) as file_:
+                template = Template(file_.read())
+                return template
+        except FileNotFoundError:
+            print(f"{template_path} not found")
+
+        with rasterio.open(self.raster_path.controller_file) as f:
+            epsg_crs = f.crs.to_epsg()
+
+        payload = {
             "coverage_id": str(self.raster_path.name),
             "paths": [str(self.raster_path.docker_file)],
+            "epsg_crs": str(epsg_crs)
         }
-        with open("hub/deployment/files/rasdaman/ingredients.json", "w") as f:
-            json.dump(INGREDIENTS, f)
+
+        rendered = template.render(**payload)
+        ingest_def_path = Path("hub/deployment/files/rasdaman/ingredients.json")
+
+        with open(ingest_def_path, "w") as f:
+            f.write(rendered)
+
         self.transporter.send_file(
-            Path("hub/deployment/files/rasdaman/ingredients.json"),
+            ingest_def_path,
             self.host_base_path.joinpath("config/rasdaman/ingredients.json")
         )
         self.network_manager.run_ssh(
-            # f"/opt/rasdaman/bin/wcst_import.sh ~/config/rasdaman/ingredients.json"
             str(self.host_base_path.joinpath("config/rasdaman/ingest.sh"))
         )
-        Path("hub/deployment/files/rasdaman/ingredients.json").unlink()
+        ingest_def_path.unlink()
 
     @measure_time
     def ingest_vector(self, **kwargs):

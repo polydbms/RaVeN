@@ -1,6 +1,8 @@
 import urllib.parse as parser
 from datetime import datetime
 from pathlib import Path
+from time import time
+
 import requests
 import operator
 import re
@@ -11,17 +13,16 @@ from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.network import NetworkManager
+import geopandas as gpd
 
 
 class Executor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager,
-                 results_folder: Path) -> None:
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
         self.vector_path = vector_path
         self.raster_path = raster_path
-        self.results_folder = results_folder
         socks_proxy_url = self.network_manager.open_socks_proxy()
         self.proxies = dict(http=socks_proxy_url, https=socks_proxy_url)
 
@@ -35,7 +36,8 @@ class Executor:
             vector_path.host_wkt, vector_path.controller_wkt
         )
         # ssh_ip = self.network_manager.ssh_connection.split("@")[-1]
-        self.url = f"http://0.0.0.0:48080/rasdaman/ows"
+        self.base_url = f"http://0.0.0.0:48080/rasdaman"
+        self.url = f"{self.base_url}/ows"
         self.coverage = self.raster_path.name
         wkt = self.vector_path.controller_wkt.read_bytes()
         self.vector_data = json.loads(wkt)
@@ -47,34 +49,36 @@ class Executor:
             "count": self.__get_count,
         }
         self.headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        self.crs = gpd.read_file(self.vector_path.controller_file).crs.to_epsg()
+        self.crs_url = f"{self.base_url}/def/crs/EPSG/0/{self.crs}"
 
     def __get_avg(self, geometry):
         payload = {
-            "query": f"for c in ({self.coverage}) return add(clip( c,{geometry}))/count(clip( c,{geometry}) > 0)"
+            "query": f"for c in ({self.coverage}) return add(clip( c,{geometry}, \"{self.crs_url}\"))/count(clip( c,{geometry}, \"{self.crs_url}\") > 0)"
         }
         return parser.urlencode(payload, quote_via=parser.quote)
 
     def __get_sum(self, geometry):
         payload = {
-            "query": f"for c in ({self.coverage}) return add(clip( c,{geometry}))"
+            "query": f"for c in ({self.coverage}) return add(clip( c,{geometry}, \"{self.crs_url}\"))"
         }
         return parser.urlencode(payload, quote_via=parser.quote)
 
     def __get_max(self, geometry):
         payload = {
-            "query": f"for c in ({self.coverage}) return max(clip( c,{geometry}))"
+            "query": f"for c in ({self.coverage}) return max(clip( c,{geometry}, \"{self.crs_url}\"))"
         }
         return parser.urlencode(payload, quote_via=parser.quote)
 
     def __get_min(self, geometry):
         payload = {
-            "query": f"for c in ({self.coverage}) return min(clip( c,{geometry}))"
+            "query": f"for c in ({self.coverage}) return min(clip( c,{geometry}, \"{self.crs_url}\"))"
         }
         return parser.urlencode(payload, quote_via=parser.quote)
 
     def __get_count(self, geometry):
         payload = {
-            "query": f"for c in ({self.coverage}) return count(clip( c,{geometry}) > 0)"
+            "query": f"for c in ({self.coverage}) return count(clip( c,{geometry}, \"{self.crs_url}\") > 0)"
         }
         return parser.urlencode(payload, quote_via=parser.quote)
 
@@ -97,7 +101,9 @@ class Executor:
                                f"&SUBSET=Long({long})"
                                "&FORMAT=application/json"
             )
+            self.network_manager.write_timings_marker(f"benchi_marker,,start,execution,rasdaman,points,")
             response = requests.request("GET", url, headers=self.headers, proxies=self.proxies)
+            self.network_manager.write_timings_marker(f"benchi_marker,,end,execution,rasdaman,points,")
             result.append("0" if "xml" in response.text else response.text)
         else:
             result.append("No poit")
@@ -117,10 +123,12 @@ class Executor:
         result = vector_feature
         for aggregation in aggregations:
             parsed_payload = self.aggregations[aggregation](geometry)
+            # print(parsed_payload)
             response = requests.request(
                 "POST", self.url, headers=self.headers, data=parsed_payload, proxies=self.proxies
             )
             result.append("0" if "xml" in response.text else response.text)
+
         yield result
 
     def __handle_aggregations(self, features):
@@ -215,6 +223,8 @@ class Executor:
 
     @measure_time
     def run_query(self, workload, **kwargs):
+        self.network_manager.run_ssh("""echo "benchi_marker,$(date +%s.%N),now,time_diff_check,rasdaman,," """)
+
         selection, condition, order, limit, has_aggregations = self.__translate(
             workload
         )
@@ -236,7 +246,7 @@ class Executor:
         for o in order[0]:
             vector_features.sort(key=lambda x: x["properties"][o])
 
-        result_path = self.results_folder.joinpath(
+        result_path = self.network_manager.system_full.controller_result_folder.joinpath(
             f"results_{self.network_manager.file_prepend}.csv")
 
         if limit:
@@ -249,6 +259,7 @@ class Executor:
         )
         writer = csv.writer(f)
         writer.writerow(header)
+        self.network_manager.write_timings_marker(f"benchi_marker,,start,execution,rasdaman,aggregations,")
         for entry in vector_features:
             writer.writerow(
                 next(
@@ -261,8 +272,12 @@ class Executor:
                     )
                 )
             )
+        self.network_manager.write_timings_marker(f"benchi_marker,,end,execution,rasdaman,aggregations,")
         f.close()
         self.vector_path.controller_wkt.unlink()
         self.network_manager.stop_socks_proxy()
+
+        self.transporter.get_folder(self.network_manager.host_measurements_folder,
+                                    self.network_manager.controller_measurements_folder)
 
         return result_path

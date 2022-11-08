@@ -26,11 +26,11 @@ class FileIO:
                         "system": System(system["name"],
                                          public_key_path,
                                          ssh_connection,
-                                         host_base_path),
+                                         host_base_path,
+                                         results_folder),
                         "workload": workload,
                         "raster": data["raster"],
                         "vector": data["vector"],
-                        "results_folder": Path(results_folder).expanduser()
                     }
                     for system in experiments["systems"]
                 }

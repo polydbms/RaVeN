@@ -19,6 +19,7 @@ class FileTransporter:
         )
         self.rsync_command_send = f"rsync --verbose --update -e \"ssh {self.ssh_options}\" options_plch from_File_plch {remote}:to_File_plch"
         self.scp_command_send = f"scp {self.ssh_options} options_plch from_File_plch {remote}:to_File_plch"
+        self.rsync_command_receive = f"rsync --verbose --update -e \"ssh {self.ssh_options}\" options_plch {remote}:from_File_plch/ to_File_plch/"
         self.scp_command_receive = f"scp {self.ssh_options} options_plch {remote}:from_File_plch to_File_plch"
         # print(self.ssh_command)
         # print(self.scp_command_send)
@@ -55,9 +56,9 @@ class FileTransporter:
         return self.network_manager.run_command(command)
 
     @measure_time
-    def get_folder(self, remote, local, **kwargs):
+    def get_folder(self, remote: Path, local: Path, **kwargs):
         command = (
-            self.scp_command_receive.replace("options_plch", "-r")
+            self.rsync_command_receive.replace("options_plch", "-r")
             .replace("from_File_plch", str(self.system.host_base_path.joinpath(remote)))
             .replace("to_File_plch", str(local))
         )

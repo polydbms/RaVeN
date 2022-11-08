@@ -21,4 +21,6 @@ echo "Get docker container name"
 export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}' | grep sedona)
 echo $DOCKER_CONTAINER
 echo "Running query"
+echo "benchi_marker,$(date +%s.%N),start,execution,sedona,,outer"
 docker exec $DOCKER_CONTAINER bash -c 'python /config/sedona/executor.py'
+echo "benchi_marker,$(date +%s.%N),end,execution,sedona,,outer"
