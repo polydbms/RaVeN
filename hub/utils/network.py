@@ -102,7 +102,8 @@ class NetworkManager:
             # if output.strip() != "":
             #     print(output.strip(), "\n")
 
-            if f"Local connections to LOCALHOST:{port} forwarded" in str(output):
+            if f"Local connections to LOCALHOST:{port} forwarded" in str(output) or \
+                    f"mux_client_request_session: master session id:" in str(output):
                 print(f"SOCKS5 connection established at port {port}")
                 break
 
@@ -137,10 +138,14 @@ class NetworkManager:
             output = self.measure_docker.stdout.readline()
 
             if output.strip() != "":
-                print(output.strip(), "\n")
+                if init_line_counter == 0:
+                    print(output.strip(), "\n")
+
+                print(f"{init_line_counter} ", end="")
                 init_line_counter += 1
 
             if (prerecord and init_line_counter > 3) or (not prerecord and init_measurement_flag in str(output)):
+                print("")
                 print(f"initialized and pre-loaded docker measurements for stage {stage}")
                 break
 
@@ -153,10 +158,14 @@ class NetworkManager:
             output = self.measure_docker.stdout.readline()
 
             if output.strip() != "":
-                print(output.strip(), "\n")
+                if outro_line_counter == 0:
+                    print(output.strip(), "\n")
+
+                print(f"{outro_line_counter} ", end="")
                 outro_line_counter += 1
 
             if outro_line_counter > 20:
+                print("\n", output.strip(), "\n")
                 print(f"completed docker measurements")
                 self.measure_docker.terminate()
                 break

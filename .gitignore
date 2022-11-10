@@ -240,3 +240,4 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 /hub/deployment/files/sedona/sedona_ingested.py.j2
 /hub/deployment/files/sedona/sedona_prep.py
+/hub/deployment/files/rasdaman/ingredients.json

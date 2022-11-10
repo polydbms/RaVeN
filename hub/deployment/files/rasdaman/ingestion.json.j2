@@ -10,7 +10,7 @@
   },
   "input": {
     "coverage_id": "{{coverage_id}}",
-    "paths": "{{paths}}"
+    "paths": {{paths | tojson}}
   },
   "recipe": {
     "name": "general_coverage",
@@ -23,13 +23,13 @@
         "slicer": {
           "type": "gdal",
           "axes": {
-            "Long": {
+            "{{lon_axis_abbr}}": {
               "min": "${gdal:minX}",
               "max": "${gdal:maxX}",
               "gridOrder": 0,
               "resolution": "${gdal:resolutionX}"
             },
-            "Lat": {
+            "{{lat_axis_abbr}}": {
               "min": "${gdal:minY}",
               "max": "${gdal:maxY}",
               "gridOrder": 1,

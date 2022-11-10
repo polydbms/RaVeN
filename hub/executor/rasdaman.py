@@ -127,6 +127,7 @@ class Executor:
             response = requests.request(
                 "POST", self.url, headers=self.headers, data=parsed_payload, proxies=self.proxies
             )
+            # print(response.request.url, response.request.headers, parsed_payload, sep=";")
             result.append("0" if "xml" in response.text else response.text)
 
         yield result
@@ -260,6 +261,7 @@ class Executor:
         writer = csv.writer(f)
         writer.writerow(header)
         self.network_manager.write_timings_marker(f"benchi_marker,,start,execution,rasdaman,aggregations,")
+
         for entry in vector_features:
             writer.writerow(
                 next(
