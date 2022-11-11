@@ -1,4 +1,6 @@
+import concurrent
 import urllib.parse as parser
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from time import time
@@ -262,18 +264,25 @@ class Executor:
         writer.writerow(header)
         self.network_manager.write_timings_marker(f"benchi_marker,,start,execution,rasdaman,aggregations,")
 
-        for entry in vector_features:
-            writer.writerow(
-                next(
-                    operation(
-                        properties=entry["properties"],
-                        selection=selection,
-                        condition=condition,
-                        limit=limit,
-                        order=order,
-                    )
-                )
-            )
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            results = {executor.submit(operation,
+                                       properties=feature["properties"],
+                                       selection=selection,
+                                       condition=condition,
+                                       limit=limit,
+                                       order=order,
+                                       ): feature for feature in vector_features}
+
+            for future in concurrent.futures.as_completed(results):
+                try:
+                    writer.writerow(next(future.result()))
+                except Exception as exc:
+                    print(f"error while fetching result: {exc}")
+
+        # for entry in vector_features:
+        #     writer.writerow(
+        #
+        #     )
         self.network_manager.write_timings_marker(f"benchi_marker,,end,execution,rasdaman,aggregations,")
         f.close()
         self.vector_path.controller_wkt.unlink()

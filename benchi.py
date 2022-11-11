@@ -127,7 +127,7 @@ class Setup:
         config = FileIO.read_experiments_config(experiment_file)
         systems_list = list(config.keys())
         print(result_files)
-        evaluator = Evaluator(systems_list, result_files, config[systems_list[0]]["system"].controller_results_folder)
+        evaluator = Evaluator(systems_list, result_files, config[systems_list[0]]["system"].controller_result_folder)
         evaluator.get_accuracy()
 
     def clean(self, experiment_file, system):

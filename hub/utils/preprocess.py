@@ -18,7 +18,7 @@ class Preprocessor:
         if vector_path and (Path(vector_path).exists() and Path(vector_path).is_dir()):
             self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
         if raster_path and (Path(raster_path).exists() and Path(raster_path).is_dir()):
-            for ending in ["*.tif*", "*.jp2"]:
+            for ending in ["*.tif", "*.tiff", "*.jp2"]:
                 files = [f for f in Path(raster_path).glob(ending)]
                 if len(files) > 0:
                     self.raster_path = Path(files[0])
