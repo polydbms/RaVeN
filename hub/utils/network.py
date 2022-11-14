@@ -172,6 +172,8 @@ class NetworkManager:
 
     def write_timings_marker(self, marker: str):
         time_now = time.time()
+        timings_line = f"{marker.strip()},{time_now}"
+
         with self.timings_file.open("a") as f:
-            f.write(f"{marker.strip()},{time_now}")
+            f.write(timings_line)
             f.write("\n")
