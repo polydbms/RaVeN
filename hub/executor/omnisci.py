@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from hub.executor._sqlbased import SQLBased
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 from hub.evaluation.measure_time import measure_time
@@ -24,37 +25,10 @@ class Executor:
         self.table_raster = Path(raster_path.docker_file).stem
 
     def __handle_aggregations(self, type, features):
-        return ", ".join(
-            [
-                f"{aggregation}({type}.{feature}) as {feature}_{aggregation}"
-                for feature in features
-                for aggregation in features[feature]["aggregations"]
-            ]
-        )
+        return SQLBased.handle_aggregations(type, features)
 
     def __parse_get(self, get):
-        vector = []
-        raster = []
-        if "vector" in get:
-            for feature in get["vector"]:
-                if isinstance(feature, dict):
-                    vector.append(self.__handle_aggregations("vector", feature))
-                else:
-                    vector.append(f"vector.{feature}")
-            vector = ", ".join(vector)
-        else:
-            vector = ""
-        if "raster" in get:
-            for feature in get["raster"]:
-                if isinstance(feature, dict):
-                    raster.append(self.__handle_aggregations("raster", feature))
-                else:
-                    raster.append(f"raster.{feature}")
-            raster = ", ".join(raster)
-        else:
-            raster = ""
-        raster = f", {raster}" if raster else ""
-        return f"select {vector} {raster}"
+        return SQLBased.parse_get(self, get)
 
     def __parse_join(self, join):
         table1 = "{self.table1}" + f' as {join["table1"]}'
@@ -63,53 +37,13 @@ class Executor:
         return f"from {table1} JOIN {table2} {condition}"
 
     def __parse_condition(self, condition):
-        vector = (
-            "and ".join(["vector." + feature for feature in condition["vector"]])
-            if "vector" in condition
-            else ""
-        )
-        raster = (
-            "and ".join(["raster." + feature for feature in condition["raster"]])
-            if "raster" in condition
-            else ""
-        )
-
-        if vector and raster:
-            return f"where {vector} and {raster}"
-        elif vector and not raster:
-            return f"where {vector}"
-        elif not vector and raster:
-            return f"where {raster}"
-        elif not vector and not raster:
-            return f""
+        return SQLBased.parse_condition(condition)
 
     def __parse_group(self, group):
-        vector = (
-            ", ".join(["vector." + feature for feature in group["vector"]])
-            if "vector" in group
-            else ""
-        )
-        raster = (
-            ", ".join(["raster." + feature for feature in group["raster"]])
-            if "raster" in group
-            else ""
-        )
-        raster = f", {raster}" if raster else ""
-        return f"group by {vector} {raster}"
+        return SQLBased.parse_group(group)
 
     def __parse_order(self, order):
-        vector = (
-            ", ".join(["vector." + feature for feature in order["vector"]])
-            if "vector" in order
-            else ""
-        )
-        raster = (
-            ", ".join(["raster." + feature for feature in order["raster"]])
-            if "raster" in order
-            else ""
-        )
-        raster = f", {raster}" if raster else ""
-        return f"order by {vector} {raster}"
+        return SQLBased.parse_order(order)
 
     def __translate(self, workload):
         selection = self.__parse_get(workload["get"]) if "get" in workload else ""
