@@ -1,9 +1,11 @@
 import os
 from pathlib import Path
 
+import duckdb
 import yaml
 
 from configuration import PROJECT_ROOT
+from hub.duckdb.submit_data import DuckDBConnector
 from hub.utils.system import System
 
 
@@ -21,13 +23,16 @@ class FileIO:
                 data = experiments["data"] if "data" in experiments else None
                 host_base_path = experiments["host_base_path"]
                 results_folder = experiments["results_folder"]
+                results_db = Path(experiments["results_db"]).expanduser()
                 resource = {
                     system["name"]: {
                         "system": System(system["name"],
                                          public_key_path,
                                          ssh_connection,
                                          host_base_path,
-                                         results_folder),
+                                         results_folder,
+                                         DuckDBConnector(results_db)
+                                         ),
                         "workload": workload,
                         "raster": data["raster"],
                         "vector": data["vector"],

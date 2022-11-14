@@ -5,7 +5,8 @@ experiments:
     vector: /home/gereon/git/master-raster-vector/benchi/data/ALKIS_bezirk_MOL
   host_base_path: /local-ssd/gdusella-ldap
   results_folder: ~/git/master-raster-vector/data/results
-  ssh_connection: "sgx12.dima.tub" # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
+  results_db: ~/git/master-raster-vector/data/results.db
+  ssh_connection: "sgx12.dima.tub"
   workload:
     get: 
       vector:
