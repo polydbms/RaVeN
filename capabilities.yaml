@@ -4,3 +4,4 @@ systems:
   vectorize:
     - omnisci
     - sedona
+  same_crs: []

@@ -1,26 +1,26 @@
-import json
 import subprocess
 import time
-from datetime import datetime
-from pathlib import Path
 from subprocess import Popen
 from typing import Any
 
+from hub.benchmarkrun.host_params import HostParameters
+from hub.benchmarkrun.measurementslocation import MeasurementsLocation
 from hub.evaluation.measure_time import measure_time
-from hub.utils.system import System
 
 
 class NetworkManager:
-    _system: System
-    host_measurements_folder: Path
+    _host_params: HostParameters
+    _measurements_loc: MeasurementsLocation | None
     socks_proxy: Popen[bytes] | Popen[Any]
     measure_docker: Popen[bytes] | Popen[Any]
 
-    def __init__(self, system: System) -> None:
-        self.ssh_connection = system.ssh_connection
-        self._system = system
-        self.private_key_path = system.public_key_path.with_suffix("")
+    def __init__(self, host_params: HostParameters, system_name: str, measurements_loc: MeasurementsLocation | None) -> None:
+        self._host_params = host_params
+        self.ssh_connection = host_params.ssh_connection
+        self._measurements_loc = measurements_loc
+        self.private_key_path = host_params.public_key_path.with_suffix("")
         print(self.private_key_path)
+        self.system_name = system_name
         self.socks_proxy = None
         self.measure_docker = None
 
@@ -29,26 +29,15 @@ class NetworkManager:
             f"ssh {self.ssh_connection} {self.ssh_options}"
         )
 
-        self.file_prepend = f"{system.name}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        self.host_measurements_folder = self.system_full.host_base_path \
-            .joinpath("measurements") \
-            .joinpath(self.file_prepend)
 
-        self.controller_measurements_folder = self._system.controller_result_folder.joinpath(self.file_prepend)
-        self.controller_measurements_folder.mkdir(parents=True, exist_ok=True)
-        self.timings_file = self.controller_measurements_folder.joinpath("timings.csv")
-
-        with self.timings_file.open("a") as f:
-            f.write("marker,timestamp,event,stage,system,dataset,comment,controller_time")
-            f.write("\n")
 
     @property
-    def system(self):
-        return self._system.name
+    def host_params(self) -> HostParameters:
+        return self._host_params
 
     @property
-    def system_full(self):
-        return self._system
+    def measurements_loc(self) -> MeasurementsLocation:
+        return self._measurements_loc
 
     @measure_time
     def run_command(self, command, **kwargs):
@@ -116,9 +105,9 @@ class NetworkManager:
 
     def start_measure_docker(self, stage: str, prerecord=True):
         print(f"starting measuring docker for stage {stage}")
-        self.run_ssh(f"mkdir -p {self.host_measurements_folder}")
+        self.run_ssh(f"mkdir -p {self.measurements_loc.host_measurements_folder}")
 
-        measurement_file = self.host_measurements_folder.joinpath(f"{stage}.csv")
+        measurement_file = self.measurements_loc.host_measurements_folder.joinpath(f"{stage}.csv")
         init_measurement_flag = "initialized measuring docker"
         self.run_ssh(
             f"echo \"timestamp\tID\tName\tCPUPerc\tMemUsage\tMemPerc\tNetIO\tBlockIO\tPIDs\" | tee {measurement_file}")
@@ -174,6 +163,6 @@ class NetworkManager:
         time_now = time.time()
         timings_line = f"{marker.strip()},{time_now}"
 
-        with self.timings_file.open("a") as f:
+        with self.measurements_loc.timings_file.open("a") as f:
             f.write(timings_line)
             f.write("\n")

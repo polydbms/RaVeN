@@ -1,11 +1,10 @@
 import re
-from datetime import datetime
 from pathlib import Path
 
+from hub.evaluation.measure_time import measure_time
 from hub.executor._sqlbased import SQLBased
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
-from hub.evaluation.measure_time import measure_time
 from hub.utils.network import NetworkManager
 
 
@@ -14,21 +13,15 @@ class Executor:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
-        self.host_base_path = self.network_manager.system_full.host_base_path
-        # if Path(vector_path).exists() and Path(vector_path).is_dir():
-        #     vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
-        # if Path(raster_path).exists() and Path(raster_path).is_dir():
-        #     raster_path = [raster for raster in Path(raster_path).glob("*.tif*")][0]
-        # self.table_vector = f"{vector_path.stem}".split(".")[0]
-        # self.table_raster = f"{raster_path.stem}".split(".")[0]
-        self.table_vector = Path(vector_path.docker_file).stem
-        self.table_raster = Path(raster_path.docker_file).stem
+        self.host_base_path = self.network_manager.host_params.host_base_path
+        self.table_vector = vector_path.name
+        self.table_raster = raster_path.name
 
     def __handle_aggregations(self, type, features):
         return SQLBased.handle_aggregations(type, features)
 
     def __parse_get(self, get):
-        return SQLBased.parse_get(self, get)
+        return SQLBased.parse_get(self.__handle_aggregations, get)
 
     def __parse_join(self, join):
         table1 = "{self.table1}" + f' as {join["table1"]}'
@@ -89,15 +82,15 @@ class Executor:
         self.network_manager.run_ssh(str(self.host_base_path.joinpath("config/omnisci/execute.sh")), **kwargs)
         Path("query.sql").unlink()
 
-        result_path = self.network_manager.system_full.controller_result_folder.joinpath(
-            f"results_{self.network_manager.file_prepend}.csv")
+        result_path = self.network_manager.host_params.controller_result_folder.joinpath(
+            f"results_{self.network_manager.measurements_loc.file_prepend}.csv")
         self.transporter.get_file(
             results_path_host,
             result_path,
             **kwargs,
         )
 
-        self.transporter.get_folder(self.network_manager.host_measurements_folder,
-                                    self.network_manager.controller_measurements_folder)
+        self.transporter.get_folder(self.network_manager.measurements_loc.host_measurements_folder,
+                                    self.network_manager.measurements_loc.controller_measurements_folder)
 
         return result_path

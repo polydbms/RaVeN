@@ -7,10 +7,10 @@ experiments:
   results_folder: ~/git/master-raster-vector/data/results
   ssh_connection: "sgx12.dima.tub" # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
   workload:
-    get: 
+    get:
       vector:
         - flstkennz
-      raster: 
+      raster:
         - sval:
             aggregations:
               - avg
@@ -22,18 +22,22 @@ experiments:
       table1: vector
       table2: raster
       condition: intersect(raster, vector)
-    condition: 
-      vector: 
+    condition:
+      vector:
         - nutzart = 'Landwirtschaft'
       raster:
         - sval >= 0
     group:
-      vector: 
+      vector:
         - flstkennz
     order:
-      vector: 
+      vector:
         - flstkennz
-  systems: 
+  parameters:
+    vectorize_format:
+      - shp
+#      - geojson
+  systems:
     - name: postgis
       port: 25432
     - name: omnisci

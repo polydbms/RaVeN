@@ -6,6 +6,7 @@ from jinja2 import Template
 from lxml import etree
 
 from configuration import PROJECT_ROOT
+from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
@@ -13,12 +14,13 @@ from hub.utils.network import NetworkManager
 
 
 class Ingestor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager) -> None:
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager, benchmark_params: BenchmarkParameters) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.vector_path = vector_path
         self.raster_path = raster_path
-        self.host_base_path = self.network_manager.system_full.host_base_path
+        self.host_base_path = self.network_manager.host_params.host_base_path
+        self.benchmark_params = benchmark_params
         # self.vector_path = None
         # self.raster_path = None
         self.transporter = FileTransporter(network_manager)

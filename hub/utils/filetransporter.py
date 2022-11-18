@@ -4,13 +4,13 @@ from configuration import PROJECT_ROOT
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation, FileType
 from hub.utils.network import NetworkManager
-from hub.utils.system import System
 
 
 class FileTransporter:
     def __init__(self, network_manager: NetworkManager) -> None:
         self.network_manager = network_manager
-        self.system = network_manager.system_full
+        # self.system = network_manager.system_full
+        self.host_base_path = self.network_manager.host_params.host_base_path
         remote = self.network_manager.ssh_connection
         private_key_path = self.network_manager.private_key_path
         self.ssh_options = f"-o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {private_key_path}"
@@ -30,7 +30,7 @@ class FileTransporter:
             command = (
                 self.rsync_command_send.replace("options_plch", "")
                 .replace("from_File_plch", str(local))
-                .replace("to_File_plch", str(self.system.host_base_path.joinpath(remote)))
+                .replace("to_File_plch", str(self.host_base_path.joinpath(remote)))
             )
             return self.network_manager.run_command(command)
         raise FileNotFoundError(local)
@@ -41,7 +41,7 @@ class FileTransporter:
             command = (
                 self.rsync_command_send.replace("options_plch", "-r")
                 .replace("from_File_plch", str(local))
-                .replace("to_File_plch", str(self.system.host_base_path.joinpath(remote)))
+                .replace("to_File_plch", str(self.host_base_path.joinpath(remote)))
             )
             return self.network_manager.run_command(command)
         raise FileNotFoundError(local)
@@ -50,7 +50,7 @@ class FileTransporter:
     def get_file(self, remote, local, **kwargs):
         command = (
             self.scp_command_receive.replace("options_plch", "")
-            .replace("from_File_plch", str(self.system.host_base_path.joinpath(remote)))
+            .replace("from_File_plch", str(self.host_base_path.joinpath(remote)))
             .replace("to_File_plch", str(local))
         )
         return self.network_manager.run_command(command)
@@ -59,18 +59,18 @@ class FileTransporter:
     def get_folder(self, remote: Path, local: Path, **kwargs):
         command = (
             self.rsync_command_receive.replace("options_plch", "-r")
-            .replace("from_File_plch", str(self.system.host_base_path.joinpath(remote)))
+            .replace("from_File_plch", str(self.host_base_path.joinpath(remote)))
             .replace("to_File_plch", str(local))
         )
         return self.network_manager.run_command(command)
 
     @measure_time
     def send_configs(self, **kwargs):
-        host_config_path = self.system.host_base_path.joinpath("config")
+        host_config_path = self.host_base_path.joinpath("config")
         print(host_config_path)
         self.network_manager.run_remote_mkdir(host_config_path)
         self.send_folder(
-            Path(f"{PROJECT_ROOT}/hub/deployment/files/{self.network_manager.system}"),
+            Path(f"{PROJECT_ROOT}/hub/deployment/files/{self.network_manager.system_name}"),
             host_config_path
         )
 
