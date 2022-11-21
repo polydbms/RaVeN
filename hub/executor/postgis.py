@@ -76,8 +76,9 @@ class Executor:
         query = self.__translate(workload)
         query = query.replace("{self.table1}", self.table_vector)
         query = query.replace("{self.table2}", self.table_raster)
-        results_path_host = self.host_base_path.joinpath(f'data/results_postgis.csv')
-        query = f"\copy ({query}) To '/data/results_postgis.csv' CSV HEADER;"
+        relative_results_file = Path(f'data/results/{self.network_manager.measurements_loc.file_prepend}.csv')
+        results_path_host = self.host_base_path.joinpath(relative_results_file)
+        query = f"""\copy ({query}) To '{Path("/").joinpath(relative_results_file)}' CSV HEADER;"""
         with open("query.sql", "w") as f:
             f.write(query)
         self.transporter.send_file(Path("query.sql"), self.host_base_path.joinpath("data/query.sql"), **kwargs)
@@ -91,6 +92,8 @@ class Executor:
             result_path,
             **kwargs,
         )
+
+        self.network_manager.run_remote_rm_file(results_path_host)
 
         self.transporter.get_folder(self.network_manager.measurements_loc.host_measurements_folder,
                                     self.network_manager.measurements_loc.controller_measurements_folder)

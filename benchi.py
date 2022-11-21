@@ -109,7 +109,8 @@ class Setup:
 
     def benchmark(self, experiment_file_name, system=None, post_cleanup=True) -> list[Path]:
         runs = FileIO.read_experiments_config(experiment_file_name, system)
-        # print([str(r.benchmark_params) for r in runs])
+        print(f"running {len(runs)} experiments")
+        print([str(r.benchmark_params) for r in runs])
 
         result_files = []
         if system:
@@ -146,10 +147,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("command", help="Use either start or clean.")
     parser.add_argument("--system", help="Specify which system should be benchmarked")
-    parser.add_argument("--vector", help="Specify the path to vector dataset")
-    parser.add_argument("--raster", help="Specify the path to raster dataset")
-    parser.add_argument("--experiment", help="Specify the path to the experiment definition file", required=True)
-    parser.add_argument("--repeat", help="Specify number of iterations an experiment will be repeated")
+    # parser.add_argument("--vector", help="Specify the path to vector dataset")
+    # parser.add_argument("--raster", help="Specify the path to raster dataset")
+    parser.add_argument("--experiment",
+                        help="Specify the path to the experiment definition file",
+                        required=True,
+                        action="append")
+    # parser.add_argument("--repeat", help="Specify number of iterations an experiment will be repeated")
     parser.add_argument("--postcleanup",
                         help="Whether to run a cleanup after running the benchmark. Only works together with '--system <system>'",
                         action=argparse.BooleanOptionalAction,
@@ -158,12 +162,13 @@ def main():
     print(args)
     setup = Setup()
     if args.command == "start":
-        result_files = setup.benchmark(args.experiment, args.system, args.postcleanup)
+        for experiment in args.experiment:
+            result_files = setup.benchmark(experiment, args.system, args.postcleanup)
 
-        if len(result_files) > 1:
-            setup.evaluate(args.experiment, result_files)
+            if len(result_files) > 1:
+                setup.evaluate(experiment, result_files)
     if args.command == "clean":
-        setup.clean(args.experiment)
+        setup.clean(args.experiment[0])
 
 
 if __name__ == "__main__":

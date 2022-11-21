@@ -115,17 +115,21 @@ class PreprocessConfig:
             shutil.rmtree(folder)
 
     def copy_to_output(self):
+        print(f"copying vector files from {self.vector_folder}")
         shutil.rmtree(self.vector_output_folder, ignore_errors=True)
         self.vector_output_folder.mkdir(parents=True, exist_ok=True)
         for f in self.vector_folder.iterdir():
             if f.is_file():
+                print(f"copy {f} to {self.vector_output_folder}")
                 shutil.copy(f, self.vector_output_folder)
         # shutil.copytree(self.vector_folder, self.vector_output_folder, dirs_exist_ok=True)
 
+        print(f"copying raster files from {self.raster_folder}")
         shutil.rmtree(self.raster_output_folder, ignore_errors=True)
         self.raster_output_folder.mkdir(parents=True, exist_ok=True)
         for f in self.raster_folder.iterdir():
             if f.is_file():
+                print(f"copy {f} to {self.raster_output_folder}")
                 shutil.copy(f, self.raster_output_folder)
         # shutil.copytree(self.raster_folder, self.raster_output_folder, dirs_exist_ok=True)
 
@@ -290,10 +294,15 @@ class FileTypeProcessor(Preprocessor):
         vector["wkt"] = wkt
         # wkt_out = list(self.config.vector_file_path.parts)
         # wkt_out.insert(-1, f"preprocessed_{system}")
-        output = self._vector_tmp_out_folder.joinpath(self.config.vector_name).with_suffix(".json")
+        output = self._vector_tmp_out_folder.joinpath(self.config.vector_file).with_suffix(".json")
         json_out = vector.to_json()
         with open(output, "w") as f:
             f.write(json_out)
+
+        self.config.set_vector_suffix(".json")
+        self.update_vector_folder()
+
+        print(f"conversion to WKT done for file {output}")
 
     # @measure_time
     # def read_wkt(self, **kwargs):

@@ -16,7 +16,7 @@ from hub.utils.system import System
 class FileIO:
 
     @staticmethod
-    def read_experiments_config(filename, system="") -> list[BenchmarkRun]:
+    def read_experiments_config(filename, system=None) -> list[BenchmarkRun]:
         capabilities = Capabilities.read_capabilities()
 
         with open(PROJECT_ROOT.joinpath(filename), mode="r") as c:
@@ -28,7 +28,7 @@ class FileIO:
 
                 host_params = FileIO.get_host_params(filename)
                 parameters = experiments.get("parameters", {})
-                systems = [s for s in FileIO.get_systems(filename) if s.name == system or system == ""]
+                systems = [s for s in FileIO.get_systems(filename) if s.name == system or system is None]
 
                 runs = []
                 brf = BenchmarkRunFactory(capabilities)

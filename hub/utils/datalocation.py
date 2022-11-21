@@ -90,7 +90,9 @@ class DataLocation:
                     f = files[0]
                     match f.suffix:
                         case ".tif":
-                            f.rename(f.with_suffix(".tiff"))
+                            new_f = f.with_suffix(".tiff")
+                            f.rename(new_f)
+                            return Path(new_f.name)
 
                     return Path(files[0].name)
         elif self.type == FileType.ZIP_ARCHIVE:

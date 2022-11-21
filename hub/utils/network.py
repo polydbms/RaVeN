@@ -1,5 +1,6 @@
 import subprocess
 import time
+from pathlib import Path
 from subprocess import Popen
 from typing import Any
 
@@ -32,6 +33,8 @@ class NetworkManager:
         self.ssh_command = (
             f"ssh {self.ssh_connection} {self.ssh_options}"
         )
+
+        self.run_remote_mkdir(self.host_params.host_base_path.joinpath("data").joinpath("results"))
 
 
 
@@ -81,9 +84,15 @@ class NetworkManager:
             f"mkdir -p {dir}"
         )
 
+    @measure_time
+    def run_remote_rm_file(self, file: Path):
+        self.run_ssh(
+            f"rm {file}"
+        )
+
     def open_socks_proxy(self, port=59123) -> str:
         print(f"starting new SOCKS5 proxy at port {port}")
-        self.socks_proxy = subprocess.Popen(f"ssh {self.ssh_connection} -D {port} -N -v",
+        self.socks_proxy = subprocess.Popen(f"{self.ssh_command} -D {port} -N -v",
                                             stdout=subprocess.PIPE,
                                             stderr=subprocess.PIPE,
                                             universal_newlines=True,
@@ -116,7 +125,7 @@ class NetworkManager:
         self.run_ssh(
             f"echo \"timestamp\tID\tName\tCPUPerc\tMemUsage\tMemPerc\tNetIO\tBlockIO\tPIDs\" | tee {measurement_file}")
         command_docker = """docker stats --no-stream --format "{{.ID}}\\t{{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\t{{.MemPerc}}\\t{{.NetIO}}\\t{{.BlockIO}}\\t{{.PIDs}}" | while read -r line; do printf "%s\\t%s\\n" "$(date +%s.%06N)" "$line"; done"""
-        command = f"ssh {self.ssh_connection} 'echo \"{init_measurement_flag}\"; while true; do {command_docker} | tee --append {measurement_file}; sleep 0; done'"
+        command = f"{self.ssh_command} 'echo \"{init_measurement_flag}\"; while true; do {command_docker} | tee --append {measurement_file}; sleep 0; done'"
 
         print(command)
         self.measure_docker = subprocess.Popen(

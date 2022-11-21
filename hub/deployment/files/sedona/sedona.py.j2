@@ -54,4 +54,4 @@ name = uuid.uuid4().hex
 spatial_gdf.coalesce(1).write.option("header","true").csv(name)
 print(f"benchi_marker,{time()},end,execution,sedona,,")
 [a for a in Path(name).glob("*.csv")][0].rename("results.csv")
-shutil.move("results.csv", "/data/results_sedona.csv")
+shutil.move("results.csv", "/data/results/results_sedona.csv")

@@ -5,3 +5,5 @@ systems:
     - omnisci
     - sedona
   same_crs: []
+  variable_tile_size:
+    - postgis

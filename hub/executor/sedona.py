@@ -87,11 +87,14 @@ class Executor:
 
         result_path = self.network_manager.host_params.controller_result_folder.joinpath(
             f"results_{self.network_manager.measurements_loc.file_prepend}.csv")
+        result_file = self.host_base_path.joinpath("data/results/results_sedona.csv")
         self.transporter.get_file(
-            str(self.host_base_path.joinpath("data/results_sedona.csv")),
+            result_file,
             result_path,
             **kwargs,
         )
+
+        self.network_manager.run_remote_rm_file(result_file)
 
         self.transporter.get_folder(self.network_manager.measurements_loc.host_measurements_folder,
                                     self.network_manager.measurements_loc.controller_measurements_folder)

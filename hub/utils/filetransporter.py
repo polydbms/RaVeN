@@ -13,14 +13,13 @@ class FileTransporter:
         self.host_base_path = self.network_manager.host_params.host_base_path
         remote = self.network_manager.ssh_connection
         private_key_path = self.network_manager.private_key_path
-        self.ssh_options = f"-o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {private_key_path}"
-        self.ssh_command = (
-            f"ssh {remote} {self.ssh_options}"
-        )
-        self.rsync_command_send = f"rsync --verbose --update -e \"ssh {self.ssh_options}\" options_plch from_File_plch {remote}:to_File_plch"
-        self.scp_command_send = f"scp {self.ssh_options} options_plch from_File_plch {remote}:to_File_plch"
-        self.rsync_command_receive = f"rsync --verbose --update -e \"ssh {self.ssh_options}\" options_plch {remote}:from_File_plch/ to_File_plch/"
-        self.scp_command_receive = f"scp {self.ssh_options} options_plch {remote}:from_File_plch to_File_plch"
+        # self.ssh_command = (
+        #     f"ssh {remote} {self.network_manager.ssh_options}"
+        # )
+        self.rsync_command_send = f"rsync --verbose --update -e \"ssh {self.network_manager.ssh_options}\" options_plch from_File_plch {remote}:to_File_plch"
+        self.scp_command_send = f"scp {self.network_manager.ssh_options} options_plch from_File_plch {remote}:to_File_plch"
+        self.rsync_command_receive = f"rsync --verbose --update -e \"ssh {self.network_manager.ssh_options}\" options_plch {remote}:from_File_plch/ to_File_plch/"
+        self.scp_command_receive = f"scp {self.network_manager.ssh_options} options_plch {remote}:from_File_plch to_File_plch"
         # print(self.ssh_command)
         # print(self.scp_command_send)
 
@@ -88,6 +87,6 @@ class FileTransporter:
             self.send_folder(file.controller_location, host_dir_up)
         elif file.type == FileType.ZIP_ARCHIVE:
             self.send_file(file.controller_location, host_dir_up)
-            self.network_manager.run_command(f"{self.ssh_command} unzip")
+            self.network_manager.run_command(f"{self.network_manager.ssh_command} unzip")
         else:
             print("sent nothing")

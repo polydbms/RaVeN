@@ -14,6 +14,7 @@ class Evaluator:
         self.result_files = result_files
         self.timestring = datetime.now().strftime('%Y%m%d-%H%M%S')
         self.eval_output_folder = self.host_params.controller_result_base_folder.joinpath(f"eval_{self.timestring}")
+        self.eval_output_folder.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def __read_result(file):

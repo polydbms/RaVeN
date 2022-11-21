@@ -239,7 +239,7 @@ class Executor:
             vector_features.sort(key=lambda x: x["properties"][o])
 
         result_path = self.network_manager.host_params.controller_result_folder.joinpath(
-            f"results_{self.network_manager.host_params.file_prepend}.csv")
+            f"results_{self.network_manager.measurements_loc.file_prepend}.csv")
 
         if limit:
             vector_features = vector_features[: int(limit)]

@@ -27,5 +27,5 @@ class Ingestor:
         command = self.host_base_path.joinpath("config/omnisci/ingest.sh")
         self.network_manager.run_ssh(f""
                                      f"{command} "
-                                     f"-v={self.vector.docker_file_preprocessed}"
+                                     f"-v={self.vector.docker_file_preprocessed} "
                                      f"-n={self.vector.name}")
