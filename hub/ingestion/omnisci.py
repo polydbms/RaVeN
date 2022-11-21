@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation

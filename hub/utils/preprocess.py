@@ -4,14 +4,14 @@ import re
 import shutil
 import string
 import subprocess
-from datetime import time
+from time import time
+from functools import wraps
 from pathlib import Path
 
 import pandas as pd
 import geopandas as gpd
 import rioxarray as rxr
 import rasterio.crs
-from osgeo import ogr, gdal
 from osgeo_utils import gdal_polygonize
 from pyproj import CRS
 
@@ -19,6 +19,19 @@ from hub.enums.vectorfiletype import VectorFileType
 from hub.enums.vectorizationtype import VectorizationType
 from hub.evaluation.measure_time import measure_time
 from hub.utils.capabilities import Capabilities
+
+
+def print_timings(dataset, comment):
+    def decorator_print_timings(func):
+        @wraps(func)
+        def _decorator_print_timings(self, *args, **kwargs):
+            print(f"benchi_marker,{time()},start,preprocess,{self.config.system},{dataset},{comment}")
+            func(self, *args, **kwargs)
+            print(f"benchi_marker,{time()},end,preprocess,{self.config.system},{dataset},{comment}")
+
+        return _decorator_print_timings
+
+    return decorator_print_timings
 
 
 class PreprocessConfig:
@@ -206,10 +219,11 @@ class CRSPreprocessor(Preprocessor):
         super().__init__(config, Path(f"/data/reproject_tmp"))
 
     @measure_time
-    def reproject_raster(self, **kwargs):
+    @print_timings("raster", "reproject")
+    def reproject_raster(self, *args, **kwargs):
         print(f"reprojecting raster file {self.config.raster_file}")
 
-        rio_target_crs = rasterio.crs.CRS.from_user_input(self.config.raster_target_crs)
+        rio_target_crs = rasterio.crs.CRS().from_user_input(self.config.raster_target_crs)
         raster = self.get_raster()
         out = raster.rio.reproject(rio_target_crs)
         out_file = str(self._raster_tmp_out_folder.joinpath(self.config.raster_file))
@@ -225,7 +239,8 @@ class CRSPreprocessor(Preprocessor):
         print(f"Transfered {self.config.raster_file_path} CRS from {raster.rio.crs} to {out.rio.crs}")
 
     @measure_time
-    def reproject_vector(self, **kwargs):
+    @print_timings("vector", "reproject")
+    def reproject_vector(self, *args, **kwargs):
         print(f"reprojecting vector file {self.config.vector_file}")
 
         vector = self.get_vector()
@@ -242,7 +257,8 @@ class FileConverterPreprocessor(Preprocessor):
         super().__init__(config, Path(f"/data/translate_tmp"))
 
     @measure_time
-    def raster_to_xyz(self):
+    @print_timings("raster", "translate")
+    def raster_to_xyz(self, *args, **kwargs):
         print(f"translating raster file {self.config.raster_file} to xyz")
 
         output_file = self._raster_tmp_out_folder \
@@ -261,7 +277,8 @@ class FileTypeProcessor(Preprocessor):
         super().__init__(config, Path(f"/data/convert_tmp"))
 
     @measure_time
-    def shape_to_wkt(self, system, **kwargs):
+    @print_timings(dataset="vector", comment="rasterize")
+    def shape_to_wkt(self, *args, **kwargs):
         print(f"converting file {self.config.vector_file} from shp to wkt")
 
         vector = self.get_vector()
@@ -290,7 +307,8 @@ class DataModelProcessor(Preprocessor):
         super().__init__(config, Path(f"/data/transform_tmp"))
 
     @measure_time
-    def vectorize_polygons(self):
+    @print_timings("raster", "vectorize")
+    def vectorize_polygons(self, *args, **kwargs):
         print(f"vectorizing raster file {self.config.raster_file} with polygons")
 
         output_file = self._raster_tmp_out_folder \
@@ -306,7 +324,8 @@ class DataModelProcessor(Preprocessor):
         self.update_raster_folder()
         self.update_raster_suffix()
 
-    def vectorize_points(self):
+    @print_timings("raster", "vectorize")
+    def vectorize_points(self, *args, **kwargs):
         print(f"vectorizing raster file {self.config.raster_file} with points")
 
         output_file = self._raster_tmp_out_folder \
@@ -339,36 +358,37 @@ class DataModelProcessor(Preprocessor):
         else:
             raise Exception(f"Invalid Raster Target Suffix provided: {self.config.raster_target_suffix}")
 
-    @measure_time
-    def rasterize(
-            self, file: str, pixel_size=10, nod_data=0, options=None, filters=None, **kwargs
-    ):
-        print(f"rasterizing vector file {self.config.vector_file}")
-        output_file = self.config.vector_file_path.with_suffix(self.config.vector_target_suffix)
-        # output = f"{self.output}/{self.vector_path.stem}.tif"
-        open_shp = ogr.Open(file)
-        shp_layer = open_shp.GetLayer()
-        source_srs = shp_layer.GetSpatialRef()
-        for filter in filters:
-            shp_layer.SetAttributeFilter(filter)
-        x_min, x_max, y_min, y_max = shp_layer.GetExtent()
-        # calculate raster resolution
-        x_res = int((x_max - x_min) / pixel_size)
-        y_res = int((y_max - y_min) / pixel_size)
-        # set the image type for export
-        driver = gdal.GetDriverByName("GTiff")
-        new_raster = driver.Create(str(output_file), x_res, y_res, 1, gdal.GDT_Float32)
-        new_raster.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
-        new_raster.SetProjection(source_srs.ExportToWkt())
-        # get the raster band we want to export too
-        raster_band = new_raster.GetRasterBand(1)
-        # assign the no data value to empty cells
-        raster_band.SetNoDataValue(nod_data)
-        # run vector to raster on new raster with input Shapefile
-        gdal.RasterizeLayer(new_raster, [1], shp_layer, options=options)
-
-        self.update_vector_folder()
-        self.update_vector_suffix()
+    # @measure_time
+    # @print_timings("vector", "rasterize")
+    # def rasterize(
+    #         self, file: str, pixel_size=10, nod_data=0, options=None, filters=None, **kwargs
+    # ):
+    #     print(f"rasterizing vector file {self.config.vector_file}")
+    #     output_file = self.config.vector_file_path.with_suffix(self.config.vector_target_suffix)
+    #     # output = f"{self.output}/{self.vector_path.stem}.tif"
+    #     open_shp = ogr.Open(file)
+    #     shp_layer = open_shp.GetLayer()
+    #     source_srs = shp_layer.GetSpatialRef()
+    #     for filter in filters:
+    #         shp_layer.SetAttributeFilter(filter)
+    #     x_min, x_max, y_min, y_max = shp_layer.GetExtent()
+    #     # calculate raster resolution
+    #     x_res = int((x_max - x_min) / pixel_size)
+    #     y_res = int((y_max - y_min) / pixel_size)
+    #     # set the image type for export
+    #     driver = gdal.GetDriverByName("GTiff")
+    #     new_raster = driver.Create(str(output_file), x_res, y_res, 1, gdal.GDT_Float32)
+    #     new_raster.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+    #     new_raster.SetProjection(source_srs.ExportToWkt())
+    #     # get the raster band we want to export too
+    #     raster_band = new_raster.GetRasterBand(1)
+    #     # assign the no data value to empty cells
+    #     raster_band.SetNoDataValue(nod_data)
+    #     # run vector to raster on new raster with input Shapefile
+    #     gdal.RasterizeLayer(new_raster, [1], shp_layer, options=options)
+    #
+    #     self.update_vector_folder()
+    #     self.update_vector_suffix()
 
 
 def main():
@@ -390,12 +410,8 @@ def main():
     # todo if CRS already correct
 
     crs_preprocessor = CRSPreprocessor(preprocess_config)
-    print(f"benchi_marker,{time()},start,preprocess,{preprocess_config.system},raster,reproject")
     crs_preprocessor.reproject_raster(log_time=crs_preprocessor.logger)
-    print(f"benchi_marker,{time()},end,preprocess,{preprocess_config.system},raster,reproject")
-    print(f"benchi_marker,{time()},start,preprocess,{preprocess_config.system},vector,reproject")
     crs_preprocessor.reproject_vector(log_time=crs_preprocessor.logger)
-    print(f"benchi_marker,{time()},end,preprocess,{preprocess_config.system},vector,reproject")
 
     # TODO if raster -> raster needs to be converted
 
@@ -404,27 +420,19 @@ def main():
     if preprocess_config.system in capabilities["vectorize"]:
         if preprocess_config.vectorization_type == VectorizationType.TO_POLYGONS:
             data_preprocessor = DataModelProcessor(preprocess_config)
-            print(f"benchi_marker,{time()},start,preprocess,{preprocess_config.system},raster,vectorize")
             data_preprocessor.vectorize_polygons()
-            print(f"benchi_marker,{time()},end,preprocess,{preprocess_config.system},raster,vectorize")
         elif preprocess_config.vectorization_type == VectorizationType.TO_POINTS:
             file_converter = FileConverterPreprocessor(preprocess_config)
-            print(f"benchi_marker,{time()},start,preprocess,{preprocess_config.system},raster,transform")
             file_converter.raster_to_xyz()
-            print(f"benchi_marker,{time()},end,preprocess,{preprocess_config.system},raster,transform")
 
             data_preprocessor = DataModelProcessor(preprocess_config)
-            print(f"benchi_marker,{time()},start,preprocess,{preprocess_config.system},raster,vectorize")
             data_preprocessor.vectorize_points()
-            print(f"benchi_marker,{time()},end,preprocess,{preprocess_config.system},raster,vectorize")
 
     # todo fi rasterize
 
     if preprocess_config.system in capabilities["rasterize"]:
         file_type_preprocessor = FileTypeProcessor(preprocess_config)
-        print(f"benchi_marker,{time()},start,preprocess,{preprocess_config.system},vector,rasterize")
         file_type_preprocessor.shape_to_wkt(log_time=file_type_preprocessor.logger)
-        print(f"benchi_marker,{time()},end,preprocess,{preprocess_config.system},vector,rasterize")
         print(file_type_preprocessor.logger)
 
     preprocess_config.copy_to_output()

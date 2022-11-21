@@ -4,9 +4,8 @@ from datetime import datetime
 from pathlib import Path
 from time import sleep
 
-from hub.benchmarkrun.measurementslocation import MeasurementsLocation
-from hub.evaluation.main import Evaluator
 from hub.benchmarkrun.benchmark_run import BenchmarkRun
+from hub.evaluation.main import Evaluator
 from hub.utils.fileio import FileIO
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.network import NetworkManager

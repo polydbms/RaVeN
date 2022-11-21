@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.benchmarkrun.host_params import HostParameters
 from hub.benchmarkrun.measurementslocation import MeasurementsLocation
