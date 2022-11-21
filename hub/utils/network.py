@@ -24,7 +24,11 @@ class NetworkManager:
         self.socks_proxy = None
         self.measure_docker = None
 
-        self.ssh_options = f"-o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {self.private_key_path}"
+        self.ssh_options = f"" \
+                           f"-F ssh/config " \
+                           f"-o 'StrictHostKeyChecking=no' " \
+                           f"-o 'IdentitiesOnly=yes' " \
+                           f"-i {self.private_key_path}"
         self.ssh_command = (
             f"ssh {self.ssh_connection} {self.ssh_options}"
         )

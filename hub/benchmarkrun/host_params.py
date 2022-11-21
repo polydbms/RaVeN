@@ -9,8 +9,8 @@ class HostParameters:
     _public_key_path: Path
 
     def __init__(self,
-                 public_key_path: str,
                  ssh_connection: str,
+                 public_key_path: str,
                  host_base_path: Path,
                  controller_result_folder: str):
         self._public_key_path = Path(public_key_path)

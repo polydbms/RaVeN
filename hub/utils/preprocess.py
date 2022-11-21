@@ -245,7 +245,7 @@ class CRSPreprocessor(Preprocessor):
 
         vector = self.get_vector()
         out = vector.to_crs(self.config.vector_target_crs)
-        out.to_file(self._vector_tmp_out_folder)
+        out.to_file(self._vector_tmp_out_folder.joinpath(self.config.vector_file), encoding="UTF-8")
 
         self.update_vector_folder()
 
@@ -337,7 +337,7 @@ class DataModelProcessor(Preprocessor):
             "values": points["values"]
         })
 
-        geo_points.to_file(str(output_file), driver=self.get_driver_name(output_file))
+        geo_points.to_file(str(output_file), driver=self.get_driver_name(output_file), encoding="UTF-8")
 
         print(f"done vectorizing with polygons, saved output to {output_file}")
 

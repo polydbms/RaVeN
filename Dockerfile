@@ -31,6 +31,7 @@ CMD [ "/bin/bash" ]
 FROM osgeo/gdal:ubuntu-small-3.6.0 as benchi
 COPY --from=requirements /root/.local /root/.local
 RUN apt update && apt upgrade -y && apt install openssh-client -y
+RUN mkdir -p ssh/controlmasters
 WORKDIR /hub
 ADD capabilities.yaml capabilities.yaml
 ADD configuration.py configuration.py

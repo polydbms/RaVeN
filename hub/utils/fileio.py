@@ -80,15 +80,12 @@ class FileIO:
         with open(PROJECT_ROOT.joinpath(filename), mode="r") as c:
             try:
                 yamlfile = yaml.safe_load(c)
-                public_key_path = yamlfile["experiments"]["public_key_path"]
-                ssh_connection = yamlfile["experiments"]["ssh_connection"]
-                host_base_path = Path(yamlfile["experiments"]["host_base_path"])
-                results_folder = yamlfile["experiments"]["results_folder"]
 
-                return HostParameters(public_key_path,
-                                      ssh_connection,
-                                      host_base_path,
-                                      results_folder)
+                return [HostParameters(h["host"],  # TODO rename to "host"
+                                       h["public_key_path"],
+                                       Path(h["base_path"]),
+                                       yamlfile["experiments"]["controller"]["results_folder"])
+                        for h in yamlfile["experiments"]["hosts"]][0]  # FIXME remove [0] eventually
 
             except yaml.YAMLError as exc:
                 raise Exception(f"error while processing host parameters: {exc}")

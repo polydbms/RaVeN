@@ -9,8 +9,8 @@ class Ingestor:
                  benchmark_params: BenchmarkParameters) -> None:
         self.logger = {}
         self.network_manager = network_manager
-        self.vector_path = vector.docker_file
-        self.raster_path = raster.docker_file
+        self.vector = vector
+        self.raster = raster
         self.host_base_path = self.network_manager.host_params.host_base_path
         self.benchmark_params = benchmark_params
 
@@ -19,14 +19,18 @@ class Ingestor:
         command = self.host_base_path.joinpath(f"config/postgis/ingest.sh")
         self.network_manager.run_ssh(
             f"{command} "
-            f"-r={self.raster_path} "
+            f"-r={self.raster.docker_file_preprocessed} "
+            f"-n={self.raster.name} "
             f"-s={self.benchmark_params.raster_target_crs.to_epsg()} "
-            f"-t={self.benchmark_params.raster_tile_size}"
+            f"-t={self.benchmark_params.raster_tile_size} "
         )
 
     @measure_time
     def ingest_vector(self, **kwargs):
         command = self.host_base_path.joinpath(f"config/postgis/ingest.sh")
         self.network_manager.run_ssh(
-            f"{command} -v={self.vector_path} -s={self.benchmark_params.vector_target_crs.to_epsg()}"
+            f"{command} "
+            f"-v={self.vector.docker_file_preprocessed} "
+            f"-n={self.vector.name} "
+            f"-s={self.benchmark_params.vector_target_crs.to_epsg()} "
         )

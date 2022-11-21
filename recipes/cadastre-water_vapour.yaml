@@ -1,11 +1,13 @@
 experiments:
-  public_key_path: ~/.ssh/lrv.pub
+  controller:
+    results_folder: ~/git/master-raster-vector/data/results
+  hosts:
+    - host: "sgx12.dima.tub"
+      base_path: /local-ssd/gdusella-ldap
+      public_key_path: ~/.ssh/lrv.pub
   data: # if undefined cmd parameters can be used to manually define data
     raster: /home/gereon/git/master-raster-vector/benchi/data/sentinel2a_mol_band9
     vector: /home/gereon/git/master-raster-vector/benchi/data/ALKIS_kataster_MOL
-  host_base_path: /local-ssd/gdusella-ldap
-  results_folder: ~/git/master-raster-vector/data/results
-  ssh_connection: "sgx12.dima.tub" # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
   workload:
     get:
       vector:
