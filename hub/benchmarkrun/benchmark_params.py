@@ -3,9 +3,11 @@ import sys
 from pyproj import CRS
 
 from hub.enums.rasterfiletype import RasterFileType
+from hub.enums.stage import Stage
 from hub.enums.vectorfiletype import VectorFileType
 from hub.benchmarkrun.tilesize import TileSize
 from hub.enums.vectorizationtype import VectorizationType
+from hub.utils.datalocation import DataType
 from hub.utils.system import System
 
 
@@ -24,6 +26,8 @@ class BenchmarkParameters:
     vector_resolution: float  # as reduction factor
 
     iterations: int
+    align_to_crs: DataType
+    align_crs_at_stage: Stage
 
     def __init__(self,
                  system: System,
@@ -36,7 +40,9 @@ class BenchmarkParameters:
                  vector_target_format=None,
                  vector_target_crs=None,
                  vector_resolution=1.0,
-                 iterations=1) -> None:
+                 iterations=1,
+                 align_to_crs=None,
+                 align_crs_at_stage=None) -> None:
         self.system = system
 
         self.raster_target_format = raster_target_format
@@ -51,6 +57,8 @@ class BenchmarkParameters:
         self.vector_resolution = vector_resolution
 
         self.iterations = iterations
+        self.align_to_crs = align_to_crs
+        self.align_crs_at_stage = align_crs_at_stage
 
     def __str__(self):
         return "_".join([
@@ -64,7 +72,9 @@ class BenchmarkParameters:
             self.vector_target_format.value.lstrip(".") if self.vector_target_format is not None else "",
             str(self.vector_target_crs.to_epsg()) if self.vector_target_crs is not None else "",
             str(self.vector_resolution).replace(".", "-"),
-            str(self.iterations)
+            str(self.iterations),
+            f"AlignTo-{self.align_to_crs.value}",
+            f"AlignAt-{self.align_crs_at_stage.value}",
         ])
 
     def validate(self, capabilities) -> bool:

@@ -35,6 +35,9 @@ experiments:
     order:
       vector: 
         - name
+#  parameters:
+#    raster_target_crs:
+#      - epsg:25833
   systems: 
     - name: postgis
       port: 25432

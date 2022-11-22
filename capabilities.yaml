@@ -4,6 +4,18 @@ systems:
   vectorize:
     - omnisci
     - sedona
-  same_crs: []
+  same_crs:
+    - postgis
   variable_tile_size:
     - postgis
+#  align_crs_at:
+#    preprocess:
+#      - rasdaman
+#      - postgis
+#      - omnisci
+#      - sedona
+#    execute:
+#      - rasdaman
+#      - postgis
+#      - omnisci
+#      - sedona

@@ -13,8 +13,8 @@ from hub.enums.vectorfiletype import VectorFileType
 
 
 class DataType(Enum):
-    RASTER = 1
-    VECTOR = 2
+    RASTER = "raster"
+    VECTOR = "vector"
 
 
 class FileType(Enum):

@@ -3,10 +3,12 @@ import copy
 from pyproj import CRS
 
 from hub.enums.rasterfiletype import RasterFileType
+from hub.enums.stage import Stage
 from hub.enums.vectorfiletype import VectorFileType
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.enums.vectorizationtype import VectorizationType
 from hub.benchmarkrun.tilesize import TileSize
+from hub.utils.datalocation import DataType
 from hub.utils.system import System
 
 
@@ -25,6 +27,7 @@ class BenchmarkRunFactory:
         params_key = list(params_dict.keys()).pop()
 
         updated_params_list = copy.copy(params_list)
+        param: BenchmarkParameters
         for param in params_list:
             match params_key:
                 case "raster_format":
@@ -124,6 +127,31 @@ class BenchmarkRunFactory:
 
                 case "iterations":
                     param.iterations = int(params_dict["iterations"])
+
+                case "align_to_crs":
+                    match params_dict["align_to_crs"]:
+                        case "vector":
+                            param.align_to_crs = DataType.VECTOR
+                        case "raster":
+                            param.align_to_crs = DataType.RASTER
+                        case "both":
+                            p_v = copy.deepcopy(param)
+                            p_v.align_to_crs = DataType.VECTOR
+                            updated_params_list.append(p_v)
+
+                            p_r = copy.deepcopy(param)
+                            p_r.align_to_crs = DataType.RASTER
+                            updated_params_list.append(p_r)
+
+                            updated_params_list.remove(param)
+
+                case "align_crs_at_stage":
+                    for s in params_dict["align_crs_at_stage"]:
+                        p = copy.deepcopy(param)
+                        p.align_crs_at_stage = Stage.get_by_value(s)
+                        updated_params_list.append(p)
+
+                    updated_params_list.remove(param)
 
         del params_dict[params_key]
         return self._create_param_iter_step(params_dict, updated_params_list)

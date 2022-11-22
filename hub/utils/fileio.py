@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import yaml
+from pyproj import CRS
 
 from configuration import PROJECT_ROOT
 from hub.benchmarkrun.factory import BenchmarkRunFactory
@@ -59,6 +60,12 @@ class FileIO:
 
                         benchmark_params.raster_target_format = raster_target_format
                         raster_dl.target_suffix = raster_target_format
+
+                    if
+
+                    # if benchmark_params.system.name in capabilities["same_crs"] and benchmark_params.align_to_crs is None:
+                    #     benchmark_params.vector_target_crs = CRS.from_user_input(benchmark_params.raster_target_crs)
+                    #     benchmark_params.align_to_crs
 
                     benchmark_params.validate(capabilities)
 
