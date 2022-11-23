@@ -1,0 +1,45 @@
+experiments:
+  controller:
+    results_folder: /data/results
+  hosts:
+    - host: "sgx12.dima.tub"
+      base_path: /local-ssd/gdusella-ldap
+      public_key_path: ssh/keys/rasvec-docker.pub
+  data: # if undefined cmd parameters can be used to manually define data
+    raster: /data/sentinel2a_mol_band3
+    vector: /data/ALKIS_kataster_MOL
+  workload:
+    get: 
+      vector:
+        - flstkennz
+      raster: 
+        - sval:
+            aggregations:
+              - avg
+              - max
+              - min
+              - count
+              - sum
+    join:
+      table1: vector
+      table2: raster
+      condition: intersect(raster, vector)
+    condition: 
+      vector: 
+        - nutzart = 'Landwirtschaft'
+      raster:
+        - sval >= 0
+    group:
+      vector: 
+        - flstkennz
+    order:
+      vector: 
+        - flstkennz
+  systems: 
+    - name: postgis
+      port: 25432
+    - name: omnisci
+      port: 6274
+    - name: rasdaman
+      port: 8080
+    - name: sedona

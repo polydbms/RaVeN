@@ -8,7 +8,7 @@ from hub.enums.vectorfiletype import VectorFileType
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.enums.vectorizationtype import VectorizationType
 from hub.benchmarkrun.tilesize import TileSize
-from hub.utils.datalocation import DataType
+from hub.enums.datatype import DataType
 from hub.utils.system import System
 
 

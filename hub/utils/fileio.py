@@ -8,9 +8,11 @@ from hub.benchmarkrun.factory import BenchmarkRunFactory
 from hub.benchmarkrun.benchmark_run import BenchmarkRun
 from hub.benchmarkrun.host_params import HostParameters
 from hub.enums.rasterfiletype import RasterFileType
+from hub.enums.stage import Stage
 from hub.enums.vectorfiletype import VectorFileType
 from hub.utils.capabilities import Capabilities
-from hub.utils.datalocation import DataLocation, DataType
+from hub.utils.datalocation import DataLocation
+from hub.enums.datatype import DataType
 from hub.utils.system import System
 
 
@@ -61,11 +63,18 @@ class FileIO:
                         benchmark_params.raster_target_format = raster_target_format
                         raster_dl.target_suffix = raster_target_format
 
-                    if
+                    if benchmark_params.system.name in capabilities["same_crs"]:
+                        if benchmark_params.align_to_crs is None:
+                            benchmark_params.align_to_crs = DataType.VECTOR
 
-                    # if benchmark_params.system.name in capabilities["same_crs"] and benchmark_params.align_to_crs is None:
-                    #     benchmark_params.vector_target_crs = CRS.from_user_input(benchmark_params.raster_target_crs)
-                    #     benchmark_params.align_to_crs
+                        if benchmark_params.align_crs_at_stage is None:
+                            benchmark_params.align_crs_at_stage = Stage.PREPROCESS
+
+                    match benchmark_params.align_to_crs:
+                        case DataType.VECTOR:
+                            benchmark_params.raster_target_crs = CRS.from_user_input(benchmark_params.vector_target_crs)
+                        case DataType.RASTER:
+                            benchmark_params.vector_target_crs = CRS.from_user_input(benchmark_params.raster_target_crs)
 
                     benchmark_params.validate(capabilities)
 
@@ -77,7 +86,7 @@ class FileIO:
                         benchmark_params
                     ))
 
-                return runs
+                return list(set(runs))
             except yaml.YAMLError as exc:
                 print(exc)
                 return []

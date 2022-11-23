@@ -1,5 +1,4 @@
 import zipfile
-from enum import Enum
 from pathlib import Path
 
 import geopandas.io.file
@@ -8,23 +7,13 @@ from rioxarray import rioxarray
 
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.benchmarkrun.host_params import HostParameters
+from hub.enums.datatype import DataType
+from hub.enums.filetype import FileType
 from hub.enums.rasterfiletype import RasterFileType
 from hub.enums.vectorfiletype import VectorFileType
 
 
-class DataType(Enum):
-    RASTER = "raster"
-    VECTOR = "vector"
-
-
-class FileType(Enum):
-    FILE = 1
-    FOLDER = 2
-    ZIP_ARCHIVE = 3
-
-
 class DataLocation:
-    # _system: System
     _host_base_dir: Path
     _file: Path
     _data_type: DataType

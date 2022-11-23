@@ -6,6 +6,7 @@ systems:
     - sedona
   same_crs:
     - postgis
+    - sedona
   variable_tile_size:
     - postgis
 #  align_crs_at:

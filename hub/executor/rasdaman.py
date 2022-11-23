@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import geopandas as gpd
 import requests
 
+from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
@@ -16,12 +17,16 @@ from hub.utils.network import NetworkManager
 
 
 class Executor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager) -> None:
+    def __init__(self, vector_path: DataLocation,
+                 raster_path: DataLocation,
+                 network_manager: NetworkManager,
+                 benchmark_params: BenchmarkParameters) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
         self.vector_path = vector_path
         self.raster_path = raster_path
+        self.benchmark_params = benchmark_params
         socks_proxy_url = self.network_manager.open_socks_proxy()
         self.proxies = dict(http=socks_proxy_url, https=socks_proxy_url)
         self.transporter.get_file(

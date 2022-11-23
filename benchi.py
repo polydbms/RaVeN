@@ -5,6 +5,7 @@ from pathlib import Path
 from time import sleep
 
 from hub.benchmarkrun.benchmark_run import BenchmarkRun
+from hub.enums.stage import Stage
 from hub.evaluation.main import Evaluator
 from hub.utils.fileio import FileIO
 from hub.utils.filetransporter import FileTransporter
@@ -53,17 +54,24 @@ class Setup:
         network_manager.start_measure_docker("preprocess", prerecord=False)
         command = run.host_params.host_base_path.joinpath(f'config/{system}/preprocess.sh')
 
+        vector_target_crs = run.benchmark_params.vector_target_crs.to_epsg() \
+            if run.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
+            else run.vector.get_crs().to_epsg()
+        raster_target_crs = run.benchmark_params.raster_target_crs.to_epsg() \
+            if run.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
+            else run.raster.get_crs().to_epsg()
+
         network_manager.run_ssh(
             f'{command} "--system {system} '
             f'--vector_path {run.vector.docker_dir} '
             f'--vector_target_suffix {run.benchmark_params.vector_target_format.value} '
             f'--vector_output_folder {run.vector.docker_dir_preprocessed} '
-            f'--vector_target_crs {run.benchmark_params.vector_target_crs.to_epsg()} '
+            f'--vector_target_crs {vector_target_crs} '
             f'--vectorization_type {run.benchmark_params.vectorize_type.value} '
             f'--raster_path {run.raster.docker_dir} '
             f'--raster_target_suffix {run.benchmark_params.raster_target_format.value} '
             f'--raster_output_folder {run.raster.docker_dir_preprocessed} '
-            f'--raster_target_crs {run.benchmark_params.raster_target_crs.to_epsg()} '
+            f'--raster_target_crs {raster_target_crs} '
             f'"',
             log_time=self.logger,
         )
@@ -90,7 +98,7 @@ class Setup:
 
         network_manager.start_measure_docker("execution")
         Executor = self.__importer(f"hub.executor.{system}", "Executor")
-        executor = Executor(run.vector, run.raster, network_manager)
+        executor = Executor(run.vector, run.raster, network_manager, run.benchmark_params)
 
         result_files: list[Path] = []
         if run.benchmark_params.iterations:
@@ -107,18 +115,24 @@ class Setup:
 
         return result_files
 
-    def benchmark(self, experiment_file_name, system=None, post_cleanup=True) -> list[Path]:
+    def benchmark(self, experiment_file_name, system=None, post_cleanup=True, single_run=True) -> list[Path]:
         runs = FileIO.read_experiments_config(experiment_file_name, system)
         print(f"running {len(runs)} experiments")
         print([str(r.benchmark_params) for r in runs])
 
         result_files = []
         if system:
-            run = next(r for r in runs if r.benchmark_params.system.name == system)
-            print(str(run))
-            result_files.extend(self.__run_tasks(run))
-            if post_cleanup:
-                self.clean(experiment_file_name)
+            if single_run:
+                run = next(r for r in runs if r.benchmark_params.system.name == system)
+                print(str(run))
+                result_files.extend(self.__run_tasks(run))
+                if post_cleanup:
+                    self.clean(experiment_file_name)
+            else:
+                for r in runs:
+                    result_files.extend(self.__run_tasks(r))
+                    self.clean(experiment_file_name)
+
         else:
             for r in runs:
                 result_files.extend(self.__run_tasks(r))
@@ -158,12 +172,16 @@ def main():
                         help="Whether to run a cleanup after running the benchmark. Only works together with '--system <system>'",
                         action=argparse.BooleanOptionalAction,
                         default=True)
+    parser.add_argument("--singlerun",
+                        help="Whether to run only one the first experiment. Only works together with '--system <system>'",
+                        action=argparse.BooleanOptionalAction,
+                        default=True)
     args = parser.parse_args()
     print(args)
     setup = Setup()
     if args.command == "start":
         for experiment in args.experiment:
-            result_files = setup.benchmark(experiment, args.system, args.postcleanup)
+            result_files = setup.benchmark(experiment, args.system, args.postcleanup, args.singlerun)
 
             if len(result_files) > 1:
                 setup.evaluate(experiment, result_files)

@@ -3,21 +3,28 @@ from pathlib import Path
 
 from jinja2 import Template
 
+from hub.benchmarkrun.benchmark_params import BenchmarkParameters
+from hub.enums.stage import Stage
 from hub.evaluation.measure_time import measure_time
 from hub.executor._sqlbased import SQLBased
 from hub.utils.datalocation import DataLocation
+from hub.enums.datatype import DataType
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.network import NetworkManager
 
 
 class Executor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager) -> None:
+    def __init__(self, vector_path: DataLocation,
+                 raster_path: DataLocation,
+                 network_manager: NetworkManager,
+                 benchmark_params: BenchmarkParameters) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
         self.host_base_path = self.network_manager.host_params.host_base_path
-        self.table_vector = vector_path.name
-        self.table_raster = raster_path.name
+        self.vector = vector_path
+        self.raster = raster_path
+        self.benchmark_params = benchmark_params
 
     def __handle_aggregations(self, type, features):
         return SQLBased.handle_aggregations(type, features)
@@ -49,16 +56,34 @@ class Executor:
         order = self.__parse_order(workload["order"]) if "order" in workload else ""
         limit = f'limit {workload["limit"]}' if "limit" in workload else ""
         query = f"{selection} {join} {condition} {group} {order} {limit}"
+
+        raster_geom = "raster.geometry"
+        vector_geom = "vector.geometry"
+        if self.benchmark_params.align_crs_at_stage == Stage.EXECUTE:
+            match self.benchmark_params.align_to_crs:
+                case DataType.RASTER:
+                    vector_geom = f"ST_Transform(" \
+                                  f"{vector_geom}, " \
+                                  f"epsg:{self.vector.get_crs().to_epsg()}, " \
+                                  f"epsg:{self.benchmark_params.vector_target_crs.to_epsg()}" \
+                                  f")"
+                case DataType.VECTOR:
+                    raster_geom = f"ST_Transform(" \
+                                  f"{raster_geom}, " \
+                                  f"epsg:{self.raster.get_crs().to_epsg()}, " \
+                                  f"epsg:{self.benchmark_params.raster_target_crs.to_epsg()}" \
+                                  f")"
+
         if "intersect" in query:
             query = re.sub(
                 "(intersect\(\w*, \w*\))",
-                "ST_Intersects(raster.geometry, vector.geometry)",
+                f"ST_Intersects({raster_geom}, {vector_geom})",
                 query,
             )
         if "contains" in query:
             query = re.sub(
                 "(contains\(\w*, \w*\))",
-                "ST_Contains(raster.geometry, vector.geometry)",
+                f"ST_Contains({raster_geom}, {vector_geom})",
                 query,
             )
         query = re.sub(
@@ -72,8 +97,10 @@ class Executor:
     @measure_time
     def run_query(self, workload, **kwargs):
         query = self.__translate(workload)
-        query = query.replace("{self.table1}", self.table_vector)
-        query = query.replace("{self.table2}", self.table_raster)
+        query = query.replace("{self.table1}", self.vector.name)
+        query = query.replace("{self.table2}", self.raster.name)
+        print(f"query to run: {query}")
+
         rendered = self.__render_template(query)
         self.__save_template(rendered)
         self.transporter.send_file(
