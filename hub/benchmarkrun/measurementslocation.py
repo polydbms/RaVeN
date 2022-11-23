@@ -12,9 +12,11 @@ class MeasurementsLocation:
             .joinpath(self._file_prepend)
         self._controller_measurements_folder.mkdir(parents=True, exist_ok=True)
         self._timings_file = self._controller_measurements_folder.joinpath("timings.csv")
+        self._run_folder = host_params.run_folder
 
         self._host_measurements_folder = host_params.host_base_path \
             .joinpath("measurements") \
+            .joinpath(self._run_folder) \
             .joinpath(self._file_prepend)
 
         with self._timings_file.open("a") as f:

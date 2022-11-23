@@ -227,33 +227,47 @@ class CRSPreprocessor(Preprocessor):
     def reproject_raster(self, *args, **kwargs):
         print(f"reprojecting raster file {self.config.raster_file}")
 
-        rio_target_crs = rasterio.crs.CRS().from_user_input(self.config.raster_target_crs)
-        raster = self.get_raster()
-        out = raster.rio.reproject(rio_target_crs)
-        out_file = str(self._raster_tmp_out_folder.joinpath(self.config.raster_file))
-        try:
-            out.rio.to_raster(out_file)
-        except OverflowError:
-            print("Unable to parse nodata value correctly. Setting to 0")
-            out.rio.write_nodata(0, inplace=True)
-            out.rio.to_raster(out_file)
+        # rio_target_crs = rasterio.crs.CRS().from_user_input(self.config.raster_target_crs)
+        # raster = self.get_raster()
+        # out = raster.rio.reproject(rio_target_crs)
+        output_file = self._raster_tmp_out_folder.joinpath(self.config.raster_file)
+        # try:
+        #     out.rio.to_raster(str(output_file))
+        # except OverflowError:
+        #     print("Unable to parse nodata value correctly. Setting to 0")
+        #     out.rio.write_nodata(0, inplace=True)
+        #     out.rio.to_raster(str(output_file))
+
+        subprocess.call(f"gdalwarp -t_srs {self.config.raster_target_crs} {self.config.raster_file_path} {output_file}",
+                        shell=True)
 
         self.update_raster_folder()
 
-        print(f"Transfered {self.config.raster_file_path} CRS from {raster.rio.crs} to {out.rio.crs}")
+        print(f"Transfered {self.config.raster_file_path} CRS to {self.config.raster_target_crs}")
+        # print(f"Transfered {self.config.raster_file_path} CRS from {raster.rio.crs} to {out.rio.crs}")
 
     @measure_time
     @print_timings("vector", "reproject")
     def reproject_vector(self, *args, **kwargs):
         print(f"reprojecting vector file {self.config.vector_file}")
 
-        vector = self.get_vector()
-        out = vector.to_crs(self.config.vector_target_crs)
-        out.to_file(self._vector_tmp_out_folder.joinpath(self.config.vector_file), encoding="UTF-8")
+        # vector = self.get_vector()
+        # out = vector.to_crs(self.config.vector_target_crs)
+        # out.to_file(self._vector_tmp_out_folder.joinpath(self.config.vector_file), encoding="UTF-8")
+
+        output_file = self._vector_tmp_out_folder.joinpath(self.config.vector_file)
+        subprocess.call(f"ogr2ogr "
+                        f"-t_srs {self.config.vector_target_crs} "
+                        f"{output_file} "
+                        f"{self.config.vector_file_path} "
+                        f"-lco ENCODING=UTF-8 "
+                        f"",
+                        shell=True)
 
         self.update_vector_folder()
 
-        print(f"Transfered {self.config.vector_file_path} CRS from {vector.crs} to {out.crs}")
+        print(f"Transfered {self.config.vector_file_path} CRS to {self.config.vector_target_crs}")
+        # print(f"Transfered {self.config.vector_file_path} CRS from {vector.crs} to {out.crs}")
 
 
 class FileConverterPreprocessor(Preprocessor):

@@ -1,3 +1,4 @@
+import math
 import subprocess
 import time
 from pathlib import Path
@@ -53,13 +54,25 @@ class NetworkManager:
             process = subprocess.Popen(
                 command, stdout=subprocess.PIPE, universal_newlines=True, shell=True
             )
+            last_line = ""
+            last_line_cntr = 1
             while True:
                 output = str(process.stdout.readline())
                 if "benchi_marker" in output:
                     self.write_timings_marker(output)
 
                 if not output == "":
-                    print(output.strip())
+                    if output == last_line:
+                        if last_line_cntr % (10**(math.floor(math.log10(last_line_cntr)))) == 0:
+                            print(f"{last_line_cntr} ", end="")
+
+                        last_line_cntr += 1
+                    else:
+                        if last_line_cntr > 1:
+                            print(last_line_cntr)
+                            last_line_cntr = 1
+
+                        print(output.strip())
 
                 return_code = process.poll()
                 if return_code is not None:
@@ -69,6 +82,8 @@ class NetworkManager:
                     for output in process.stdout.readlines():
                         print(output.strip())
                     break
+
+                last_line = output
         except Exception as e:
             print(e)
 
