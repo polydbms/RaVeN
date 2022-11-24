@@ -60,8 +60,11 @@ class BenchmarkRunFactory:
                     if param.system.name in self.capabilities["variable_tile_size"]:
                         for t in params_dict["raster_tile_size"]:
                             p = copy.deepcopy(param)
-                            width, height = tuple(str(t).split("x"))
-                            p.raster_tile_size = TileSize(int(width), int(height))
+                            if str(t) == "auto":
+                                p.raster_tile_size = TileSize(-1, -1)
+                            else:
+                                width, height = tuple(str(t).split("x"))
+                                p.raster_tile_size = TileSize(int(width), int(height))
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)

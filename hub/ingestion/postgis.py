@@ -22,7 +22,7 @@ class Ingestor:
             f"-r={self.raster.docker_file_preprocessed} "
             f"-n={self.raster.name} "
             f"-s={self.benchmark_params.raster_target_crs.to_epsg()} "
-            f"-t={self.benchmark_params.raster_tile_size} "
+            f"-t={self.benchmark_params.raster_tile_size.postgis_str} "
         )
 
     @measure_time

@@ -84,7 +84,7 @@ class BenchmarkParameters:
         raster_type = VectorFileType if self.system.name in capabilities["vectorize"] else RasterFileType
         raster_type_check = isinstance(self.raster_target_format, raster_type)
 
-        raster_tile_size_check = self.raster_tile_size.width > 0 and self.raster_tile_size.height > 0
+        # raster_tile_size_check = self.raster_tile_size.width > 0 and self.raster_tile_size.height > 0
         raster_depth_check = self.raster_depth > 0
         raster_resolution_check = 0 < self.raster_resolution <= 1
 
@@ -96,8 +96,8 @@ class BenchmarkParameters:
 
         vector_resolution_check = 0 < self.vector_resolution <= 1
 
+        # raster_tile_size_check and \
         if raster_type_check and \
-                raster_tile_size_check and \
                 raster_depth_check and \
                 raster_resolution_check and \
                 vector_type_check and \
@@ -107,8 +107,8 @@ class BenchmarkParameters:
             err_msg = f"Could not validate benchmark params {self}: "
             if not raster_type_check:
                 err_msg += f"raster target format check failed: {self.raster_target_format}, "
-            if not raster_tile_size_check:
-                err_msg += f"raster tile size check failed: {self.raster_tile_size}, "
+            # if not raster_tile_size_check:
+            #     err_msg += f"raster tile size check failed: {self.raster_tile_size}, "
             if not raster_depth_check:
                 err_msg += f"raster depth check failed: {self.raster_depth}, "
             if not raster_resolution_check:

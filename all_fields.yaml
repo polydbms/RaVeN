@@ -47,6 +47,7 @@ experiments:
       - 1x100
       - 10x10
       - 100x1
+      - auto
     raster_depth:
       - 1
       - 12
