@@ -149,12 +149,15 @@ class BenchmarkRunFactory:
                             updated_params_list.remove(param)
 
                 case "align_crs_at_stage":
-                    for s in params_dict["align_crs_at_stage"]:
-                        p = copy.deepcopy(param)
-                        p.align_crs_at_stage = Stage.get_by_value(s)
-                        updated_params_list.append(p)
+                    if param.system.name in self.capabilities["no_st_transform"]:
+                        param.align_crs_at_stage = Stage.PREPROCESS
+                    else:
+                        for s in params_dict["align_crs_at_stage"]:
+                            p = copy.deepcopy(param)
+                            p.align_crs_at_stage = Stage.get_by_value(s)
+                            updated_params_list.append(p)
 
-                    updated_params_list.remove(param)
+                        updated_params_list.remove(param)
 
         del params_dict[params_key]
         return self._create_param_iter_step(params_dict, updated_params_list)

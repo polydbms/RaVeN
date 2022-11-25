@@ -61,11 +61,7 @@ class Executor:
         raster_geom = "raster.geom"
         vector_geom = "vector.geom"
         if self.benchmark_params.align_crs_at_stage == Stage.EXECUTE:
-            match self.benchmark_params.align_to_crs:
-                case DataType.RASTER:
-                    vector_geom = f"ST_Transform({vector_geom}, {self.benchmark_params.vector_target_crs.to_epsg()})"
-                case DataType.VECTOR:
-                    raster_geom = f"ST_Transform({raster_geom}, {self.benchmark_params.raster_target_crs.to_epsg()})"
+            raise Exception("Cannot transform CRS in omnisci at execute, since everything is already in EPSG:4326")
 
         if "intersect" in query:
             query = re.sub(

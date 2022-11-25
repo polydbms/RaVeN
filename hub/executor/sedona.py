@@ -64,14 +64,14 @@ class Executor:
                 case DataType.RASTER:
                     vector_geom = f"ST_Transform(" \
                                   f"{vector_geom}, " \
-                                  f"epsg:{self.vector.get_crs().to_epsg()}, " \
-                                  f"epsg:{self.benchmark_params.vector_target_crs.to_epsg()}" \
+                                  f"'epsg:{self.vector.get_crs().to_epsg()}', " \
+                                  f"'epsg:{self.benchmark_params.vector_target_crs.to_epsg()}'" \
                                   f")"
                 case DataType.VECTOR:
                     raster_geom = f"ST_Transform(" \
                                   f"{raster_geom}, " \
-                                  f"epsg:{self.raster.get_crs().to_epsg()}, " \
-                                  f"epsg:{self.benchmark_params.raster_target_crs.to_epsg()}" \
+                                  f"'epsg:{self.raster.get_crs().to_epsg()}', " \
+                                  f"'epsg:{self.benchmark_params.raster_target_crs.to_epsg()}'" \
                                   f")"
 
         if "intersect" in query:

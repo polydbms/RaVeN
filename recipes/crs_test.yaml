@@ -2,7 +2,7 @@ experiments:
   controller:
     results_folder: ~/git/master-raster-vector/data/results
   hosts:
-    - host: "sgx12.dima.tub"
+    - host: "sgx13.dima.tub"
       base_path: /local-ssd/gdusella-ldap
       public_key_path: ~/.ssh/lrv.pub
   data: # if undefined cmd parameters can be used to manually define data
@@ -36,15 +36,15 @@ experiments:
       vector: 
         - name
   parameters:
-#    align_to_crs: both
+    align_to_crs: raster
     align_crs_at_stage:
 #      - preprocess
       - execute
   systems:
     - name: postgis
       port: 25432
-#    - name: omnisci
-#      port: 6274
-#    - name: rasdaman
-#      port: 8080
+    - name: omnisci
+      port: 6274
+    - name: rasdaman
+      port: 8080
     - name: sedona
