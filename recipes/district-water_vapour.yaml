@@ -1,15 +1,17 @@
 experiments:
-  public_key_path: ~/.ssh/lrv.pub
+  controller:
+    results_folder: ~/git/master-raster-vector/data/results
+  hosts:
+    - host: "sgx13.dima.tub"
+      base_path: /local-ssd/gdusella-ldap
+      public_key_path: ~/.ssh/lrv.pub
   data: # if undefined cmd parameters can be used to manually define data
     raster: /home/gereon/git/master-raster-vector/benchi/data/sentinel2a_mol_band9
-    vector: /home/gereon/git/master-raster-vector/benchi/data/ALKIS_kataster_MOL
-  host_base_path: /local-ssd/gdusella-ldap
-  results_folder: ~/git/master-raster-vector/data/results
-  ssh_connection: "sgx12.dima.tub" # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
+    vector: /home/gereon/git/master-raster-vector/benchi/data/ALKIS_bezirk_MOL
   workload:
     get: 
       vector:
-        - flstkennz
+        - schluessel
       raster: 
         - sval:
             aggregations:
@@ -23,17 +25,25 @@ experiments:
       table2: raster
       condition: intersect(raster, vector)
     condition: 
-      vector: 
-        - nutzart = 'Landwirtschaft'
+#      vector:
+#        - nutzart = 'Landwirtschaft'
       raster:
         - sval >= 0
     group:
       vector: 
-        - flstkennz
+        - schluessel
     order:
       vector: 
-        - flstkennz
-  systems: 
+        - schluessel
+  parameters:
+    vectorize_type:
+      - polygons
+      - points
+    raster_tile_size:
+      - 100x100
+      - 10x10
+      - 1830x1
+  systems:
     - name: postgis
       port: 25432
     - name: omnisci

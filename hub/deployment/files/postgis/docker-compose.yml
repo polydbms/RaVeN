@@ -10,6 +10,7 @@ services:
     volumes:
       - postgis-data:/var/lib/postgresql
       - ../../data:/data
+      - ../../config:/config
     environment:
       # If you need to create multiple database you can add coma separated databases eg gis,data
       - POSTGRES_DB=gis

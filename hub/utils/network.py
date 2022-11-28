@@ -1,54 +1,51 @@
-import json
+import math
 import subprocess
 import time
-from datetime import datetime
 from pathlib import Path
 from subprocess import Popen
 from typing import Any
 
+from hub.benchmarkrun.host_params import HostParameters
+from hub.benchmarkrun.measurementslocation import MeasurementsLocation
 from hub.evaluation.measure_time import measure_time
-from hub.utils.system import System
 
 
 class NetworkManager:
-    _system: System
-    host_measurements_folder: Path
+    _host_params: HostParameters
+    _measurements_loc: MeasurementsLocation | None
     socks_proxy: Popen[bytes] | Popen[Any]
     measure_docker: Popen[bytes] | Popen[Any]
 
-    def __init__(self, system: System) -> None:
-        self.ssh_connection = system.ssh_connection
-        self._system = system
-        self.private_key_path = system.public_key_path.with_suffix("")
+    def __init__(self, host_params: HostParameters, system_name: str, measurements_loc: MeasurementsLocation | None) -> None:
+        self._host_params = host_params
+        self.ssh_connection = host_params.ssh_connection
+        self._measurements_loc = measurements_loc
+        self.private_key_path = host_params.public_key_path.with_suffix("")
         print(self.private_key_path)
+        self.system_name = system_name
         self.socks_proxy = None
         self.measure_docker = None
 
-        self.ssh_options = f"-o 'StrictHostKeyChecking=no' -o 'IdentitiesOnly=yes' -i {self.private_key_path}"
+        self.ssh_options = f"" \
+                           f"-F ssh/config " \
+                           f"-o 'StrictHostKeyChecking=no' " \
+                           f"-o 'IdentitiesOnly=yes' " \
+                           f"-i {self.private_key_path}"
         self.ssh_command = (
             f"ssh {self.ssh_connection} {self.ssh_options}"
         )
 
-        self.file_prepend = f"{system.name}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        self.host_measurements_folder = self.system_full.host_base_path \
-            .joinpath("measurements") \
-            .joinpath(self.file_prepend)
+        self.run_remote_mkdir(self.host_params.host_base_path.joinpath("data").joinpath("results"))
 
-        self.controller_measurements_folder = self._system.controller_result_folder.joinpath(self.file_prepend)
-        self.controller_measurements_folder.mkdir(parents=True, exist_ok=True)
-        self.timings_file = self.controller_measurements_folder.joinpath("timings.csv")
 
-        with self.timings_file.open("a") as f:
-            f.write("marker,timestamp,event,stage,system,dataset,comment,controller_time")
-            f.write("\n")
 
     @property
-    def system(self):
-        return self._system.name
+    def host_params(self) -> HostParameters:
+        return self._host_params
 
     @property
-    def system_full(self):
-        return self._system
+    def measurements_loc(self) -> MeasurementsLocation:
+        return self._measurements_loc
 
     @measure_time
     def run_command(self, command, **kwargs):
@@ -57,13 +54,25 @@ class NetworkManager:
             process = subprocess.Popen(
                 command, stdout=subprocess.PIPE, universal_newlines=True, shell=True
             )
+            last_line = ""
+            last_line_cntr = 1
             while True:
                 output = str(process.stdout.readline())
                 if "benchi_marker" in output:
                     self.write_timings_marker(output)
 
                 if not output == "":
-                    print(output.strip())
+                    if output == last_line:
+                        if last_line_cntr % (10**(math.floor(math.log10(last_line_cntr)))) == 0:
+                            print(f"{last_line_cntr} ", end="")
+
+                        last_line_cntr += 1
+                    else:
+                        if last_line_cntr > 1:
+                            print(last_line_cntr)
+                            last_line_cntr = 1
+
+                        print(output.strip())
 
                 return_code = process.poll()
                 if return_code is not None:
@@ -73,6 +82,8 @@ class NetworkManager:
                     for output in process.stdout.readlines():
                         print(output.strip())
                     break
+
+                last_line = output
         except Exception as e:
             print(e)
 
@@ -88,9 +99,15 @@ class NetworkManager:
             f"mkdir -p {dir}"
         )
 
+    @measure_time
+    def run_remote_rm_file(self, file: Path):
+        self.run_ssh(
+            f"rm {file}"
+        )
+
     def open_socks_proxy(self, port=59123) -> str:
         print(f"starting new SOCKS5 proxy at port {port}")
-        self.socks_proxy = subprocess.Popen(f"ssh {self.ssh_connection} -D {port} -N -v",
+        self.socks_proxy = subprocess.Popen(f"{self.ssh_command} -D {port} -N -v",
                                             stdout=subprocess.PIPE,
                                             stderr=subprocess.PIPE,
                                             universal_newlines=True,
@@ -116,14 +133,14 @@ class NetworkManager:
 
     def start_measure_docker(self, stage: str, prerecord=True):
         print(f"starting measuring docker for stage {stage}")
-        self.run_ssh(f"mkdir -p {self.host_measurements_folder}")
+        self.run_ssh(f"mkdir -p {self.measurements_loc.host_measurements_folder}")
 
-        measurement_file = self.host_measurements_folder.joinpath(f"{stage}.csv")
+        measurement_file = self.measurements_loc.host_measurements_folder.joinpath(f"{stage}.csv")
         init_measurement_flag = "initialized measuring docker"
         self.run_ssh(
             f"echo \"timestamp\tID\tName\tCPUPerc\tMemUsage\tMemPerc\tNetIO\tBlockIO\tPIDs\" | tee {measurement_file}")
         command_docker = """docker stats --no-stream --format "{{.ID}}\\t{{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\t{{.MemPerc}}\\t{{.NetIO}}\\t{{.BlockIO}}\\t{{.PIDs}}" | while read -r line; do printf "%s\\t%s\\n" "$(date +%s.%06N)" "$line"; done"""
-        command = f"ssh {self.ssh_connection} 'echo \"{init_measurement_flag}\"; while true; do {command_docker} | tee --append {measurement_file}; sleep 0; done'"
+        command = f"{self.ssh_command} 'echo \"{init_measurement_flag}\"; while true; do {command_docker} | tee --append {measurement_file}; sleep 0; done'"
 
         print(command)
         self.measure_docker = subprocess.Popen(
@@ -174,6 +191,6 @@ class NetworkManager:
         time_now = time.time()
         timings_line = f"{marker.strip()},{time_now}"
 
-        with self.timings_file.open("a") as f:
+        with self.measurements_loc.timings_file.open("a") as f:
             f.write(timings_line)
             f.write("\n")

@@ -1,5 +1,8 @@
 .idea
 data
+/ssh/config
+/ssh/keys/*
+!/ssh/keys/.gitkeep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -241,3 +244,5 @@ fabric.properties
 /hub/deployment/files/sedona/sedona_ingested.py.j2
 /hub/deployment/files/sedona/sedona_prep.py
 /hub/deployment/files/rasdaman/ingredients.json
+
+

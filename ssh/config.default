@@ -1,0 +1,8 @@
+HOST *
+    ServerAliveInterval 60
+    AddKeysToAgent confirm
+    IdentitiesOnly=yes
+    ControlPath ssh/controlmasters/%r@%h:%p
+    ControlMaster auto
+    ControlPersist 120
+    BatchMode yes

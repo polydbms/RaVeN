@@ -3,12 +3,18 @@ from pathlib import Path
 
 import pandas as pd
 
+from hub.benchmarkrun.host_params import HostParameters
+from hub.utils.system import System
+
 
 class Evaluator:
-    def __init__(self, systems_list, result_files: list[Path], results_folder: Path) -> None:
-        self.system_list = systems_list
+    def __init__(self, systems_list: list[System], result_files: list[Path], host_params: HostParameters) -> None:
+        self.host_params = host_params
+        self.system_list = [s.name for s in systems_list]
         self.result_files = result_files
-        self.results_folder = results_folder
+        self.timestring = datetime.now().strftime('%Y%m%d-%H%M%S')
+        self.eval_output_folder = self.host_params.controller_result_base_folder.joinpath(f"eval_{self.timestring}")
+        self.eval_output_folder.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def __read_result(file):
@@ -55,15 +61,15 @@ class Evaluator:
             try:
                 if pair[0] == pair[1]:
                     df[f"diff_{pair[1]}"] = (
-                        100
-                        * abs(df[f"{pair[0]}_x"] - df[f"{pair[1]}_y"])
-                        / ((df[f"{pair[0]}_x"] + df[f"{pair[1]}_y"]) / 2)
+                            100
+                            * abs(df[f"{pair[0]}_x"] - df[f"{pair[1]}_y"])
+                            / ((df[f"{pair[0]}_x"] + df[f"{pair[1]}_y"]) / 2)
                     )
                 else:
                     df[f"diff_{pair[1]}"] = (
-                        100
-                        * abs(df[pair[0]] - df[pair[1]])
-                        / ((df[pair[0]] + df[pair[1]]) / 2)
+                            100
+                            * abs(df[pair[0]] - df[pair[1]])
+                            / ((df[pair[0]] + df[pair[1]]) / 2)
                     )
             except TypeError as e:
                 df[f"diff_{pair[1]}"] = 100
@@ -73,12 +79,13 @@ class Evaluator:
     def get_accuracy(self):
         base_df, base_index, base_columns, base_system = self.__get_base()
         secondary = self.__get_secondary()
-        timestring = datetime.now().strftime('%Y%m%d-%H%M%S')
         for system_df, system_index, system_columns, system in secondary:
             out = pd.DataFrame()
             out = pd.merge(base_df, system_df, on=base_index)
             out.drop_duplicates(subset=[base_index], keep="last", inplace=True)
             out, average_diff = self.get_diff(out, base_columns, system_columns)
-            out.to_csv(self.results_folder.joinpath(f"{base_system}_vs_{system}.{timestring}.csv"))
+            out.to_csv(
+                self.eval_output_folder.joinpath(f"{base_system}_vs_{system}.{self.timestring}.csv"))
             accuracy = pd.DataFrame(average_diff, columns=["Feature", "Accuracy"])
-            accuracy.to_csv(self.results_folder.joinpath(f"{base_system}_vs_{system}_accuracy.{timestring}.csv"))
+            accuracy.to_csv(self.eval_output_folder
+                            .joinpath(f"{base_system}_vs_{system}_accuracy.{self.timestring}.csv"))

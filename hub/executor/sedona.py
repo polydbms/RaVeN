@@ -1,116 +1,48 @@
 import re
-from datetime import datetime
 from pathlib import Path
 
-from hub.utils.datalocation import DataLocation
-from hub.utils.filetransporter import FileTransporter
 from jinja2 import Template
+
+from hub.benchmarkrun.benchmark_params import BenchmarkParameters
+from hub.enums.stage import Stage
 from hub.evaluation.measure_time import measure_time
+from hub.executor._sqlbased import SQLBased
+from hub.utils.datalocation import DataLocation
+from hub.enums.datatype import DataType
+from hub.utils.filetransporter import FileTransporter
 from hub.utils.network import NetworkManager
 
 
 class Executor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager) -> None:
+    def __init__(self, vector_path: DataLocation,
+                 raster_path: DataLocation,
+                 network_manager: NetworkManager,
+                 benchmark_params: BenchmarkParameters) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
-        self.host_base_path = self.network_manager.system_full.host_base_path
-        # if Path(vector_path).exists() and Path(vector_path).is_dir():
-        #     vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
-        # if Path(raster_path).exists() and Path(raster_path).is_dir():
-        #     raster_path = [raster for raster in Path(raster_path).glob("*.tif*")][0]
-        # self.table_vector = f"{vector_path.stem}".split(".")[0]
-        # self.table_raster = f"{raster_path.stem}".split(".")[0]
-        self.table_vector = Path(vector_path.docker_file).stem
-        self.table_raster = Path(raster_path.docker_file).stem
+        self.host_base_path = self.network_manager.host_params.host_base_path
+        self.vector = vector_path
+        self.raster = raster_path
+        self.benchmark_params = benchmark_params
 
     def __handle_aggregations(self, type, features):
-        return ", ".join(
-            [
-                f"{aggregation}({type}.{feature}) as {feature}_{aggregation}"
-                for feature in features
-                for aggregation in features[feature]["aggregations"]
-            ]
-        )
+        return SQLBased.handle_aggregations(type, features)
 
     def __parse_get(self, get):
-        vector = []
-        raster = []
-        if "vector" in get:
-            for feature in get["vector"]:
-                if isinstance(feature, dict):
-                    vector.append(self.__handle_aggregations("vector", feature))
-                else:
-                    vector.append(f"vector.{feature}")
-            vector = ", ".join(vector)
-        else:
-            vector = ""
-        if "raster" in get:
-            for feature in get["raster"]:
-                if isinstance(feature, dict):
-                    raster.append(self.__handle_aggregations("raster", feature))
-                else:
-                    raster.append(f"raster.{feature}")
-            raster = ", ".join(raster)
-        else:
-            raster = ""
-        raster = f", {raster}" if raster else ""
-        return f"select {vector} {raster}"
+        return SQLBased.parse_get(self.__handle_aggregations, get)
 
     def __parse_join(self, join):
-        table1 = "{self.table1}" + f' as {join["table1"]}'
-        table2 = "{self.table2}" + f' as {join["table2"]}'
-        condition = f'on {join["condition"]}'
-        return f"from {table1} JOIN {table2} {condition}"
+        return SQLBased.parse_join(join)
 
     def __parse_condition(self, condition):
-        vector = (
-            "and ".join(["vector." + feature for feature in condition["vector"]])
-            if "vector" in condition
-            else ""
-        )
-        raster = (
-            "and ".join(["raster." + feature for feature in condition["raster"]])
-            if "raster" in condition
-            else ""
-        )
-
-        if vector and raster:
-            return f"where {vector} and {raster}"
-        elif vector and not raster:
-            return f"where {vector}"
-        elif not vector and raster:
-            return f"where {raster}"
-        elif not vector and not raster:
-            return f""
+        return SQLBased.parse_condition(condition)
 
     def __parse_group(self, group):
-        vector = (
-            ", ".join(["vector." + feature for feature in group["vector"]])
-            if "vector" in group
-            else ""
-        )
-        raster = (
-            ", ".join(["raster." + feature for feature in group["raster"]])
-            if "raster" in group
-            else ""
-        )
-        raster = f", {raster}" if raster else ""
-        return f"group by {vector} {raster}"
+        return SQLBased.parse_group(group)
 
     def __parse_order(self, order):
-        vector = (
-            ", ".join(["vector." + feature for feature in order["vector"]])
-            if "vector" in order
-            else ""
-        )
-        raster = (
-            ", ".join(["raster." + feature for feature in order["raster"]])
-            if "raster" in order
-            else ""
-        )
-        raster = f", {raster}" if raster else ""
-        return f"order by {vector} {raster}"
+        return SQLBased.parse_order(order)
 
     def __translate(self, workload):
         selection = self.__parse_get(workload["get"]) if "get" in workload else ""
@@ -124,16 +56,34 @@ class Executor:
         order = self.__parse_order(workload["order"]) if "order" in workload else ""
         limit = f'limit {workload["limit"]}' if "limit" in workload else ""
         query = f"{selection} {join} {condition} {group} {order} {limit}"
+
+        raster_geom = "raster.geometry"
+        vector_geom = "vector.geometry"
+        if self.benchmark_params.align_crs_at_stage == Stage.EXECUTE:
+            match self.benchmark_params.align_to_crs:
+                case DataType.RASTER:
+                    vector_geom = f"ST_Transform(" \
+                                  f"{vector_geom}, " \
+                                  f"'epsg:{self.vector.get_crs().to_epsg()}', " \
+                                  f"'epsg:{self.benchmark_params.vector_target_crs.to_epsg()}'" \
+                                  f")"
+                case DataType.VECTOR:
+                    raster_geom = f"ST_Transform(" \
+                                  f"{raster_geom}, " \
+                                  f"'epsg:{self.raster.get_crs().to_epsg()}', " \
+                                  f"'epsg:{self.benchmark_params.raster_target_crs.to_epsg()}'" \
+                                  f")"
+
         if "intersect" in query:
             query = re.sub(
                 "(intersect\(\w*, \w*\))",
-                "ST_Intersects(raster.geometry, vector.geometry)",
+                f"ST_Intersects({raster_geom}, {vector_geom})",
                 query,
             )
         if "contains" in query:
             query = re.sub(
                 "(contains\(\w*, \w*\))",
-                "ST_Contains(raster.geometry, vector.geometry)",
+                f"ST_Contains({raster_geom}, {vector_geom})",
                 query,
             )
         query = re.sub(
@@ -147,8 +97,10 @@ class Executor:
     @measure_time
     def run_query(self, workload, **kwargs):
         query = self.__translate(workload)
-        query = query.replace("{self.table1}", self.table_vector)
-        query = query.replace("{self.table2}", self.table_raster)
+        query = query.replace("{self.table1}", self.vector.name)
+        query = query.replace("{self.table2}", self.raster.name)
+        print(f"query to run: {query}")
+
         rendered = self.__render_template(query)
         self.__save_template(rendered)
         self.transporter.send_file(
@@ -160,16 +112,19 @@ class Executor:
         Path("hub/deployment/files/sedona/sedona_prep.py").unlink()
         Path("hub/deployment/files/sedona/sedona_ingested.py.j2").unlink()
 
-        result_path = self.network_manager.system_full.controller_result_folder.joinpath(
-            f"results_{self.network_manager.file_prepend}.csv")
+        result_path = self.network_manager.host_params.controller_result_folder.joinpath(
+            f"results_{self.network_manager.measurements_loc.file_prepend}.csv")
+        result_file = self.host_base_path.joinpath("data/results/results_sedona.csv")
         self.transporter.get_file(
-            str(self.host_base_path.joinpath("data/results_sedona.csv")),
+            result_file,
             result_path,
             **kwargs,
         )
 
-        self.transporter.get_folder(self.network_manager.host_measurements_folder,
-                                    self.network_manager.controller_measurements_folder)
+        self.network_manager.run_remote_rm_file(result_file)
+
+        self.transporter.get_folder(self.network_manager.measurements_loc.host_measurements_folder,
+                                    self.network_manager.measurements_loc.controller_measurements_folder)
 
         return result_path
 

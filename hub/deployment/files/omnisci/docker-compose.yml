@@ -8,6 +8,7 @@ services:
     volumes:
       - ../../data:/data
       - ./heavy.conf:/var/lib/heavyai/heavy.conf
+      - ../../config:/config
 #      - omnisci-storage:/omnisci-storage
     restart: on-failure
     ports:

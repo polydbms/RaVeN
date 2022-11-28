@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
 from sedona.register import SedonaRegistrator
 from sedona.core.formatMapper.shapefileParser import ShapefileReader
+from sedona.core.formatMapper import GeoJsonReader, WktReader
 from sedona.utils.adapter import Adapter
 from sedona.core.enums import GridType
 from sedona.core.enums import IndexType
@@ -26,7 +27,7 @@ sc = spark.sparkContext
 vector_table = "{{vector_name}}"
 raster_table = "{{raster_name}}"
 print(f"benchi_marker,{time()},start,ingestion,sedona,vector,inner")
-{{vector_name}} = ShapefileReader.readToGeometryRDD(sc, "{{vector_path}}")
+{{vector_name}} = {{vector_reader}}.{{raster_method}}(sc, "{{vector_path}}")
 {{vector_name}}.analyze()
 {{vector_name}}.spatialPartitioning(GridType.KDBTREE)
 {{vector_name}}.buildIndex(IndexType.RTREE, True)
@@ -34,7 +35,7 @@ print(f"benchi_marker,{time()},start,ingestion,sedona,vector,inner")
 print(f"benchi_marker,{time()},end,ingestion,sedona,vector,inner")
 
 print(f"benchi_marker,{time()},start,ingestion,sedona,raster,inner")
-{{raster_name}} = ShapefileReader.readToPolygonRDD(sc, "{{raster_path}}")
+{{raster_name}} = {{raster_reader}}.{{raster_method}}(sc, "{{raster_path}}")
 {{raster_name}}.analyze()
 {{raster_name}}.spatialPartitioning({{vector_name}}.getPartitioner())
 {{raster_name}}.buildIndex(IndexType.RTREE, True)
@@ -48,9 +49,9 @@ spatial_gdf = spark.sql(
                         {{query}}
                         """
                        )
-print(f"benchi_marker,{time()},end,execution,sedona,,")
 
 name = uuid.uuid4().hex
 spatial_gdf.coalesce(1).write.option("header","true").csv(name)
+print(f"benchi_marker,{time()},end,execution,sedona,,")
 [a for a in Path(name).glob("*.csv")][0].rename("results.csv")
-shutil.move("results.csv", "/data/results_sedona.csv")
+shutil.move("results.csv", "/data/results/results_sedona.csv")

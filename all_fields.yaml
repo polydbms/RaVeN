@@ -1,16 +1,16 @@
 experiments:
   public_key_path: ~/.ssh/lrv.pub
   data: # if undefined cmd parameters can be used to manually define data
-    raster: /home/gereon/git/master-raster-vector/benchi/data/sentinel2a_mol_band3
+    raster: /home/gereon/git/master-raster-vector/benchi/data/sentinel2a_mol_band9
     vector: /home/gereon/git/master-raster-vector/benchi/data/ALKIS_kataster_MOL
   host_base_path: /local-ssd/gdusella-ldap
   results_folder: ~/git/master-raster-vector/data/results
   ssh_connection: "sgx12.dima.tub" # if defined, it will assume that you have a machine deployed. No cloud deployment will be executed.
   workload:
-    get: 
+    get:
       vector:
         - flstkennz
-      raster: 
+      raster:
         - sval:
             aggregations:
               - avg
@@ -22,18 +22,61 @@ experiments:
       table1: vector
       table2: raster
       condition: intersect(raster, vector)
-    condition: 
-      vector: 
+    condition:
+      vector:
         - nutzart = 'Landwirtschaft'
       raster:
         - sval >= 0
     group:
-      vector: 
+      vector:
         - flstkennz
     order:
-      vector: 
+      vector:
         - flstkennz
-  systems: 
+  parameters:
+    raster_format:
+      - tiff
+      - jp2
+    rasterize_format:
+      - tiff
+      - jp2
+    raster_target_crs:
+      - epsg:4326
+      - epsg:25833
+    raster_tile_size:
+      - 1x100
+      - 10x10
+      - 100x1
+      - auto
+    raster_depth:
+      - 1
+      - 12
+    raster_resolution:
+      - 1
+      - 0.5
+
+    vector_format:
+      - shp
+      - wkt
+    vectorize_format:
+      - geojson
+      - shp
+    vectorize_type:
+      - polygons
+      - points
+    vector_target_crs:
+      - epsg:4326
+    vector_resolution:
+      - 0.8
+      - 0.32
+
+    iterations: 2
+    align_to_crs: vector | raster | both # align vector crs to raster crs or vice versa or do 2 runs
+    align_crs_at_stage:
+      - preprocess
+      - execute
+
+  systems:
     - name: postgis
       port: 25432
     - name: omnisci

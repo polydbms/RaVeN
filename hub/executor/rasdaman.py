@@ -1,43 +1,37 @@
 import concurrent
-import urllib.parse as parser
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
-from pathlib import Path
-from time import time
-
-import requests
+import csv
+import json
 import operator
 import re
-import json
-import csv
-import os
+import urllib.parse as parser
+from concurrent.futures import ThreadPoolExecutor
+
+import geopandas as gpd
+import requests
+
+from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.network import NetworkManager
-import geopandas as gpd
 
 
 class Executor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager) -> None:
+    def __init__(self, vector_path: DataLocation,
+                 raster_path: DataLocation,
+                 network_manager: NetworkManager,
+                 benchmark_params: BenchmarkParameters) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
         self.vector_path = vector_path
         self.raster_path = raster_path
+        self.benchmark_params = benchmark_params
         socks_proxy_url = self.network_manager.open_socks_proxy()
         self.proxies = dict(http=socks_proxy_url, https=socks_proxy_url)
-
-        # if Path(vector_path).exists() and Path(vector_path).is_dir():
-        #     self.vector_path = [vector for vector in Path(vector_path).glob("*.shp")][0]
-        # if Path(raster_path).exists() and Path(raster_path).is_dir():
-        #     self.raster_path = [raster for raster in Path(raster_path).glob("*.tif*")][
-        #         0
-        #     ]
         self.transporter.get_file(
             vector_path.host_wkt, vector_path.controller_wkt
         )
-        # ssh_ip = self.network_manager.ssh_connection.split("@")[-1]
         self.base_url = f"http://0.0.0.0:48080/rasdaman"
         self.url = f"{self.base_url}/ows"
         self.coverage = self.raster_path.name
@@ -249,8 +243,8 @@ class Executor:
         for o in order[0]:
             vector_features.sort(key=lambda x: x["properties"][o])
 
-        result_path = self.network_manager.system_full.controller_result_folder.joinpath(
-            f"results_{self.network_manager.file_prepend}.csv")
+        result_path = self.network_manager.host_params.controller_result_folder.joinpath(
+            f"results_{self.network_manager.measurements_loc.file_prepend}.csv")
 
         if limit:
             vector_features = vector_features[: int(limit)]
@@ -279,16 +273,12 @@ class Executor:
                 except Exception as exc:
                     print(f"error while fetching result: {exc}")
 
-        # for entry in vector_features:
-        #     writer.writerow(
-        #
-        #     )
         self.network_manager.write_timings_marker(f"benchi_marker,,end,execution,rasdaman,aggregations,")
         f.close()
         self.vector_path.controller_wkt.unlink()
         self.network_manager.stop_socks_proxy()
 
-        self.transporter.get_folder(self.network_manager.host_measurements_folder,
-                                    self.network_manager.controller_measurements_folder)
+        self.transporter.get_folder(self.network_manager.measurements_loc.host_measurements_folder,
+                                    self.network_manager.measurements_loc.controller_measurements_folder)
 
         return result_path

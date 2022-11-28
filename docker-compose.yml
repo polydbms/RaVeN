@@ -1,14 +1,33 @@
 version: "3.9"
 services:
-  gdal_env:
+  #  gdal_env:
+  #    build:
+  #      context: .
+  #      target: base
+  #    volumes:
+  #      - .:/hub
+  #      - :/data
+  #    tty: true
+  #    environment:
+  #      PYTHONPATH: /hub
+
+  benchi:
     build:
       context: .
-      target: base
+      target: benchi
     volumes:
-      - .:/hub
+      - ~/git/master-raster-vector/benchi/recipes:/hub/recipes
       - ~/git/master-raster-vector/data:/data
-    tty: true
+      - ~/git/master-raster-vector/benchi/ssh/config:/hub/ssh/config
+      - ~/git/master-raster-vector/benchi/ssh/keys:/hub/ssh/keys
     environment:
-      PYTHONPATH: /hub
-#      PERSONAL_TOKEN: ${PERSONAL_TOKEN}
-#      TRIGGER_TOKEN: ${TRIGGER_TOKEN}
+      PYTHONUNBUFFERED: 1
+    command:
+      - python
+      - benchi.py
+      - --system
+      - postgis
+      - --experiment
+      - recipes/district-water_vapour.compose.yaml
+      - start
+

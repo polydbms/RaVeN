@@ -1,12 +1,13 @@
 experiments:
-  public_key_path: ~/.ssh/lrv.pub
+  controller:
+    results_folder: /data/results
+  hosts:
+    - host: "sgx13.dima.tub"
+      base_path: /local-ssd/gdusella-ldap
+      public_key_path: ssh/keys/rasvec-docker.pub
   data: # if undefined cmd parameters can be used to manually define data
-    raster: /home/gereon/git/master-raster-vector/benchi/data/sentinel2a_mol_band9
-    vector: /home/gereon/git/master-raster-vector/benchi/data/ALKIS_bezirk_MOL
-  host_base_path: /local-ssd/gdusella-ldap
-  results_folder: ~/git/master-raster-vector/data/results
-  results_db: ~/git/master-raster-vector/data/results.db
-  ssh_connection: "sgx12.dima.tub"
+    raster: /data/sentinel2a_mol_band9
+    vector: /data/ALKIS_bezirk_MOL
   workload:
     get: 
       vector:
@@ -34,7 +35,15 @@ experiments:
     order:
       vector: 
         - schluessel
-  systems: 
+  parameters:
+    vectorize_type:
+      - polygons
+      - points
+    raster_tile_size:
+      - 100x100
+      - 10x10
+      - 1830x1
+  systems:
     - name: postgis
       port: 25432
     - name: omnisci
