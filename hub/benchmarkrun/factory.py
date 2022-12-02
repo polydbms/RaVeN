@@ -128,9 +128,6 @@ class BenchmarkRunFactory:
 
                     updated_params_list.remove(param)
 
-                case "iterations":
-                    param.iterations = int(params_dict["iterations"])
-
                 case "align_to_crs":
                     match params_dict["align_to_crs"]:
                         case "vector":

@@ -1,134 +1,173 @@
-import argparse
-from pathlib import Path
+import pandas as pd
 
-import duckdb
-
-from hub.utils.fileio import FileIO
+from hub.benchmarkrun.benchmark_run import BenchmarkRun
+from hub.duckdb.submit_data import DuckDBConnector
 
 
-def setup_duckdb_tables(conn: duckdb.DuckDBPyConnection):
-    conn.execute("""
-    create table if not exists files (
-        filename varchar,
-        type varchar,
-        name varchar primary key
-    )
-    """)  # files_table
+class InitializeDuckDB:
 
-    conn.execute("""
-    create table if not exists experiments (
-        filename varchar primary key,
-        notes varchar,
-        raster_file varchar ,
-        vector_file varchar ,
-        foreign key (raster_file) references files(name),
-        foreign key (vector_file) references files(name),
-    )
-    """)  # experiments_table
+    def __init__(self, connection: DuckDBConnector):
+        self._connection = connection.get_cursor()
 
-    conn.execute("""
-    create table if not exists systems (
-        name varchar primary key,
-        comment varchar,
-    )
-    """)  # systems_table
+    def setup_duckdb_tables(self):
+        self._connection.execute("""
+        create table if not exists files (
+            filename varchar,
+            type varchar,
+            name varchar primary key
+        )
+        """)  # files_table
 
-    conn.execute("""
-    CREATE SEQUENCE seq_experimentsid START 1;
-    """)
+        self._connection.execute("""
+        create table if not exists experiments (
+            filename varchar primary key,
+            notes varchar,
+            raster_file varchar ,
+            vector_file varchar ,
+            foreign key (raster_file) references files(name),
+            foreign key (vector_file) references files(name)
+        )
+        """)  # experiments_table
 
-    conn.execute("""
-    create table if not exists benchmark_run (
-        id int primary key default nextval('seq_experimentsid'),
-        system varchar ,
-        experiment varchar ,
-        exec_start datetime,
-        foreign key (system) references systems(name),
-        foreign key (experiment) references experiments(filename),
-    )
-    """)  # benchmark_run_table
+        self._connection.execute("""
+        CREATE SEQUENCE IF NOT EXISTS seq_parametersid START 1;
+        """)
 
-    conn.execute("""
-    create table if not exists timings (
-        run_id int,
-        --marker varchar,
-        --"timestamp" datetime,
-        --event varchar,
-        --stage varchar,
-        system varchar,
-        --dataset varchar,
-        --comment varchar,
-        controller_time datetime,
-        primary key (run_id, controller_time),
-        foreign key (system) references systems(name),
-    )
-    """)  # timings_table
+        self._connection.execute("""
+        create table if not exists parameters (
+            id int primary key default nextval('seq_parametersid'),
+            system varchar,
+            raster_target_format varchar,
+            raster_target_crs varchar,
+            raster_tile_size varchar,
+            raster_depth ubigint,
+            raster_resolution double,
+            vectorize_type varchar,
 
-    conn.execute("""
-    create table if not exists resource_util (
-        run_id int,
-        timestamp datetime,
-        primary key (run_id, timestamp)
-    )
-    """)  # resource_util_table
+            vector_target_format varchar,
+            vector_target_crs varchar,
+            vector_resolution double, 
 
-    conn.execute("""
-    create table if not exists results (
-        run_id int,
-        feature_id varchar,
-        primary key (run_id, feature_id)
-    )
-    """)  # results_table
+            align_to_crs varchar,
+            align_crs_at_stage varchar
+        )
+        """)  # systems_table
 
-    print("initialized tables")
+        self._connection.execute("""
+        CREATE SEQUENCE IF NOT EXISTS seq_benchsetid START 1;
+        """)
 
+        self._connection.execute("""
+        create table if not exists benchmark_set (
+            id int primary key default nextval('seq_benchsetid'),
+            experiment varchar ,
+            exec_start timestamp,
+            foreign key (experiment) references experiments(filename)
+        )
+        """)  # benchmark_run_table
 
-def initialize_files(conn, experiments):
-    experiment = experiments[list(experiments.keys())[0]]
-    rasterfile = Path(experiment["raster"])
-    conn.execute("insert into files (name, type, filename) values (?, ?, ?)",
-                 [rasterfile.name, "raster", str(rasterfile)])
+        self._connection.execute("""
+        CREATE SEQUENCE IF NOT EXISTS seq_benchrunid START 1;
+        """)
 
-    vectorfile = Path(experiment["vector"])
-    conn.execute("insert into files (name, type, filename) values (?, ?, ?)",
-                 [vectorfile.name, "vector", str(vectorfile)])
+        self._connection.execute("""
+        create table if not exists benchmark_run (
+            id int primary key default nextval('seq_benchrunid'),
+            parameters int,
+            benchmark_set int,
+            iteration int,
+            foreign key (parameters) references parameters(id),
+            foreign key (benchmark_set) references benchmark_set(id)
+        )
+        """)  # benchmark_run_table
 
-    print("initialized files")
+        self._connection.execute("""
+        create table if not exists timings (
+            run_id int,
+            marker varchar,
+            "timestamp" datetime,
+            event varchar,
+            stage varchar,
+            dataset varchar,
+            comment varchar,
+            controller_time datetime,
+            primary key (run_id, controller_time),
+            foreign key (run_id) references benchmark_run(id)
+        )
+        """)  # timings_table
 
+        self._connection.execute("""
+        create table if not exists resource_util (
+            run_id int,
+            timestamp_host datetime,
+            ID varchar,
+            Name varchar,
+            CPUUsage double,
+            MemUsage ubigint,
+            MemLimit ubigint,
+            NetIO_in ubigint,
+            NetIO_out ubigint,
+            BlockIO_in ubigint,
+            BlockIO_out ubigint,
+            PIDs uinteger,
+            stage varchar,
+            primary key (run_id, stage, timestamp_host)
+        )
+        """)  # resource_util_table
 
-def initialize_experiments(conn, experiments, experiments_file):
-    experiment = experiments[list(experiments.keys())[0]]
-    rastername = Path(experiment["raster"]).name
-    vectorname = Path(experiment["vector"]).name
+        self._connection.execute("""
+        create table if not exists results (
+            run_id int,
+            result_file varchar,
+            primary key (run_id)
+        )
+        """)  # results_table
 
-    conn.execute("insert into experiments (filename, raster_file, vector_file) values (?, ?, ?)",
-                 [experiments_file, rastername, vectorname])
+        print("initialized tables")
 
-    print("initialized experiments")
+    def initialize_files(self, experiments: list[BenchmarkRun]):
+        experiment = experiments[0]
+        rasterfile = experiment.raster
+        raster_ingest = self._connection.execute(
+            "insert into files (name, type, filename) select ? as name, ? as type, ? as filename where ? not in (select name from files) returning *",
+            [rasterfile.name, "raster", str(rasterfile), rasterfile.name]).fetchone()[0]
 
+        vectorfile = experiment.vector
+        vector_ingest = self._connection.execute(
+            "insert into files (name, type, filename) select ? as name, ? as type, ? as filename where ? not in (select name from files) returning *",
+            [vectorfile.name, "vector", str(vectorfile), vectorfile.name]).fetchone()[0]
 
-def initialize_systems(conn, experiments):
-    conn.executemany("insert into systems (name) values (?)", [[e] for e in list(experiments.keys())])
+        print(
+            f"initialized files, added raster: {True if raster_ingest else False}, vector: {True if vector_ingest else False}")
 
-    print("initialized systems")
+    def initialize_experiments(self, experiments: list[BenchmarkRun], experiments_file):
+        experiment = experiments[0]
+        rastername = experiment.raster.name
+        vectorname = experiment.vector.name
 
+        experiment_add = self._connection.execute(
+            "insert into experiments (filename, raster_file, vector_file) select ? as filename, ? as raster_file, ? as vector_file where ? not in (select filename from experiments)",
+            [experiments_file, rastername, vectorname, experiments_file]).fetchone()[0]
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--experiment_conf", help="The config file to an experiment", required=True)
+        print(f"initialized experiments, added new experiment: {True if experiment_add else False}")
 
-    args = parser.parse_args()
+    def initialize_parameters(self, experiments: list[BenchmarkRun]):
+        # max_id = conn.execute("SELECT max(id) from parameters").fetchone()
+        # max_id = int(max_id[0]) if max_id[0] else 1
+        old_exp = self._connection.execute("select * from parameters").fetch_df().set_index("id")
+        new_exp_df = pd.DataFrame([e.benchmark_params.__dict__ for e in experiments])
+        new_exp_cleaned = self._connection.execute("select * from new_exp_df").fetch_df()
+        cleaned = new_exp_cleaned.merge(old_exp, how="left", indicator=True)
+        cleaned = cleaned[cleaned["_merge"] == 'left_only']
+        cleaned.drop(columns=["_merge"], axis=1, inplace=True)
+        max_id = len(old_exp)
+        cleaned.insert(0, "id", range(max_id + 1, max_id + len(cleaned) + 1))
+        self._connection.execute("INSERT INTO parameters SELECT * FROM cleaned")
+        # conn.executemany("insert into parameters values (?)", [e.benchmark_params.value_array() for e in experiments])
 
-    experiments = FileIO.read_experiments_config(args.experiment_conf)
+        print(
+            f"initialized parameters, added {len(cleaned)} new, "
+            f"now {self._connection.execute('SELECT count(*) from parameters').fetchone()[0]} exist")
 
-    with experiments[list(experiments.keys())[0]]["system"].db_connector.get_cursor() as conn:
-        setup_duckdb_tables(conn)
-        initialize_files(conn, experiments)
-        initialize_systems(conn, experiments)
-        initialize_experiments(conn, experiments, Path(args.experiment_conf).parts[-1])
-
-    experiments[list(experiments.keys())[0]]["system"].db_connector.__del__()
-
-
-if __name__ == "__main__":
-    main()
+    def __del__(self):
+        self._connection.close()

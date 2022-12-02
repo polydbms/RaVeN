@@ -60,7 +60,7 @@ class Executor:
 
         raster_geom = "raster.geom"
         vector_geom = "vector.geom"
-        if self.benchmark_params.align_crs_at_stage == Stage.EXECUTE:
+        if self.benchmark_params.align_crs_at_stage == Stage.EXECUTION:
             raise Exception("Cannot transform CRS in omnisci at execute, since everything is already in EPSG:4326")
 
         if "intersect" in query:

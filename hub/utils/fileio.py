@@ -7,6 +7,7 @@ from configuration import PROJECT_ROOT
 from hub.benchmarkrun.factory import BenchmarkRunFactory
 from hub.benchmarkrun.benchmark_run import BenchmarkRun
 from hub.benchmarkrun.host_params import HostParameters
+from hub.duckdb.init_duckdb import InitializeDuckDB
 from hub.enums.rasterfiletype import RasterFileType
 from hub.enums.stage import Stage
 from hub.enums.vectorfiletype import VectorFileType
@@ -19,19 +20,21 @@ from hub.utils.system import System
 class FileIO:
 
     @staticmethod
-    def read_experiments_config(filename, system=None) -> list[BenchmarkRun]:
+    def read_experiments_config(filename, system=None) -> tuple[list[BenchmarkRun], int]:
         capabilities = Capabilities.read_capabilities()
 
         with open(PROJECT_ROOT.joinpath(filename), mode="r") as c:
             try:
+                host_params = FileIO.get_host_params(filename)
+
                 yamlfile = yaml.safe_load(c)
                 experiments = yamlfile["experiments"]
                 workload = experiments["workload"]
                 data = experiments["data"] if "data" in experiments else None
 
-                host_params = FileIO.get_host_params(filename)
                 parameters = experiments.get("parameters", {})
                 systems = [s for s in FileIO.get_systems(filename) if s.name == system or system is None]
+                iterations = int(experiments.get("iterations", 1))
 
                 runs = []
                 brf = BenchmarkRunFactory(capabilities)
@@ -83,13 +86,22 @@ class FileIO:
                         vector_dl,
                         workload,
                         host_params,
-                        benchmark_params
+                        benchmark_params,
+                        Path(filename).parts[-1]
                     ))
 
-                return list(set(runs))
+                runs_no_dupes = list(set(runs))
+
+                init_db = InitializeDuckDB(host_params.controller_db_connection)
+                init_db.setup_duckdb_tables()
+                init_db.initialize_files(runs_no_dupes)
+                init_db.initialize_parameters(runs_no_dupes)
+                init_db.initialize_experiments(runs_no_dupes, Path(filename).parts[-1])
+
+                return runs_no_dupes, iterations
             except yaml.YAMLError as exc:
                 print(exc)
-                return []
+                return [], -1
 
     @staticmethod
     def get_host_params(filename) -> HostParameters:
@@ -100,7 +112,8 @@ class FileIO:
                 return [HostParameters(h["host"],  # TODO rename to "host"
                                        h["public_key_path"],
                                        Path(h["base_path"]),
-                                       yamlfile["experiments"]["controller"]["results_folder"])
+                                       yamlfile["experiments"]["controller"]["results_folder"],
+                                       Path(yamlfile["experiments"]["controller"]["results_db"]).expanduser())
                         for h in yamlfile["experiments"]["hosts"]][0]  # FIXME remove [0] eventually
 
             except yaml.YAMLError as exc:

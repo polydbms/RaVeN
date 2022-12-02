@@ -25,7 +25,6 @@ class BenchmarkParameters:
     vector_target_crs: CRS
     vector_resolution: float  # as reduction factor
 
-    iterations: int
     align_to_crs: DataType
     align_crs_at_stage: Stage
 
@@ -40,7 +39,6 @@ class BenchmarkParameters:
                  vector_target_format=None,
                  vector_target_crs=None,
                  vector_resolution=1.0,
-                 iterations=1,
                  align_to_crs=None,
                  align_crs_at_stage=None) -> None:
         self.system = system
@@ -56,7 +54,6 @@ class BenchmarkParameters:
         self.vector_target_crs = vector_target_crs
         self.vector_resolution = vector_resolution
 
-        self.iterations = iterations
         self.align_to_crs = align_to_crs
         self.align_crs_at_stage = align_crs_at_stage
 
@@ -72,10 +69,30 @@ class BenchmarkParameters:
             self.vector_target_format.value.lstrip(".") if self.vector_target_format is not None else "",
             str(self.vector_target_crs.to_epsg()) if self.vector_target_crs is not None else "",
             str(self.vector_resolution).replace(".", "-"),
-            str(self.iterations),
             f"AlignTo-{self.align_to_crs.value}" if self.align_to_crs is not None else "",
             f"AlignAt-{self.align_crs_at_stage.value}" if self.align_crs_at_stage is not None else "",
         ])
+
+    # def to_dict(self):
+    #     return pandas.
+        # return [
+        #     self.system.name,
+        #
+        #     self.raster_target_format.value.lstrip(".") if self.raster_target_format is not None else "",
+        #     str(self.raster_target_crs.to_epsg()) if self.raster_target_crs is not None else "",
+        #     self.raster_tile_size.postgis_str,
+        #     self.raster_depth,
+        #     self.raster_resolution,
+        #     self.vectorize_type.value,
+        #
+        #     self.vector_target_format.value.lstrip(".") if self.vector_target_format is not None else "",
+        #     str(self.vector_target_crs.to_epsg()) if self.vector_target_crs is not None else "",
+        #     self.vector_resolution,
+        #
+        #     self.iterations,
+        #     self.align_to_crs.value if self.align_to_crs is not None else "",
+        #     self.align_crs_at_stage.value if self.align_crs_at_stage is not None else "",
+        # ]
 
     def validate(self, capabilities) -> bool:
         # if self.raster_target_format is None:
@@ -131,7 +148,6 @@ class BenchmarkParameters:
                self.vector_target_format == other.vector_target_format and \
                self.vector_target_crs == other.vector_target_crs and \
                self.vector_resolution == other.vector_resolution and \
-               self.iterations == other.iterations and \
                self.align_to_crs == other.align_to_crs and \
                self.align_crs_at_stage == other.align_crs_at_stage
 
@@ -146,6 +162,5 @@ class BenchmarkParameters:
                      'vector_target_format', self.vector_target_format,
                      'vector_target_crs', self.vector_target_crs,
                      'vector_resolution', self.vector_resolution,
-                     'iterations', self.iterations,
                      'align_to_crs', self.align_to_crs,
                      'align_crs_at_stage', self.align_crs_at_stage))

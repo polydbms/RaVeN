@@ -1,6 +1,7 @@
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.benchmarkrun.host_params import HostParameters
 from hub.benchmarkrun.measurementslocation import MeasurementsLocation
+from hub.duckdb.submit_data import DuckDBConnector, DuckDBRunCursor
 from hub.utils.datalocation import DataLocation
 
 
@@ -13,12 +14,14 @@ class BenchmarkRun:
     measurements_loc: MeasurementsLocation
 
     def __init__(self, raster: DataLocation, vector: DataLocation, workload: dict,
-                 host_params: HostParameters, benchmark_params: BenchmarkParameters):
+                 host_params: HostParameters, benchmark_params: BenchmarkParameters, experiment_name_file: str):
         self.raster = raster
         self.vector = vector
         self.workload = workload
         self.host_params = host_params
         self.benchmark_params = benchmark_params
+        self.experiment_name_file = experiment_name_file
+
         self.measurements_loc = MeasurementsLocation(self.host_params, self.benchmark_params)
 
     def __str__(self):

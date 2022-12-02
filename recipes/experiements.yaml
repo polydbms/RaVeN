@@ -1,6 +1,7 @@
 experiments:
   controller:
     results_folder: ~/git/master-raster-vector/data/results
+    results_db: ~/git/master-raster-vector/data/results.db
   hosts:
     - host: "sgx13.dima.tub"
       base_path: /local-ssd/gdusella-ldap
@@ -41,8 +42,8 @@ experiments:
   systems: 
     - name: postgis
       port: 25432
-    - name: omnisci
-      port: 6274
-    - name: rasdaman
-      port: 8080
+#    - name: omnisci
+#      port: 6274
+#    - name: rasdaman
+#      port: 8080
     - name: sedona

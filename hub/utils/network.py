@@ -7,6 +7,7 @@ from typing import Any
 
 from hub.benchmarkrun.host_params import HostParameters
 from hub.benchmarkrun.measurementslocation import MeasurementsLocation
+from hub.duckdb.submit_data import DuckDBRunCursor
 from hub.evaluation.measure_time import measure_time
 
 
@@ -16,7 +17,8 @@ class NetworkManager:
     socks_proxy: Popen[bytes] | Popen[Any]
     measure_docker: Popen[bytes] | Popen[Any]
 
-    def __init__(self, host_params: HostParameters, system_name: str, measurements_loc: MeasurementsLocation | None) -> None:
+    def __init__(self, host_params: HostParameters, system_name: str, measurements_loc: MeasurementsLocation | None,
+                 run_cursor: DuckDBRunCursor | None) -> None:
         self._host_params = host_params
         self.ssh_connection = host_params.ssh_connection
         self._measurements_loc = measurements_loc
@@ -25,6 +27,7 @@ class NetworkManager:
         self.system_name = system_name
         self.socks_proxy = None
         self.measure_docker = None
+        self.run_cursor = run_cursor
 
         self.ssh_options = f"" \
                            f"-F ssh/config " \
@@ -36,8 +39,6 @@ class NetworkManager:
         )
 
         self.run_remote_mkdir(self.host_params.host_base_path.joinpath("data").joinpath("results"))
-
-
 
     @property
     def host_params(self) -> HostParameters:
@@ -63,7 +64,7 @@ class NetworkManager:
 
                 if not output == "":
                     if output == last_line:
-                        if last_line_cntr % (10**(math.floor(math.log10(last_line_cntr)))) == 0:
+                        if last_line_cntr % (10 ** (math.floor(math.log10(last_line_cntr)))) == 0:
                             print(f"{last_line_cntr} ", end="")
 
                         last_line_cntr += 1
@@ -188,6 +189,10 @@ class NetworkManager:
                 break
 
     def write_timings_marker(self, marker: str):
+        # print(marker)
+        self.run_cursor.write_timings_marker(marker)
+        # print("wrote timing to db")
+
         time_now = time.time()
         timings_line = f"{marker.strip()},{time_now}"
 

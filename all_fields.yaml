@@ -70,12 +70,12 @@ experiments:
       - 0.8
       - 0.32
 
-    iterations: 2
     align_to_crs: vector | raster | both # align vector crs to raster crs or vice versa or do 2 runs
     align_crs_at_stage:
       - preprocess
-      - execute
+      - execution
 
+  iterations: 2
   systems:
     - name: postgis
       port: 25432

@@ -1,6 +1,7 @@
 experiments:
   controller:
     results_folder: ~/git/master-raster-vector/data/results
+    results_db: ~/git/master-raster-vector/data/results.db
   hosts:
     - host: "sgx13.dima.tub"
       base_path: /local-ssd/gdusella-ldap
@@ -43,6 +44,9 @@ experiments:
       - 100x100
       - 10x10
       - 1830x1
+      - auto
+      - 1x1830
+      - 2x2
   systems:
     - name: postgis
       port: 25432

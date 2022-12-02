@@ -1,6 +1,7 @@
 experiments:
   controller:
     results_folder: ~/git/master-raster-vector/data/results
+    results_db: ~/git/master-raster-vector/data/results.db
   hosts:
     - host: "sgx13.dima.tub"
       base_path: /local-ssd/gdusella-ldap

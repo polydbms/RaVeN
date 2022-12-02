@@ -23,16 +23,19 @@ class Setup:
         module = importlib.import_module(module)
         return getattr(module, class_name)
 
-    def __run_tasks(self, run: BenchmarkRun) -> list[Path]:
+    def __run_tasks(self, run: BenchmarkRun, iteration=1) -> list[Path]:
         system: System = run.benchmark_params.system
         print(system)
+
+        run_cursor = run.host_params.controller_db_connection.initialize_benchmark_run(run.benchmark_params, iteration)
 
         now = datetime.now()
         with open("out.log", "a") as f:
             f.write(f'{system} {now.strftime("%d/%m/%Y %H:%M:%S")} \n')
             f.write(f"--------------------- Pre-Benchmark ------------------- \n")
 
-        network_manager = NetworkManager(run.host_params, run.benchmark_params.system.name, run.measurements_loc)
+        network_manager = NetworkManager(run.host_params, run.benchmark_params.system.name, run.measurements_loc,
+                                         run_cursor)
         transporter = FileTransporter(network_manager)
 
         transporter.send_configs(log_time=self.logger)
@@ -101,7 +104,7 @@ class Setup:
         executor = Executor(run.vector, run.raster, network_manager, run.benchmark_params)
 
         result_files: list[Path] = []
-        if run.benchmark_params.iterations:
+        if False:  # run.benchmark_params.iterations:
             for i in range(run.benchmark_params.iterations):
                 result_files.append(executor.run_query(run.workload, log_time=self.logger))
         else:
@@ -113,12 +116,20 @@ class Setup:
 
         network_manager.stop_measure_docker()
 
+        run_cursor.add_resource_utilization(
+            [run.measurements_loc.controller_measurements_folder.joinpath(f"{e.value}.csv") for e in list(Stage)]
+        )
+        for r in result_files:
+            run_cursor.add_results_file(r)
+
         return result_files
 
     def benchmark(self, experiment_file_name, system=None, post_cleanup=True, single_run=True) -> list[Path]:
-        runs = FileIO.read_experiments_config(experiment_file_name, system)
+        runs, iterations = FileIO.read_experiments_config(experiment_file_name, system)  # todo use iterations
         print(f"running {len(runs)} experiments")
         print([str(r.benchmark_params) for r in runs])
+
+        runs[0].host_params.controller_db_connection.initialize_benchmark_set(Path(experiment_file_name).parts[-1])
 
         result_files = []
         if system:
@@ -150,7 +161,7 @@ class Setup:
     def clean(self, experiment_file_name: str):
         host_params = FileIO.get_host_params(experiment_file_name)
 
-        network_manager = NetworkManager(host_params, "cleanup", None)
+        network_manager = NetworkManager(host_params, "cleanup", None, None)
         network_manager.run_ssh("""kill $(ps aux | grep "docker stats" | awk {\\'print $2\\'} )""")
         network_manager.run_ssh("docker stop $(docker ps -q)")
         network_manager.run_ssh("docker rm $(docker ps -aq)")

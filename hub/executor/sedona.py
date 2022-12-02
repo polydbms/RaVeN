@@ -59,7 +59,7 @@ class Executor:
 
         raster_geom = "raster.geometry"
         vector_geom = "vector.geometry"
-        if self.benchmark_params.align_crs_at_stage == Stage.EXECUTE:
+        if self.benchmark_params.align_crs_at_stage == Stage.EXECUTION:
             match self.benchmark_params.align_to_crs:
                 case DataType.RASTER:
                     vector_geom = f"ST_Transform(" \

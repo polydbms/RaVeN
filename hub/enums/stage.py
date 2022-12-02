@@ -3,8 +3,8 @@ from enum import Enum
 
 class Stage(Enum):
     PREPROCESS = "preprocess"
-    INGEST = "ingest"
-    EXECUTE = "execute"
+    INGESTION = "ingestion"
+    EXECUTION = "execution"
 
     @staticmethod
     def get_by_value(stage):

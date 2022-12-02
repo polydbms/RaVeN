@@ -2,6 +2,7 @@ from pathlib import Path
 
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.benchmarkrun.host_params import HostParameters
+from hub.duckdb.submit_data import DuckDBRunCursor
 
 
 class MeasurementsLocation:
@@ -46,4 +47,3 @@ class MeasurementsLocation:
             str(self._controller_measurements_folder),
             str(self._host_measurements_folder)
         ])
-
