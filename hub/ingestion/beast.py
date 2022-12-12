@@ -8,6 +8,7 @@ from hub.enums.vectorfiletype import VectorFileType
 from hub.evaluation.measure_time import measure_time
 from jinja2 import Template
 
+from hub.executor._sqlbased import SQLBased
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.network import NetworkManager
@@ -36,6 +37,37 @@ class Ingestor:
 
         self.network_manager.run_ssh(str(self.host_base_path.joinpath("config/beast/compile.sh")))
 
+    @staticmethod
+    def __handle_aggregations(type, features):
+        feature_key, feature = list(features.items())[0]
+        return ", ".join(
+            [
+                f"{aggregation}(value) as {feature_key}_{aggregation}"
+                for aggregation in feature["aggregations"]
+            ]
+        )
+
+    def __parse_get(self, get):
+        return SQLBased.parse_get(self.__handle_aggregations, get)
+
+    def __parse_condition(self, condition):
+        return SQLBased.parse_condition(condition)
+
+    def __parse_group(self, group):
+        return SQLBased.parse_group(group)
+
+    def __parse_order(self, order):
+        return SQLBased.parse_order(order)
+
+    def __translate(self, workload):
+        selection = self.__parse_get(workload["get"]) if "get" in workload else ""
+        group = self.__parse_group(workload["group"]) if "group" in workload else ""
+        order = self.__parse_order(workload["order"]) if "order" in workload else ""
+        limit = f'limit {workload["limit"]}' if "limit" in workload else ""
+        query = f"{selection} from df_raw as vector {group} {order} {limit}"
+
+        return query
+
     @measure_time
     def ingest_raster(self, **kwargs):
         print("Ingestion and execution will be executed in the same time.")
@@ -58,13 +90,13 @@ class Ingestor:
         template = self.__read_template(template_path)
 
         raster_conditions = list(
-            map(lambda c: {"condition": self.__parse_condition(c, "Number")},
+            map(lambda c: {"condition": self.__parse_condition_scala(c, "Number")},
                 self.workload["condition"].get("raster", [])))
 
         def __parse_vector_cond(condition):
             field = re.search("([^<>!=]*)", condition).group(1).strip()
             datatype = self.__dtype_to_scala(field)
-            cond = self.__parse_condition(condition, datatype)
+            cond = self.__parse_condition_scala(condition, datatype)
 
             return {
                 "datatype": datatype,
@@ -79,7 +111,10 @@ class Ingestor:
         raster_type = "Float" if "Float" in raster_type_raw else "Int"
         raster_field = re.search("([^<>!=]*)", list(self.workload["get"]["raster"][0].keys())[0]).group(1).strip()
 
-        aggregations = list(self.workload["get"]["raster"][0].values())[0]["aggregations"]
+        sql_query = self.__translate(self.workload)
+
+        print(f"query to run: {sql_query}")
+
         payload = {
             "vector_path": self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed,
             "raster_geotiff_path": self.raster.docker_file_preprocessed.with_suffix(".geotiff"),
@@ -93,13 +128,7 @@ class Ingestor:
                 "field": raster_field,
                 "datatype": raster_type
             },
-            "aggregate": {
-                "avg": "avg" in aggregations,
-                "min": "min" in aggregations,
-                "max": "max" in aggregations,
-                "cnt": "count" in aggregations,
-                "sum": "sum" in aggregations
-            }
+            "sql_query": sql_query
         }
         rendered = template.render(**payload)
         return rendered
@@ -110,7 +139,7 @@ class Ingestor:
             f.write(template)
 
     @staticmethod
-    def __parse_condition(condition, dtype):
+    def __parse_condition_scala(condition, dtype):
         m = re.search("([^<>!=]*)([<>!=]+)(.*)", condition)
         op = "==" if m.group(2).strip() == "=" else m.group(2).strip()
         if dtype == "String":

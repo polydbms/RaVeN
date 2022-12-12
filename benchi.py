@@ -125,6 +125,8 @@ class Setup:
 
         network_manager.stop_measure_docker()
 
+        transporter.get_measurements(run.measurements_loc)
+
         run_cursor.add_resource_utilization(
             [run.measurements_loc.controller_measurements_folder.joinpath(f"{e.value}.csv") for e in list(Stage)]
         )

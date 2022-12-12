@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from configuration import PROJECT_ROOT
+from hub.benchmarkrun.measurementslocation import MeasurementsLocation
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
 from hub.enums.filetype import FileType
@@ -91,3 +92,6 @@ class FileTransporter:
             self.network_manager.run_command(f"{self.network_manager.ssh_command} unzip")
         else:
             print("sent nothing")
+
+    def get_measurements(self, measurements_loc: MeasurementsLocation):
+        self.get_folder(measurements_loc.host_measurements_folder, measurements_loc.controller_measurements_folder)

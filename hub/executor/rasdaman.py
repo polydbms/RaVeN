@@ -276,7 +276,4 @@ class Executor:
         self.vector_path.controller_wkt.unlink()
         self.network_manager.stop_socks_proxy()
 
-        self.transporter.get_folder(self.network_manager.measurements_loc.host_measurements_folder,
-                                    self.network_manager.measurements_loc.controller_measurements_folder)
-
         return result_path

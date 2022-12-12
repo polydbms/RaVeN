@@ -114,7 +114,4 @@ class Executor:
 
         self.network_manager.run_remote_rm_file(results_path_host)
 
-        self.transporter.get_folder(self.network_manager.measurements_loc.host_measurements_folder,
-                                    self.network_manager.measurements_loc.controller_measurements_folder)
-
         return result_path
