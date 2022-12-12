@@ -35,6 +35,7 @@ class FileIO:
                 parameters = experiments.get("parameters", {})
                 systems = [s for s in FileIO.get_systems(filename) if s.name == system or system is None]
                 iterations = int(experiments.get("iterations", 1))
+                warm_starts = int(experiments.get("warm_starts", 0))
 
                 runs = []
                 brf = BenchmarkRunFactory(capabilities)
@@ -91,7 +92,8 @@ class FileIO:
                         workload,
                         host_params,
                         benchmark_params,
-                        Path(filename).parts[-1]
+                        Path(filename).parts[-1],
+                        warm_starts
                     ))
 
                 runs_no_dupes = list(set(runs))

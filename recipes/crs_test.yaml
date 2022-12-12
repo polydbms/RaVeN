@@ -1,6 +1,7 @@
 experiments:
   controller:
     results_folder: ~/git/master-raster-vector/data/results
+    results_db: ~/git/master-raster-vector/data/results.db
   hosts:
     - host: "sgx13.dima.tub"
       base_path: /local-ssd/gdusella-ldap
@@ -38,8 +39,9 @@ experiments:
   parameters:
     align_to_crs: raster
     align_crs_at_stage:
-#      - preprocess
+      - preprocess
       - execute
+  warm_starts: 1
   systems:
     - name: postgis
       port: 25432
@@ -48,3 +50,4 @@ experiments:
     - name: rasdaman
       port: 8080
     - name: sedona
+    - name: beast

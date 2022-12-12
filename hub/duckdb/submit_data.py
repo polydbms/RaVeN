@@ -90,8 +90,16 @@ class DuckDBRunCursor:
                 conn.execute("insert into resource_util select * from parsed_util_df")
 
     def add_results_file(self, filename: Path):
+        match filename.suffixes[0].split("-"):
+            case [".cold"]:
+                warm_start_no = 0
+            case [".warm", *no]:
+                warm_start_no = int(no[0])
+            case _:
+                raise Exception("could not find info on run type in results file name")
+
         with self._connection.cursor() as conn:
-            conn.execute("insert into results values (?, ?)", [self._run_id, str(filename)])
+            conn.execute("insert into results values (?, ?, ?)", [self._run_id, warm_start_no, str(filename)])
 
     @staticmethod
     def _parse_docker_stats(util_df: DataFrame):

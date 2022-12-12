@@ -219,9 +219,7 @@ class Executor:
         return selection, condition, order, limit, has_aggregations
 
     @measure_time
-    def run_query(self, workload, **kwargs):
-        self.network_manager.run_ssh("""echo "benchi_marker,$(date +%s.%N),now,time_diff_check,rasdaman,," """)
-
+    def run_query(self, workload, warm_start_no: int, **kwargs):
         selection, condition, order, limit, has_aggregations = self.__translate(
             workload
         )
@@ -244,7 +242,7 @@ class Executor:
             vector_features.sort(key=lambda x: x["properties"][o])
 
         result_path = self.network_manager.host_params.controller_result_folder.joinpath(
-            f"results_{self.network_manager.measurements_loc.file_prepend}.csv")
+            f"results_{self.network_manager.measurements_loc.file_prepend}.{'cold' if warm_start_no == 0 else f'warm-{warm_start_no}'}.csv")
 
         if limit:
             vector_features = vector_features[: int(limit)]

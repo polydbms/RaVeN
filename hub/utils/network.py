@@ -199,3 +199,12 @@ class NetworkManager:
         with self.measurements_loc.timings_file.open("a") as f:
             f.write(timings_line)
             f.write("\n")
+
+    def init_timings_sync_marker(self, system):
+        self.run_ssh(f"""echo "benchi_marker,$(date +%s.%N),now,time_diff_check,{system},," """)
+
+    def add_meta_marker_start(self, system, warm_start_no):
+        self.run_ssh(f"""echo "benchi_meta,$(date +%s.%N),start,execution,{system},,{"cold" if warm_start_no == 0 else f"warm_{warm_start_no}"}" """)
+
+    def add_meta_marker_end(self, system, warm_start_no):
+        self.run_ssh(f"""echo "benchi_meta,$(date +%s.%N),end,execution,{system},,{"cold" if warm_start_no == 0 else f"warm_{warm_start_no}"}" """)

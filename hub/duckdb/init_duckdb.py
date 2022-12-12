@@ -118,8 +118,9 @@ class InitializeDuckDB:
         self._connection.execute("""
         create table if not exists results (
             run_id int,
+            warm_start_no int,
             result_file varchar,
-            primary key (run_id)
+            primary key (run_id, warm_start_no)
         )
         """)  # results_table
 

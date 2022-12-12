@@ -76,6 +76,7 @@ experiments:
       - execution
 
   iterations: 2
+  warm_starts: 3
   systems:
     - name: postgis
       port: 25432

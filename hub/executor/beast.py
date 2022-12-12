@@ -19,11 +19,11 @@ class Executor:
         self.benchmark_params = benchmark_params
 
     @measure_time
-    def run_query(self, workload, **kwargs):
+    def run_query(self, workload, warm_start_no: int, **kwargs):
         self.network_manager.run_ssh(str(self.host_base_path.joinpath("config/beast/execute.sh")), **kwargs)
 
         result_path = self.network_manager.host_params.controller_result_folder.joinpath(
-            f"results_{self.network_manager.measurements_loc.file_prepend}.csv")
+            f"results_{self.network_manager.measurements_loc.file_prepend}.{'cold' if warm_start_no == 0 else f'warm-{warm_start_no}'}.csv")
         result_file = self.host_base_path.joinpath("data/results/results_beast.csv")
         self.transporter.get_file(
             result_file,
@@ -37,4 +37,3 @@ class Executor:
                                     self.network_manager.measurements_loc.controller_measurements_folder)
 
         return result_path
-

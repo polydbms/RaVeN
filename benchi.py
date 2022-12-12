@@ -99,16 +99,25 @@ class Setup:
             f.write(f"Run query\n")
         print("Run query")
 
+        network_manager.init_timings_sync_marker(run.benchmark_params.system.name)
         network_manager.start_measure_docker("execution")
         Executor = self.__importer(f"hub.executor.{system}", "Executor")
         executor = Executor(run.vector, run.raster, network_manager, run.benchmark_params)
 
         result_files: list[Path] = []
-        if False:  # run.benchmark_params.iterations:
-            for i in range(run.benchmark_params.iterations):
-                result_files.append(executor.run_query(run.workload, log_time=self.logger))
-        else:
-            result_files.append(executor.run_query(run.workload, log_time=self.logger))
+
+        # cold start
+        print(f"running cold start for parameters {run.benchmark_params}")
+        network_manager.add_meta_marker_start(run.benchmark_params.system.name, 0)
+        result_files.append(executor.run_query(run.workload, warm_start_no=0, log_time=self.logger))
+        network_manager.add_meta_marker_end(run.benchmark_params.system.name, 0)
+
+        for i in range(1, run.warm_starts + 1):
+            sleep(10)
+            print(f"running warm start {i} out of {run.warm_starts} for parameters {run.benchmark_params}")
+            network_manager.add_meta_marker_start(run.benchmark_params.system.name, i)
+            result_files.append(executor.run_query(run.workload, warm_start_no=i, log_time=self.logger))
+            network_manager.add_meta_marker_end(run.benchmark_params.system.name, i)
 
         with open("out.log", "a") as f:
             f.write(f"--------------------- Post-Benchmark ------------------- \n")
