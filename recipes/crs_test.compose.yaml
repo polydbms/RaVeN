@@ -46,7 +46,7 @@ experiments:
     align_to_crs: both
     align_crs_at_stage:
       - preprocess
-      - execute
+      - execution
   systems:
     - name: postgis
       port: 25432

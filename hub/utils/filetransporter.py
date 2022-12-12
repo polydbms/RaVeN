@@ -67,7 +67,7 @@ class FileTransporter:
     @measure_time
     def send_configs(self, **kwargs):
         host_config_path = self.host_base_path.joinpath("config")
-        print(host_config_path)
+        # print(host_config_path)
         self.network_manager.run_remote_mkdir(host_config_path)
         self.send_folder(
             Path(f"{PROJECT_ROOT}/hub/deployment/files/{self.network_manager.system_name}"),

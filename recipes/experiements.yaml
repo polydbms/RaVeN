@@ -47,3 +47,4 @@ experiments:
 #    - name: rasdaman
 #      port: 8080
     - name: sedona
+    - name: beast

@@ -23,9 +23,9 @@ class DuckDBConnector:
 
     def get_id_of_parameter(self, param: BenchmarkParameters) -> int:
         with self.get_cursor() as c:
-            param_df = pd.DataFrame([param.__dict__])
+            param_df = pd.DataFrame([param.__dict__]).fillna('')
             param_df_cleaned = c.execute("select * from param_df").fetch_df()
-            all_params = c.execute("select * from parameters").fetch_df().set_index("id")
+            all_params = c.execute("select * from parameters").fetch_df().set_index("id").drop_duplicates(keep="last")
             all_params_dupes = pd.concat([all_params, param_df_cleaned])
             param_db_row = all_params_dupes.duplicated(keep=False)[lambda x: x]
 
@@ -46,8 +46,8 @@ class DuckDBConnector:
         param_id = self.get_id_of_parameter(params)
 
         with self.get_cursor() as conn:
-            run = conn\
-            .execute(
+            run = conn \
+                .execute(
                 f"insert into benchmark_run (parameters, benchmark_set, iteration) values ({param_id}, {self._benchmark_set_id}, {iteration}) returning *"
             ).fetchall()[0]
 
@@ -72,16 +72,16 @@ class DuckDBRunCursor:
                              self._run_id,
                              marker,
                              datetime.fromtimestamp(float(timestamp)),
-                             event,
-                             stage,
-                             dataset,
-                             comment,
+                             event.strip(),
+                             stage.strip(),
+                             dataset.strip(),
+                             comment.strip(),
                              datetime.now()
                          ])
 
     def add_resource_utilization(self, util_files: list[Path]):
         for f in util_files:
-            stage = f.name
+            stage = f.stem
             util_df = pd.read_csv(f, delimiter="\t")
             parsed_util_df = self._parse_docker_stats(util_df)
             parsed_util_df.insert(loc=0, column="run_id", value=self._run_id)

@@ -11,6 +11,11 @@ systems:
     - omnisci
   variable_tile_size:
     - postgis
+  ingest_raster_tiff_only:
+    - beast
+  require_geotiff_ending:
+    - beast
+
 #  align_crs_at:
 #    preprocess:
 #      - rasdaman

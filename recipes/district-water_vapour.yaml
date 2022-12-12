@@ -37,16 +37,25 @@ experiments:
       vector: 
         - schluessel
   parameters:
+#    vectorize_type:
+#      - polygons
+#      - points
+#    raster_tile_size:
+#      - 100x100
+#      - 10x10
+#      - 1830x1
+#      - auto
+#      - 1x1830
+#      - 2x2
     vectorize_type:
-      - polygons
       - points
-    raster_tile_size:
-      - 100x100
-      - 10x10
-      - 1830x1
-      - auto
-      - 1x1830
-      - 2x2
+    vectorize_format:
+      - shp
+    align_to_crs: vector
+    align_crs_at_stage:
+      - preprocess
+      - execution
+
   systems:
     - name: postgis
       port: 25432
@@ -55,3 +64,4 @@ experiments:
     - name: rasdaman
       port: 8080
     - name: sedona
+    - name: beast

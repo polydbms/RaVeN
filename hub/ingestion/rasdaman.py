@@ -14,7 +14,8 @@ from hub.utils.network import NetworkManager
 
 
 class Ingestor:
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager, benchmark_params: BenchmarkParameters) -> None:
+    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager,
+                 benchmark_params: BenchmarkParameters, workload=None) -> None:
         self.logger = {}
         self.network_manager = network_manager
         self.vector_path = vector_path

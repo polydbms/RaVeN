@@ -1,0 +1,121 @@
+package benchi
+
+import edu.ucr.cs.bdlab.beast.geolite.{IFeature, ITile}
+import edu.ucr.cs.bdlab.beast.{RasterReadMixinFunctions, ReadWriteMixinFunctions}
+import edu.ucr.cs.bdlab.raptor.RaptorJoinFeature
+import org.apache.spark.SparkConf
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSession
+
+/**
+ * Scala examples for Beast
+ */
+object RaptorScala {
+  def main(args: Array[String]): Unit = {
+    val conf = new SparkConf().setAppName("Raptor Scala")
+    // Set Spark master to local if not already set
+    if (!conf.contains("spark.master"))
+      conf.setMaster("local[*]")
+
+    val spark: SparkSession = SparkSession.builder().config(conf).getOrCreate()
+    import spark.implicits._
+
+    val sc = spark.sparkContext
+    try {
+      val time_delta = System.currentTimeMillis() * scala.math.pow(10, 6) - System.nanoTime()
+      println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,start,execution,beast,vector,inner")
+
+      // 1- Load raster and vector data
+      val vector: RDD[IFeature] = sc.spatialFile("{{vector_path}}")
+      {% for c in vector_conditions %}
+        .filter(f => f.getAs[{{c.datatype}}]("{{c.field}}") {{c.condition}})
+      {% endfor %}
+      println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,end,execution,beast,vector,inner")
+
+      println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,start,execution,beast,raster,inner")
+      val raster: RDD[ITile[{{raster.datatype}}]] = sc.geoTiff[{{raster.datatype}}]("{{raster_geotiff_path}}")
+
+      println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,end,execution,beast,raster,inner")
+
+      println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,start,execution,beast,,inner")
+
+      val join: RDD[RaptorJoinFeature[{{raster.datatype}}]] = raster.raptorJoin(vector)
+      {% for c in raster_conditions %}
+        .filter(v => v.m {{c.condition}})
+      {% endfor %}
+
+      println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,mid,execution,beast,,inner")
+
+      val rdd_base = spark.createDataset(vector.map(f => f.getAs[{{get.datatype}}]("{{get.field}}"))).toDF(Seq("{{get.field}}"): _*)
+
+      {% if aggregate.sum or aggregate.avg %}
+      val rdd_sum: RDD[({{get.datatype}}, {{raster.datatype}})] = join.map(v => (v.feature, v.m))
+        .reduceByKey(_ + _)
+        .map(fv => {
+          val name: {{get.datatype}}= fv._1.getAs[{{get.datatype}}]("{{get.field}}")
+          val value: {{raster.datatype}}= fv._2
+          (name, value)
+        })
+      val df_sum = spark.createDataset(rdd_sum).toDF(Seq("{{get.field}}", "sum"): _*)
+      {% endif %}
+
+      {% if aggregate.min %}
+      val rdd_min: RDD[({{get.datatype}}, {{raster.datatype}})] = join.map(v => (v.feature, v.m))
+        .reduceByKey((p, c) => if (p < c) p else c)
+        .map(fv => {
+          val name: {{get.datatype}}= fv._1.getAs[{{get.datatype}}]("{{get.field}}")
+          val value: {{raster.datatype}}= fv._2
+          (name, value)
+        })
+      val df_min = spark.createDataset(rdd_min).toDF(Seq("{{get.field}}", "min"): _*)
+      {% endif %}
+
+      {% if aggregate.max %}
+      val rdd_max: RDD[({{get.datatype}}, {{raster.datatype}})] = join.map(v => (v.feature, v.m))
+        .reduceByKey((p, c) => if (p > c) p else c)
+        .map(fv => {
+          val name: {{get.datatype}}= fv._1.getAs[{{get.datatype}}]("{{get.field}}")
+          val value: {{raster.datatype}}= fv._2
+          (name, value)
+        })
+      val df_max = spark.createDataset(rdd_max).toDF(Seq("{{get.field}}", "max"): _*)
+      {% endif %}
+
+      {% if aggregate.cnt or aggregate.avg %}
+      val rdd_count: RDD[({{get.datatype}}, Int)] = join.map(v => (v.feature, v.m))
+        .mapValues(v => 1)
+        .reduceByKey(_ + _)
+        .map(fv => {
+          val name: {{get.datatype}}= fv._1.getAs[{{get.datatype}}]("{{get.field}}")
+          val value: Int = fv._2
+          (name, value)
+        })
+      val df_cnt = spark.createDataset(rdd_count).toDF(Seq("{{get.field}}", "cnt"): _*)
+      {% endif %}
+
+      {% if aggregate.avg %}
+      val rdd_avg: RDD[({{get.datatype}}, Float)] = rdd_sum.join(rdd_count)
+        .map(fv => {
+          val name: {{get.datatype}}= fv._1
+          val value: Float = fv._2._1.toFloat / fv._2._2.toFloat
+          (name, value)
+        })
+      val df_avg = spark.createDataset(rdd_avg).toDF(Seq("{{get.field}}", "avg"): _*)
+      {% endif %}
+
+      val df_all = rdd_base
+        {{ '.join(df_avg, "' + get.field + '")' if aggregate.avg else '' }}
+        {{ '.join(df_cnt, "' + get.field + '")' if aggregate.cnt else '' }}
+        {{ '.join(df_min, "' + get.field + '")' if aggregate.min else '' }}
+        {{ '.join(df_max, "' + get.field + '")' if aggregate.max else '' }}
+        {{ '.join(df_sum, "' + get.field + '")' if aggregate.sum else '' }}
+
+
+      df_all.sort($"{{get.field}}", $"{{get.field}}".asc).coalesce(1).write.option("header",true).csv("/data/beast_result")
+
+      println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,end,execution,beast,,inner")
+    } finally {
+      spark.stop()
+    }
+  }
+}

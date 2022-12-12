@@ -39,7 +39,8 @@ class FileIO:
                 runs = []
                 brf = BenchmarkRunFactory(capabilities)
 
-                for benchmark_params in brf.create_params_iterations(systems, parameters):
+                benchmark_params_raw = brf.create_params_iterations(systems, parameters)
+                for benchmark_params in benchmark_params_raw:
 
                     raster_dl = DataLocation(data["raster"], DataType.RASTER, host_params, benchmark_params)
                     vector_dl = DataLocation(data["vector"], DataType.VECTOR, host_params, benchmark_params)
@@ -72,6 +73,9 @@ class FileIO:
 
                         if benchmark_params.align_crs_at_stage is None:
                             benchmark_params.align_crs_at_stage = Stage.PREPROCESS
+
+                    if benchmark_params.system.name in capabilities["ingest_raster_tiff_only"]:
+                        benchmark_params.raster_target_format = RasterFileType.TIFF
 
                     match benchmark_params.align_to_crs:
                         case DataType.VECTOR:

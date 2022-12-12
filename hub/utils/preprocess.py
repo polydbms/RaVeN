@@ -7,6 +7,7 @@ import subprocess
 from time import time
 from functools import wraps
 from pathlib import Path
+from typing import Type
 
 import pandas as pd
 import geopandas as gpd
@@ -15,6 +16,7 @@ import rasterio.crs
 from osgeo_utils import gdal_polygonize
 from pyproj import CRS
 
+from hub.enums.rasterfiletype import RasterFileType
 from hub.enums.vectorfiletype import VectorFileType
 from hub.enums.vectorizationtype import VectorizationType
 from hub.evaluation.measure_time import measure_time
@@ -54,11 +56,11 @@ class PreprocessConfig:
 
     # intermediate_folders: list[Path]  # FIXME this should be done properly
 
-    def __init__(self, args):
+    def __init__(self, args, capabilities):
         self.system = args.system
 
         self._vector_folder = Path(args.vector_path)
-        self._vector_file = self._find_file(self._vector_folder, ["*.shp"]).parts[-1]
+        self._vector_file = self._find_file(self._vector_folder, VectorFileType).parts[-1]
         self.vector_name = self._vector_folder.name
         self.vector_target_suffix = args.vector_target_suffix
         self.vector_output_folder = Path(args.vector_output_folder)
@@ -66,7 +68,7 @@ class PreprocessConfig:
         self.vectorization_type = VectorizationType.get_by_value(args.vectorization_type)
 
         self._raster_folder = Path(args.raster_path)
-        self._raster_file = self._find_file(self._raster_folder, ["*.tif", "*.tiff", "*.jp2"]).parts[-1]
+        self._raster_file = self._find_file(self._raster_folder, RasterFileType).parts[-1]
         self.raster_name = self._raster_folder.name
         self.raster_target_suffix = args.raster_target_suffix
         self.raster_output_folder = Path(args.raster_output_folder)
@@ -74,11 +76,16 @@ class PreprocessConfig:
 
         self.intermediate_folders = []
 
+        self.capabilities = capabilities
+
     def set_vector_folder(self, folder: Path):
         self._vector_folder = folder
 
     def set_vector_suffix(self, suffix: str):
         self._vector_file = self.vector_file_path.with_suffix(suffix).parts[-1]
+
+    def get_vector_suffix(self):
+        return self.vector_file_path.suffix
 
     @property
     def vector_folder(self) -> Path:
@@ -97,6 +104,9 @@ class PreprocessConfig:
 
     def set_raster_suffix(self, suffix: str):
         self._raster_file = self.raster_file_path.with_suffix(suffix).parts[-1]
+
+    def get_raster_suffix(self):
+        return self.raster_file_path.suffix
 
     @property
     def raster_folder(self) -> Path:
@@ -131,6 +141,12 @@ class PreprocessConfig:
             if f.is_file():
                 print(f"copy {f} to {self.raster_output_folder}")
                 shutil.copy(f, self.raster_output_folder)
+
+        if self.system in self.capabilities["require_geotiff_ending"]:
+            for f in self.raster_output_folder.iterdir():
+                if f.suffix == ".tiff":
+                    f.with_suffix(".geotiff").symlink_to(f)
+                    print(f'created symlink {f.with_suffix(".geotiff")} to file {f}')
         # shutil.copytree(self.raster_folder, self.raster_output_folder, dirs_exist_ok=True)
 
     @staticmethod
@@ -138,8 +154,8 @@ class PreprocessConfig:
         return ''.join(random.choice(string.ascii_lowercase) for i in range(length))
 
     @staticmethod
-    def _find_file(folder: Path, ending: [str]) -> Path:
-        for e in ending:
+    def _find_file(folder: Path, file_type_class: Type[RasterFileType | VectorFileType]) -> Path:
+        for e in list(map(lambda t: f"*{t.value}", file_type_class)):
             files = [f for f in folder.glob(e)]
             if len(files) > 0:
                 return Path(files[0].name)
@@ -276,7 +292,22 @@ class FileConverterPreprocessor(Preprocessor):
 
     @measure_time
     @print_timings("raster", "translate")
-    def raster_to_xyz(self, *args, **kwargs):
+    def raster_to_geotiff(self, *args, **kwargs):
+        print(f"translating raster file {self.config.raster_file} to geotiff")
+
+        output_file = self._raster_tmp_out_folder \
+            .joinpath(self.config.raster_file).with_suffix(self.config.raster_target_suffix)
+
+        subprocess.call(f"gdal_translate -of GTiff {self.config.raster_file_path} {output_file}", shell=True)
+
+        print(f"translated raster file to {output_file}")
+
+        self.update_raster_suffix()
+        self.update_raster_folder()
+
+    @measure_time
+    @print_timings("raster", "translate")
+    def raster_to_xyz(self):
         print(f"translating raster file {self.config.raster_file} to xyz")
 
         output_file = self._raster_tmp_out_folder \
@@ -427,7 +458,7 @@ def main():
     parser.add_argument("--raster_output_folder", help="output folder of the raster files", required=True)
     parser.add_argument("--raster_target_crs", help="target CRS for the raster file", required=True)
     parser.add_argument("--system", help="Specify which system should be benchmarked")
-    preprocess_config = PreprocessConfig(parser.parse_args())
+    preprocess_config = PreprocessConfig(parser.parse_args(), capabilities)
     print(preprocess_config)
 
     # todo if CRS already correct
@@ -437,6 +468,11 @@ def main():
     crs_preprocessor.reproject_vector(log_time=crs_preprocessor.logger)
 
     # TODO if raster -> raster needs to be converted
+
+    if preprocess_config.system not in capabilities["vectorize"] \
+            and preprocess_config.get_raster_suffix() != preprocess_config.raster_target_suffix:
+        file_converter = FileConverterPreprocessor(preprocess_config)
+        file_converter.raster_to_geotiff()
 
     # todo if vector -> vector needs to be converted
 

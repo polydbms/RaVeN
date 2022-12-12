@@ -45,7 +45,7 @@ class Executor:
             "count": self.__get_count,
         }
         self.headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        self.crs = gpd.read_file(self.vector_path.controller_file).crs.to_epsg()
+        self.crs = gpd.read_file(self.vector_path.controller_file, rows=1).crs.to_epsg()
         self.crs_url = f"{self.base_url}/def/crs/EPSG/0/{self.crs}"
 
     def __get_avg(self, geometry):

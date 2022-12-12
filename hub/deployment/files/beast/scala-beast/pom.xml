@@ -1,0 +1,190 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>de.tuberlin.dima.benchi.beast</groupId>
+  <artifactId>beast-bench</artifactId>
+  <version>1.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>beast-bench</name>
+  <url>http://www.myorganization.org</url>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+<!--    <maven.compiler.source>12</maven.compiler.source>-->
+<!--    <maven.compiler.target>12</maven.compiler.target>-->
+    <maven.compiler.release>8</maven.compiler.release>
+    <beast.version>0.9.5</beast.version>
+    <spark.version>3.2.0</spark.version>
+    <scala.version>2.12.15</scala.version>
+    <scala.compat.version>2.12</scala.compat.version>
+    <scala.maven.plugin.version>4.5.6</scala.maven.plugin.version>
+  </properties>
+
+  <dependencies>
+<!--    <dependency>-->
+<!--      <groupId>junit</groupId>-->
+<!--      <artifactId>junit</artifactId>-->
+<!--      <version>4.12</version>-->
+<!--      <scope>test</scope>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>edu.ucr.cs.bdlab</groupId>-->
+<!--      <artifactId>commontest</artifactId>-->
+<!--      <version>${beast.version}</version>-->
+<!--      <scope>test</scope>-->
+<!--    </dependency>-->
+    <dependency>
+      <groupId>edu.ucr.cs.bdlab</groupId>
+      <artifactId>beast-spark</artifactId>
+      <version>${beast.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- This plugin compiles Scala files -->
+      <plugin>
+        <groupId>net.alchim31.maven</groupId>
+        <artifactId>scala-maven-plugin</artifactId>
+        <version>${scala.maven.plugin.version}</version>
+        <executions>
+          <execution>
+            <id>scala-compile-first</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>add-source</goal>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>scala-test-compile</id>
+            <phase>process-test-resources</phase>
+            <goals>
+              <goal>testCompile</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifest>
+              <addClasspath>true</addClasspath>
+              <mainClass>de.tuberlin.dima.benchi.beast.BeastScala</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.18.1</version>
+        <configuration>
+          <useFile>false</useFile>
+          <disableXmlReport>true</disableXmlReport>
+          <!-- If you have classpath issue like NoDefClassError,... -->
+          <!-- <useManifestOnlyJar>false</useManifestOnlyJar> -->
+          <includes>
+            <include>**/*Test.*</include>
+            <include>**/*Suite.*</include>
+          </includes>
+        </configuration>
+      </plugin>
+
+    </plugins>
+  </build>
+  <profiles>
+    <profile>
+      <id>uberjar</id>
+      <build>
+        <plugins>
+
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <version>3.1.1</version>
+            <configuration>
+              <artifactSet>
+                <includes>
+                  <include>edu.ucr.cs.bdlab:beast-spark</include>
+                  <include>edu.ucr.cs.bdlab:cg</include>
+                  <include>edu.ucr.cs.bdlab:common</include>
+                  <include>edu.ucr.cs.bdlab:io</include>
+                  <include>edu.ucr.cs.bdlab:raptor</include>
+                  <include>edu.ucr.cs.bdlab:visualization</include>
+                  <include>edu.ucr.cs.bdlab:jhdf</include>
+                  <include>org.locationtech.jts:jts-core</include>
+                  <!-- org.mortbay.jetty:jetty + dependencies -->
+                  <include>org.mortbay.jetty:jetty</include>
+                  <include>org.mortbay.jetty:jetty-util</include>
+                  <include>org.mortbay.jetty:servlet-api</include>
+                  <!-- /org.mortbay.jetty:jetty + dependencies -->
+                  <!-- org.geotools:gt-epsg-hsql + dependencies -->
+                  <include>org.geotools:gt-epsg-hsql</include>
+                  <include>org.geotools:gt-referencing</include>
+                  <include>org.geotools:gt-metadata</include>
+                  <include>org.geotools:gt-opengis</include>
+                  <include>org.geotools.ogc:net.opengis.ows</include>
+                  <include>org.geotools.ogc:org.w3.xlink</include>
+                  <include>org.hsqldb:hsqldb</include>
+                  <include>org.eclipse.emf:org.eclipse.emf.common</include>
+                  <include>org.eclipse.emf:org.eclipse.emf.ecore</include>
+                  <include>org.eclipse.emf:org.eclipse.emf.ecore.xmi</include>
+                  <include>systems.uom:systems-common-java8</include>
+                  <include>tec.uom:uom-se</include>
+                  <include>tec.uom.lib:uom-lib-common</include>
+                  <include>si.uom:si-quantity</include>
+                  <include>si.uom:si-units-java8</include>
+                  <include>javax.measure:unit-api</include>
+                  <include>javax:javaee-api</include>
+                  <include>javax.media:jai_core</include>
+                  <include>com.sun.mail:javax.mail</include>
+                  <include>org.ejml:ejml-ddense</include>
+                  <include>org.ejml:ejml-core</include>
+                  <include>commons-pool:commons-pool</include>
+                  <include>jgridshift:jgridshift-core</include>
+                  <include>net.sf.geographiclib:GeographicLib-Java</include>
+                  <!-- /org.geotools:gt-epsg-hsql + dependencies -->
+                </includes>
+              </artifactSet>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <finalName>beast-bench-uber-${project.version}</finalName>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>edu.ucr.cs.bdlab.beast.operations.Main</mainClass>
+                </transformer>
+                <!-- Merge configuration files from all modules -->
+                <transformer implementation="org.apache.maven.plugins.shade.resource.XmlAppendingTransformer">
+                  <resource>beast.xml</resource>
+                </transformer>
+              </transformers>
+            </configuration>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>shade</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>

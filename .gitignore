@@ -246,3 +246,4 @@ fabric.properties
 /hub/deployment/files/rasdaman/ingredients.json
 
 
+/hub/deployment/files/beast/scala-beast/src/main/scala/benchi/RaptorScala.scala

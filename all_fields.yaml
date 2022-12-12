@@ -35,10 +35,10 @@ experiments:
         - flstkennz
   parameters:
     raster_format:
-      - tiff
+      - geotiff
       - jp2
     rasterize_format:
-      - tiff
+      - geotiff
       - jp2
     raster_target_crs:
       - epsg:4326

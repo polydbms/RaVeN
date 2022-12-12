@@ -46,7 +46,8 @@ class DataLocation:
         self._name = self._controller_location.stem if name is None else name
 
         self._data_type = data_type
-        self._file = self._find_file(["*.shp"] if self._data_type == DataType.VECTOR else ["*.tif", "*.tiff", "*.jp2"])
+        self._file = self._find_file(
+            ["*.shp"] if self._data_type == DataType.VECTOR else ["*.tif", "*.tiff", "*.geotiff", "*.jp2"])
 
         self._host_dir = self._host_base_dir.joinpath("data").joinpath(self._name)
         self._docker_dir = Path("/data").joinpath(Path(self._name))
@@ -77,11 +78,10 @@ class DataLocation:
                 files = [f for f in self._controller_location.glob(e)]
                 if len(files) > 0:
                     f = files[0]
-                    match f.suffix:
-                        case ".tif":
-                            new_f = f.with_suffix(".tiff")
-                            f.rename(new_f)
-                            return Path(new_f.name)
+                    if f.suffix in {".tif", ".tiff", ".geotiff"}.difference({str(RasterFileType.TIFF.value)}):
+                        new_f = f.with_suffix(str(RasterFileType.TIFF.value))
+                        f.rename(new_f)
+                        return Path(new_f.name)
 
                     return Path(files[0].name)
         elif self.type == FileType.ZIP_ARCHIVE:

@@ -81,8 +81,8 @@ class Setup:
         run.raster.set_preprocessed()
         run.vector.set_preprocessed()
         network_manager.stop_measure_docker()
-        print("Wait 15s until docker is ready")
-        sleep(15)
+        print("Wait 5s until docker is ready")
+        sleep(5)
 
         with open("out.log", "a") as f:
             f.write(f"Ingesting data\n")
@@ -90,7 +90,7 @@ class Setup:
 
         network_manager.start_measure_docker("ingestion")
         Ingestor = self.__importer(f"hub.ingestion.{system}", "Ingestor")
-        ingestor = Ingestor(run.vector, run.raster, network_manager, run.benchmark_params)
+        ingestor = Ingestor(run.vector, run.raster, network_manager, run.benchmark_params, run.workload)
         ingestor.ingest_raster(log_time=self.logger)
         ingestor.ingest_vector(log_time=self.logger)
         network_manager.stop_measure_docker()

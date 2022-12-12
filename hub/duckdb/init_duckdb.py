@@ -155,7 +155,7 @@ class InitializeDuckDB:
         # max_id = conn.execute("SELECT max(id) from parameters").fetchone()
         # max_id = int(max_id[0]) if max_id[0] else 1
         old_exp = self._connection.execute("select * from parameters").fetch_df().set_index("id")
-        new_exp_df = pd.DataFrame([e.benchmark_params.__dict__ for e in experiments])
+        new_exp_df = pd.DataFrame([e.benchmark_params.__dict__ for e in experiments]).fillna('')
         new_exp_cleaned = self._connection.execute("select * from new_exp_df").fetch_df()
         cleaned = new_exp_cleaned.merge(old_exp, how="left", indicator=True)
         cleaned = cleaned[cleaned["_merge"] == 'left_only']
