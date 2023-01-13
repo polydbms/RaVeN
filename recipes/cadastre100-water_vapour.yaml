@@ -7,13 +7,13 @@ experiments:
       base_path: /local-ssd/gdusella-ldap
       public_key_path: ~/.ssh/lrv.pub
   data: # if undefined cmd parameters can be used to manually define data
-    raster: /home/gereon/git/master-raster-vector/benchi/data/PRISM_ppt_stable_4kmD2_20210901_crs83
-    vector: /home/gereon/git/master-raster-vector/benchi/data/ne_10m_admin_1_states_provinces
+    raster: /home/gereon/git/master-raster-vector/benchi/data/sentinel2a_mol_band9
+    vector: /home/gereon/git/master-raster-vector/benchi/data/ALKIS_kataster_MOL_100
   workload:
-    get: 
+    get:
       vector:
-        - name
-      raster: 
+        - flstkennz
+      raster:
         - sval:
             aggregations:
               - avg
@@ -25,23 +25,21 @@ experiments:
       table1: vector
       table2: raster
       condition: intersect(raster, vector)
-    condition: 
-      vector: 
-        - iso_a2 = 'US'
+    condition:
+      vector:
+        - nutzart = 'Landwirtschaft'
       raster:
         - sval >= 0
     group:
-      vector: 
-        - name
+      vector:
+        - flstkennz
     order:
-      vector: 
-        - name
+      vector:
+        - flstkennz
   parameters:
-    align_to_crs: raster
-    align_crs_at_stage:
-#      - preprocess
-      - execute
-  warm_starts: 0
+    vectorize_format:
+      - shp
+#      - geojson
   systems:
     - name: postgis
       port: 25432
@@ -50,4 +48,3 @@ experiments:
     - name: rasdaman
       port: 8080
     - name: sedona
-    - name: beast
