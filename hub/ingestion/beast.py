@@ -91,7 +91,7 @@ class Ingestor:
 
         raster_conditions = list(
             map(lambda c: {"condition": self.__parse_condition_scala(c, "Number")},
-                self.workload["condition"].get("raster", [])))
+                self.workload.get("condition", {}).get("raster", [])))
 
         def __parse_vector_cond(condition):
             field = re.search("([^<>!=]*)", condition).group(1).strip()
@@ -104,11 +104,13 @@ class Ingestor:
                 "condition": cond
             }
 
-        vector_conditions = list(map(__parse_vector_cond, self.workload["condition"].get("vector", [])))
+        vector_conditions = list(map(__parse_vector_cond, self.workload.get("condition", {}).get("vector", [])))
 
         raster_type_raw = subprocess.run(f'gdalinfo {self.raster.controller_file} | grep -Po "(?<=Type=)(\w+)"',
                                          shell=True, capture_output=True).stdout.decode("utf-8").strip()
-        raster_type = "Float" if "Float" in raster_type_raw else "Int"
+        raster_type = ("Float" if "64" in raster_type_raw else "Float") \
+            if "Float" in raster_type_raw else \
+            ("Int" if "64" in raster_type_raw else "Int")  # FIXME Double and Long seem to not be supported
         raster_field = re.search("([^<>!=]*)", list(self.workload["get"]["raster"][0].keys())[0]).group(1).strip()
 
         sql_query = self.__translate(self.workload)

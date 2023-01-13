@@ -42,9 +42,9 @@ experiments:
   systems: 
     - name: postgis
       port: 25432
-#    - name: omnisci
-#      port: 6274
-#    - name: rasdaman
-#      port: 8080
+    - name: omnisci
+      port: 6274
+    - name: rasdaman
+      port: 8080
     - name: sedona
     - name: beast

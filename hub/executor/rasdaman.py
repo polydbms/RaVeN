@@ -53,7 +53,12 @@ class Executor:
             "query": f"for c in ({self.coverage}) return add(clip( c,{geometry}, \"{self.crs_url}\"))/count(clip( c,{geometry}, \"{self.crs_url}\") > 0)"
         }
         return parser.urlencode(payload, quote_via=parser.quote)
-
+    #
+    # def __get_avg(self, geometry):
+    #     payload = {
+    #         "query": f"for c in ({self.coverage}) return avg(clip( c,{geometry}, \"{self.crs_url}\"))"
+    #     }
+    #     return parser.urlencode(payload, quote_via=parser.quote)
     def __get_sum(self, geometry):
         payload = {
             "query": f"for c in ({self.coverage}) return add(clip( c,{geometry}, \"{self.crs_url}\"))"
@@ -116,6 +121,8 @@ class Executor:
             for ras_feature in selection[1]
             if ras_feature in self.aggregations
         ]
+
+        # print(vector_feature)
         result = vector_feature
         for aggregation in aggregations:
             parsed_payload = self.aggregations[aggregation](geometry)
@@ -231,7 +238,8 @@ class Executor:
         vector_features = [
             entry
             for entry in self.vector_data["features"]
-            if all(
+            if not condition
+               or all(
                 [
                     value[1](entry["properties"][key], value[-1])
                     for key, value in condition[0].items()
@@ -256,7 +264,7 @@ class Executor:
         writer.writerow(header)
         self.network_manager.write_timings_marker(f"benchi_marker,,start,execution,rasdaman,aggregations,")
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             results = {executor.submit(operation,
                                        properties=feature["properties"],
                                        selection=selection,
@@ -273,7 +281,9 @@ class Executor:
 
         self.network_manager.write_timings_marker(f"benchi_marker,,end,execution,rasdaman,aggregations,")
         f.close()
-        self.vector_path.controller_wkt.unlink()
         self.network_manager.stop_socks_proxy()
 
         return result_path
+
+    def post_run_cleanup(self):
+        self.vector_path.controller_wkt.unlink()

@@ -125,6 +125,9 @@ class Executor:
 
         return result_path
 
+    def post_run_cleanup(self):
+        pass
+
     def __read_template(self, path):
         try:
             with open(path) as file_:

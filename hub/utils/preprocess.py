@@ -333,10 +333,13 @@ class FileTypeProcessor(Preprocessor):
         vector = self.get_vector()
         # invert lat with long
         wkt = [
-            re.sub("([-]?\d*[.]\d*) ([-]?\d*[.]\d*)", r"\2 \1", geom.wkt)
+            re.sub("([-]?[\d.]+) ([-]?[\d.]+)",
+                   r"\1 \2" if self.config.vector_target_crs.axis_info[0].direction in ["east", "west"] else r"\2 \1",
+                   geom.wkt)
             for geom in vector.geometry
-        ]
+        ]  # FIXME some don't need to be inverted
         vector["wkt"] = wkt
+        # del vector["geometry"]
         # wkt_out = list(self.config.vector_file_path.parts)
         # wkt_out.insert(-1, f"preprocessed_{system}")
         output = self._vector_tmp_out_folder.joinpath(self.config.vector_file).with_suffix(".json")

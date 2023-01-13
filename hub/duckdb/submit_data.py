@@ -71,7 +71,7 @@ class DuckDBRunCursor:
                          [
                              self._run_id,
                              marker,
-                             datetime.fromtimestamp(float(timestamp)),
+                             datetime.fromtimestamp(float(timestamp)) if timestamp else None,
                              event.strip(),
                              stage.strip(),
                              dataset.strip(),

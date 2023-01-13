@@ -105,7 +105,7 @@ class Executor:
         Path("query.sql").unlink()
 
         result_path = self.network_manager.host_params.controller_result_folder.joinpath(
-            f"results_{self.network_manager.measurements_loc.file_prepend}.csv")
+            f"results_{self.network_manager.measurements_loc.file_prepend}.{'cold' if warm_start_no == 0 else f'warm-{warm_start_no}'}.csv")
         self.transporter.get_file(
             results_path_host,
             result_path,
@@ -115,3 +115,6 @@ class Executor:
         self.network_manager.run_remote_rm_file(results_path_host)
 
         return result_path
+
+    def post_run_cleanup(self):
+        pass

@@ -52,7 +52,7 @@ class Ingestor:
                       "coverage_id": str(self.raster_path.name),
                       "paths": [str(self.raster_path.docker_file)],
                       "epsg_crs": str(epsg_crs)
-                  } | self.get_axes_abbrs(str(epsg_crs))
+                  } | self.get_axes_infos(str(epsg_crs))
         print(payload)
 
         rendered = template.render(**payload)
@@ -75,22 +75,27 @@ class Ingestor:
     def ingest_vector(self, **kwargs):
         print("cannot ingest vectors")
 
-    def get_axes_abbrs(self, epsg):
+    def get_axes_infos(self, epsg):
         response = requests.get(f"{self.base_url}/def/crs/EPSG/0/{epsg}", proxies=self.proxies)
         crs_xml = etree.fromstring(response.content)
 
-        axes_abbr = {'lon_axis_abbr': '', 'lat_axis_abbr': ''}
+        axes_abbr = {'lon_axis_abbr': '', 'lon_grid_order': '', 'lat_axis_abbr': '', 'lat_grid_order': ''}
 
         search_string = ".//gml:cartesianCS/gml:CartesianCS/gml:axis" \
             if crs_xml.findall(".//gml:cartesianCS", crs_xml.nsmap) \
             else ".//gml:ellipsoidalCS/gml:EllipsoidalCS/gml:axis"  # TODO is this correct? see benchi#13
 
+        axis_counter = 0
         for axis in crs_xml.findall(search_string, crs_xml.nsmap):
             direction = axis.find("./gml:CoordinateSystemAxis/gml:axisDirection", crs_xml.nsmap).text
             if direction in ("east", "west"):
                 axes_abbr['lon_axis_abbr'] = axis.find("./gml:CoordinateSystemAxis/gml:axisAbbrev", crs_xml.nsmap).text
+                axes_abbr['lon_grid_order'] = axis_counter
+                axis_counter += 1
             elif direction in ("north", "south"):
                 axes_abbr['lat_axis_abbr'] = axis.find("./gml:CoordinateSystemAxis/gml:axisAbbrev", crs_xml.nsmap).text
+                axes_abbr['lat_grid_order'] = axis_counter
+                axis_counter += 1
             else:
                 raise Exception("axis direction not found. please check EPSG in rasdaman")
 

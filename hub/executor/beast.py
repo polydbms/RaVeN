@@ -33,5 +33,7 @@ class Executor:
 
         self.network_manager.run_remote_rm_file(result_file)
 
-
         return result_path
+
+    def post_run_cleanup(self):
+        pass

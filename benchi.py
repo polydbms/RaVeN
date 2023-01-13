@@ -127,6 +127,8 @@ class Setup:
 
         transporter.get_measurements(run.measurements_loc)
 
+        executor.post_run_cleanup()
+
         run_cursor.add_resource_utilization(
             [run.measurements_loc.controller_measurements_folder.joinpath(f"{e.value}.csv") for e in list(Stage)]
         )
@@ -198,6 +200,11 @@ def main():
                         help="Whether to run only one the first experiment. Only works together with '--system <system>'",
                         action=argparse.BooleanOptionalAction,
                         default=True)
+    parser.add_argument("--eval",
+                        help="Whether to run the evaluation",
+                        action=argparse.BooleanOptionalAction,
+                        default=True)
+
     args = parser.parse_args()
     print(args)
     setup = Setup()
@@ -205,7 +212,7 @@ def main():
         for experiment in args.experiment:
             result_files = setup.benchmark(experiment, args.system, args.postcleanup, args.singlerun)
 
-            if len(result_files) > 1:
+            if len(result_files) > 1 and args.eval:
                 setup.evaluate(experiment, result_files)
     if args.command == "clean":
         setup.clean(args.experiment[0])
