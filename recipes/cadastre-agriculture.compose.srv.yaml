@@ -4,14 +4,14 @@ experiments:
   hosts:
     - host: "sgx10.dima.tub"
       base_path: /local-ssd/gdusella-ldap
-      public_key_path: ssh/keys/rasvec-docker.pub
+      public_key_path: ssh/keys/rasvec-sgx11.pub
   data: # if undefined cmd parameters can be used to manually define data
-    raster: /data/sentinel2a_mol_band9
-    vector: /data/ALKIS_bezirk_MOL
+    raster: /data/sentinel2a_mol_band3
+    vector: /data/ALKIS_kataster_MOL
   workload:
     get: 
       vector:
-        - schluessel
+        - flstkennz
       raster: 
         - sval:
             aggregations:
@@ -25,29 +25,27 @@ experiments:
       table2: raster
       condition: intersect(raster, vector)
     condition: 
-#      vector:
-#        - nutzart = 'Landwirtschaft'
+      vector: 
+        - nutzart = 'Landwirtschaft'
       raster:
         - sval >= 0
     group:
       vector: 
-        - schluessel
+        - flstkennz
     order:
       vector: 
-        - schluessel
+        - flstkennz
   parameters:
+    vectorize_format:
+      - shp
     vectorize_type:
-      - polygons
       - points
-    raster_tile_size:
-      - 100x100
-      - 10x10
-      - 1830x1
-  systems:
+    align_to_crs: both
+    align_crs_at_stage:
+      - preprocess
+      - execution
+  systems: 
     - name: postgis
       port: 25432
-    - name: omnisci
-      port: 6274
-    - name: rasdaman
-      port: 8080
     - name: sedona
+

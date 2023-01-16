@@ -3,7 +3,7 @@ experiments:
     results_folder: ~/git/master-raster-vector/data/results
     results_db: ~/git/master-raster-vector/data/results.db
   hosts:
-    - host: "sgx13.dima.tub"
+    - host: "sgx10.dima.tub"
       base_path: /local-ssd/gdusella-ldap
       public_key_path: ~/.ssh/lrv.pub
   data: # if undefined cmd parameters can be used to manually define data
