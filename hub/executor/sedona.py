@@ -86,6 +86,16 @@ class Executor:
                 f"ST_Contains({raster_geom}, {vector_geom})",
                 query,
             )
+        if "bestrasvecjoin" in query:
+            query = re.sub(
+                "(bestrasvecjoin\(\w*, \w*\))",
+                f"ST_Within({raster_geom}, {vector_geom}) "
+                f"OR ST_Contains({raster_geom}, {vector_geom}) "
+                f"OR ST_Crosses({raster_geom}, {vector_geom}) "
+                f"OR ST_Overlaps({raster_geom}, {vector_geom})",
+                query,
+            )
+
         query = re.sub(
             "(raster.sval)",
             "raster.values",

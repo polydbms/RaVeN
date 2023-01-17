@@ -64,6 +64,11 @@ class Executor:
                 case DataType.VECTOR:
                     raster_geom = f"ST_Transform({raster_geom}, {self.benchmark_params.raster_target_crs.to_epsg()})"
 
+        if "bestrasvecjoin" in query:
+            query = re.sub("bestrasvecjoin\(",
+                           "intersect(",
+                           query)
+
         if "intersect" in query:
             query = re.sub(
                 "(intersect\(\w*, \w*\))",
@@ -95,7 +100,8 @@ class Executor:
         query = query.replace("{self.table2}", self.table_raster)
         print(f"query to run: {query}")
 
-        relative_results_file = Path(f"data/results/{self.network_manager.measurements_loc.file_prepend}.{'cold' if warm_start_no == 0 else f'warm-{warm_start_no}'}.csv")
+        relative_results_file = Path(
+            f"data/results/{self.network_manager.measurements_loc.file_prepend}.{'cold' if warm_start_no == 0 else f'warm-{warm_start_no}'}.csv")
         results_path_host = self.host_base_path.joinpath(relative_results_file)
         query = f"""\copy ({query}) To '{Path("/").joinpath(relative_results_file)}' CSV HEADER;"""
         with open("query.sql", "w") as f:

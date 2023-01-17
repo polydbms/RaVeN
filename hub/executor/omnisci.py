@@ -63,6 +63,11 @@ class Executor:
         if self.benchmark_params.align_crs_at_stage == Stage.EXECUTION:
             raise Exception("Cannot transform CRS in omnisci at execute, since everything is already in EPSG:4326")
 
+        if "bestrasvecjoin" in query:
+            query = re.sub("bestrasvecjoin\(",
+                           "intersect(",
+                           query)
+
         if "intersect" in query:
             query = re.sub(
                 "(intersect\(\w*, \w*\))",
