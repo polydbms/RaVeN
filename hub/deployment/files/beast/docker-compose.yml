@@ -3,7 +3,7 @@ version: '2.1'
 services:
 
   beast:
-    image: registry.gitlab.com/zergar/benchi/beast:0.9.5
+    image: registry.gitlab.com/zergar/benchi/beast:0.9.5-1
     volumes:
       - ../../data:/data
       - ../../config:/config
