@@ -25,7 +25,21 @@ class Executor:
         self.benchmark_params = benchmark_params
 
     def __handle_aggregations(self, type, features):
-        return SQLBased.handle_aggregations(type, features)
+        aggregates = []
+
+        for feature in features:
+            for aggregation in features[feature]["aggregations"]:
+                match aggregation:
+                    case "count":
+                        aggregates.append(f"sum(pvc.count) as {feature}_{aggregation}")
+                    case "sum":
+                        aggregates.append(f"sum(pvc.count * pvc.value) as {feature}_{aggregation}")
+                    case "avg":
+                        aggregates.append(f"sum(pvc.count * pvc.value) / sum(pvc.count) as {feature}_{aggregation}")
+                    case _:
+                        aggregates.append(f"{aggregation}({type}.{feature}) as {feature}_{aggregation}")
+
+        return ", ".join(aggregates)
 
     def __parse_get(self, get):
         return SQLBased.parse_get(self.__handle_aggregations, get)

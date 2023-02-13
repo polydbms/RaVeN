@@ -98,8 +98,10 @@ class DuckDBRunCursor:
             case _:
                 raise Exception("could not find info on run type in results file name")
 
+        filestr = str(filename) if filename.exists() else f"MISSING:{filename}"
+
         with self._connection.cursor() as conn:
-            conn.execute("insert into results values (?, ?, ?)", [self._run_id, warm_start_no, str(filename)])
+            conn.execute("insert into results values (?, ?, ?)", [self._run_id, warm_start_no, filestr])
 
     @staticmethod
     def _parse_docker_stats(util_df: DataFrame):

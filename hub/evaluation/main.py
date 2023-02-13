@@ -4,21 +4,22 @@ from pathlib import Path
 import pandas as pd
 
 from hub.benchmarkrun.host_params import HostParameters
-from hub.utils.system import System
 
 
 class Evaluator:
-    def __init__(self, systems_list: list[System], result_files: list[Path], host_params: HostParameters) -> None:
+    def __init__(self, result_files: list[Path], host_params: HostParameters) -> None:
         self.host_params = host_params
-        self.system_list = [s.name for s in systems_list]
-        self.result_files = result_files
+        self.result_files = self.different_configs(result_files)
         self.timestring = datetime.now().strftime('%Y%m%d-%H%M%S')
         self.eval_output_folder = self.host_params.controller_result_base_folder.joinpath(f"eval_{self.timestring}")
         self.eval_output_folder.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def __read_result(file):
-        return pd.read_csv(file, sep=",")
+        df = pd.read_csv(file, sep=",")
+        df.columns = df.columns.str.lower()
+
+        return df
 
     @staticmethod
     def __get_columns(df):
@@ -30,27 +31,35 @@ class Evaluator:
         columns = list(df.columns)
         return columns[0]
 
+    @staticmethod
+    def different_configs(result_files: list[Path]):
+        result_files_srs = pd.DataFrame({"inp_files": result_files})
+        rf_splits = pd.concat(
+            [result_files_srs,
+             result_files_srs["inp_files"].map(lambda p: p.stem.split(".")[0]).str.split("_", expand=True)],
+            axis=1).set_index("inp_files")
+        different_vals_per_col = rf_splits.loc[:, ~(rf_splits.to_numpy()[0] == rf_splits.to_numpy()).all(0)]
+        return different_vals_per_col.astype(str).agg("_".join, axis=1).to_dict()
+
     def __get_base(self):
-        base_system = self.system_list[0]
-        path = next(f for f in self.result_files if base_system in f.stem)
+        path, config = next(iter(self.result_files.items()))
         df = self.__read_result(path)
         index = self.__get_index(df)
         df = df.sort_values(by=[index])
         df = df.reset_index(drop=True)
         columns = self.__get_columns(df)
-        return df, index, columns, base_system
+        return df, index, columns, config
 
     def __get_secondary(self):
-        secondary_system = self.system_list[1:]
+        secondary_config = list(self.result_files.items())[1:]
         df_list = []
-        for system in secondary_system:
-            path = next(f for f in self.result_files if system in f.stem)
+        for path, config in secondary_config:
             df = self.__read_result(path)
             index = self.__get_index(df)
             df = df.sort_values(by=[index])
             df = df.reset_index(drop=True)
             columns = self.__get_columns(df)
-            df_list.append((df, index, columns, system))
+            df_list.append((df, index, columns, config))
         return df_list
 
     @staticmethod

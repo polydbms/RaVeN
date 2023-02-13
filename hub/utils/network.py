@@ -28,6 +28,7 @@ class NetworkManager:
         self.socks_proxy = None
         self.measure_docker = None
         self.run_cursor = run_cursor
+        self.warm_start_no = 0
 
         self.ssh_options = f"" \
                            f"-F ssh/config " \
@@ -59,7 +60,7 @@ class NetworkManager:
             last_line_cntr = 1
             while True:
                 output = str(process.stdout.readline())
-                if "benchi_marker" in output:
+                if "benchi_marker" in output or "benchi_meta" in output:
                     self.write_timings_marker(output)
 
                 if not output == "":
@@ -189,6 +190,8 @@ class NetworkManager:
                 break
 
     def write_timings_marker(self, marker: str):
+        if ",execution," in marker:
+            marker = marker.replace(",execution,", f",execution-{self.warm_start_no},")
         # print(marker)
         self.run_cursor.write_timings_marker(marker)
         # print("wrote timing to db")
@@ -203,8 +206,11 @@ class NetworkManager:
     def init_timings_sync_marker(self, system):
         self.run_ssh(f"""echo "benchi_marker,$(date +%s.%N),now,time_diff_check,{system},," """)
 
-    def add_meta_marker_start(self, system, warm_start_no):
-        self.run_ssh(f"""echo "benchi_meta,$(date +%s.%N),start,execution,{system},,{"cold" if warm_start_no == 0 else f"warm_{warm_start_no}"}" """)
+    def add_meta_marker_start(self, warm_start_no):
+        self.warm_start_no = warm_start_no
+        self.run_ssh(
+            f"""echo "benchi_meta,$(date +%s.%N),start,execution,{self.system_name},,{"cold" if self.warm_start_no == 0 else f"warm_{self.warm_start_no}"}" """)
 
-    def add_meta_marker_end(self, system, warm_start_no):
-        self.run_ssh(f"""echo "benchi_meta,$(date +%s.%N),end,execution,{system},,{"cold" if warm_start_no == 0 else f"warm_{warm_start_no}"}" """)
+    def add_meta_marker_end(self):
+        self.run_ssh(
+            f"""echo "benchi_meta,$(date +%s.%N),end,execution,{self.system_name},,{"cold" if self.warm_start_no == 0 else f"warm_{self.warm_start_no}"}" """)

@@ -119,8 +119,6 @@ class Executor:
             **kwargs
         )
         self.network_manager.run_ssh(str(self.host_base_path.joinpath("config/sedona/execute.sh")), **kwargs)
-        Path("hub/deployment/files/sedona/sedona_prep.py").unlink()
-        Path("hub/deployment/files/sedona/sedona_ingested.py.j2").unlink()
 
         result_path = self.network_manager.host_params.controller_result_folder.joinpath(
             f"results_{self.network_manager.measurements_loc.file_prepend}.{'cold' if warm_start_no == 0 else f'warm-{warm_start_no}'}.csv")
@@ -136,7 +134,8 @@ class Executor:
         return result_path
 
     def post_run_cleanup(self):
-        pass
+        Path("hub/deployment/files/sedona/sedona_prep.py").unlink()
+        Path("hub/deployment/files/sedona/sedona_ingested.py.j2").unlink()
 
     def __read_template(self, path):
         try:

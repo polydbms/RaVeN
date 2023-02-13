@@ -108,16 +108,16 @@ class Setup:
 
         # cold start
         print(f"running cold start for parameters {run.benchmark_params}")
-        network_manager.add_meta_marker_start(run.benchmark_params.system.name, 0)
+        network_manager.add_meta_marker_start(0)
         result_files.append(executor.run_query(run.workload, warm_start_no=0, log_time=self.logger))
-        network_manager.add_meta_marker_end(run.benchmark_params.system.name, 0)
+        network_manager.add_meta_marker_end()
 
         for i in range(1, run.warm_starts + 1):
             sleep(10)
             print(f"running warm start {i} out of {run.warm_starts} for parameters {run.benchmark_params}")
-            network_manager.add_meta_marker_start(run.benchmark_params.system.name, i)
+            network_manager.add_meta_marker_start(i)
             result_files.append(executor.run_query(run.workload, warm_start_no=i, log_time=self.logger))
-            network_manager.add_meta_marker_end(run.benchmark_params.system.name, i)
+            network_manager.add_meta_marker_end()
 
         with open("out.log", "a") as f:
             f.write(f"--------------------- Post-Benchmark ------------------- \n")
@@ -135,7 +135,7 @@ class Setup:
         for r in result_files:
             run_cursor.add_results_file(r)
 
-        return result_files
+        return list(filter(lambda resfile: resfile.exists(), result_files))
 
     def benchmark(self, experiment_file_name, system=None, post_cleanup=True, single_run=True) -> list[Path]:
         runs, iterations = FileIO.read_experiments_config(experiment_file_name, system)  # todo use iterations
@@ -165,10 +165,9 @@ class Setup:
         return result_files
 
     def evaluate(self, experiment_file_name, result_files: list[Path]):
-        systems_list = FileIO.get_systems(experiment_file_name)
         host_params = FileIO.get_host_params(experiment_file_name)
         print(result_files)
-        evaluator = Evaluator(systems_list, result_files, host_params)
+        evaluator = Evaluator(result_files, host_params)
         evaluator.get_accuracy()
 
     def clean(self, experiment_file_name: str):
@@ -209,11 +208,11 @@ def main():
     print(args)
     setup = Setup()
     if args.command == "start":
-        for experiment in args.experiment:
-            result_files = setup.benchmark(experiment, args.system, args.postcleanup, args.singlerun)
+        for experiment_file_name in args.experiment:
+            result_files = setup.benchmark(experiment_file_name, args.system, args.postcleanup, args.singlerun)
 
             if len(result_files) > 1 and args.eval:
-                setup.evaluate(experiment, result_files)
+                setup.evaluate(experiment_file_name, result_files)
     if args.command == "clean":
         setup.clean(args.experiment[0])
 
