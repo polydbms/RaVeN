@@ -1,4 +1,5 @@
 import re
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -89,7 +90,7 @@ class DuckDBRunCursor:
             with self._connection.cursor() as conn:
                 conn.execute("insert into resource_util select * from parsed_util_df")
 
-    def add_results_file(self, filename: Path):
+    def add_results_file(self, filename: Path) -> (Path, bool):
         match filename.suffixes[0].split("-"):
             case [".cold"]:
                 warm_start_no = 0
@@ -98,10 +99,15 @@ class DuckDBRunCursor:
             case _:
                 raise Exception("could not find info on run type in results file name")
 
-        filestr = str(filename) if filename.exists() else f"MISSING:{filename}"
+        linecount = int(subprocess.run(f"wc -l {filename} | " + "awk '{ print $1 }'",
+                                       shell=True, capture_output=True).stdout.decode("utf-8").strip()) \
+            if filename.exists() else 0
 
         with self._connection.cursor() as conn:
-            conn.execute("insert into results values (?, ?, ?)", [self._run_id, warm_start_no, filestr])
+            conn.execute("insert into results values (?, ?, ?, ?, ?)",
+                         [self._run_id, warm_start_no, str(filename), linecount, filename.exists()])
+
+        return filename, linecount > 0
 
     @staticmethod
     def _parse_docker_stats(util_df: DataFrame):

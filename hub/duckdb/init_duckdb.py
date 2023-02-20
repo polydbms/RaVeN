@@ -120,6 +120,8 @@ class InitializeDuckDB:
             run_id int,
             warm_start_no int,
             result_file varchar,
+            line_count int,
+            file_exists boolean,
             primary key (run_id, warm_start_no)
         )
         """)  # results_table

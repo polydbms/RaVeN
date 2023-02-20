@@ -35,7 +35,7 @@ class FileIO:
                 parameters = experiments.get("parameters", {})
                 systems = [s for s in FileIO.get_systems(filename) if s.name == system or system is None]
                 iterations = int(experiments.get("iterations", 1))
-                warm_starts = int(experiments.get("warm_starts", 0))
+                warm_starts = int(experiments.get("warm_starts", 3))
 
                 runs = []
                 brf = BenchmarkRunFactory(capabilities)

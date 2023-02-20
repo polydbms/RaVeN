@@ -132,10 +132,11 @@ class Setup:
         run_cursor.add_resource_utilization(
             [run.measurements_loc.controller_measurements_folder.joinpath(f"{e.value}.csv") for e in list(Stage)]
         )
-        for r in result_files:
-            run_cursor.add_results_file(r)
 
-        return list(filter(lambda resfile: resfile.exists(), result_files))
+        result_files_emptiness_info = list(map(run_cursor.add_results_file, result_files))
+        result_files_not_empty = list(filter(lambda r: r[1], result_files_emptiness_info))
+
+        return list(map(lambda resfile: resfile[0], result_files_not_empty))
 
     def benchmark(self, experiment_file_name, system=None, post_cleanup=True, single_run=True) -> list[Path]:
         runs, iterations = FileIO.read_experiments_config(experiment_file_name, system)  # todo use iterations
