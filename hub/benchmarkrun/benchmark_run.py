@@ -16,7 +16,7 @@ class BenchmarkRun:
 
     def __init__(self, raster: DataLocation, vector: DataLocation, workload: dict,
                  host_params: HostParameters, benchmark_params: BenchmarkParameters, experiment_name_file: str,
-                 warm_starts: int):
+                 warm_starts: int, query_timeout: int):
         self.raster = raster
         self.vector = vector
         self.workload = workload
@@ -24,6 +24,7 @@ class BenchmarkRun:
         self.benchmark_params = benchmark_params
         self.experiment_name_file = experiment_name_file
         self.warm_starts = warm_starts
+        self.query_timeout = query_timeout
 
         self.measurements_loc = MeasurementsLocation(self.host_params, self.benchmark_params)
 
@@ -34,4 +35,5 @@ class BenchmarkRun:
                                              str(self.host_params),
                                              str(self.benchmark_params),
                                              str(self.warm_starts),
+                                             str(self.query_timeout),
                                              str(self.measurements_loc)]])

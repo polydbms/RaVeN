@@ -36,6 +36,7 @@ class FileIO:
                 systems = [s for s in FileIO.get_systems(filename) if s.name == system or system is None]
                 iterations = int(experiments.get("iterations", 1))
                 warm_starts = int(experiments.get("warm_starts", 3))
+                timeout = int(experiments.get("timeout", 60 * 60 * 3))
 
                 runs = []
                 brf = BenchmarkRunFactory(capabilities)
@@ -93,7 +94,8 @@ class FileIO:
                         host_params,
                         benchmark_params,
                         Path(filename).parts[-1],
-                        warm_starts
+                        warm_starts,
+                        timeout
                     ))
 
                 runs_no_dupes = list(set(runs))

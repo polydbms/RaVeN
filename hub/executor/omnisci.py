@@ -100,7 +100,7 @@ class Executor:
         with open("query.sql", "w") as f:
             f.write(query)
         self.transporter.send_file(Path("query.sql"), self.host_base_path.joinpath("data/query.sql"), **kwargs)
-        self.network_manager.run_ssh(str(self.host_base_path.joinpath("config/omnisci/execute.sh")), **kwargs)
+        self.network_manager.run_query_ssh(f'{self.host_base_path.joinpath("config/omnisci/execute.sh")}', **kwargs)
         Path("query.sql").unlink()
 
         result_path = self.network_manager.host_params.controller_result_folder.joinpath(

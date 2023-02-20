@@ -3,6 +3,7 @@ import csv
 import json
 import operator
 import re
+import threading
 import urllib.parse as parser
 from concurrent.futures import ThreadPoolExecutor
 
@@ -265,6 +266,9 @@ class Executor:
         self.network_manager.write_timings_marker(f"benchi_marker,,start,execution,rasdaman,aggregations,")
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+
+            threading.Timer(self.network_manager.query_timeout, executor.shutdown, kwargs={"cancel_futures": True})
+
             results = {executor.submit(operation,
                                        properties=feature["properties"],
                                        selection=selection,
@@ -278,6 +282,7 @@ class Executor:
                     writer.writerow(next(future.result()))
                 except Exception as exc:
                     print(f"error while fetching result: {exc}")
+
 
         self.network_manager.write_timings_marker(f"benchi_marker,,end,execution,rasdaman,aggregations,")
         f.close()

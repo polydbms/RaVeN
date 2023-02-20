@@ -20,7 +20,7 @@ class Executor:
 
     @measure_time
     def run_query(self, workload, warm_start_no: int, **kwargs):
-        self.network_manager.run_ssh(str(self.host_base_path.joinpath("config/beast/execute.sh")), **kwargs)
+        self.network_manager.run_query_ssh(str(self.host_base_path.joinpath("config/beast/execute.sh")), **kwargs)
 
         result_path = self.network_manager.host_params.controller_result_folder.joinpath(
             f"results_{self.network_manager.measurements_loc.file_prepend}.{'cold' if warm_start_no == 0 else f'warm-{warm_start_no}'}.csv")

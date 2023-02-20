@@ -35,7 +35,7 @@ class Setup:
             f.write(f"--------------------- Pre-Benchmark ------------------- \n")
 
         network_manager = NetworkManager(run.host_params, run.benchmark_params.system.name, run.measurements_loc,
-                                         run_cursor)
+                                         run_cursor, run.query_timeout)
         transporter = FileTransporter(network_manager)
 
         transporter.send_configs(log_time=self.logger)

@@ -18,7 +18,7 @@ class NetworkManager:
     measure_docker: Popen[bytes] | Popen[Any]
 
     def __init__(self, host_params: HostParameters, system_name: str, measurements_loc: MeasurementsLocation | None,
-                 run_cursor: DuckDBRunCursor | None) -> None:
+                 run_cursor: DuckDBRunCursor | None, query_timeout: int = 0) -> None:
         self._host_params = host_params
         self.ssh_connection = host_params.ssh_connection
         self._measurements_loc = measurements_loc
@@ -29,6 +29,7 @@ class NetworkManager:
         self.measure_docker = None
         self.run_cursor = run_cursor
         self.warm_start_no = 0
+        self.query_timeout = query_timeout
 
         self.ssh_options = f"" \
                            f"-F ssh/config " \
@@ -83,7 +84,7 @@ class NetworkManager:
                     # Process has finished, read rest of the output
                     for output in process.stdout.readlines():
                         print(output.strip())
-                    break
+                    return return_code
 
                 last_line = output
         except Exception as e:
@@ -91,19 +92,33 @@ class NetworkManager:
 
     @measure_time
     def run_ssh(self, command, **kwargs):
-        self.run_command(
+        return self.run_command(
             f"{self.ssh_command} '{command}'"
         )
 
+    def run_ssh_with_timeout(self, command, timeout, **kwargs):
+        return self.run_ssh(
+            f"timeout -k 1m {timeout} {command}"
+        )
+
+    def run_query_ssh(self, command, **kwargs):
+        returncode = self.run_ssh_with_timeout(command, self.query_timeout)
+
+        if int(returncode) == 124:
+            self.run_ssh(
+                f"""echo "benchi_marker,$(date +%s.%N),terminated,execution,{self.system_name},," """)
+
+        return returncode
+
     @measure_time
     def run_remote_mkdir(self, dir, **kwargs):
-        self.run_ssh(
+        return self.run_ssh(
             f"mkdir -p {dir}"
         )
 
     @measure_time
     def run_remote_rm_file(self, file: Path):
-        self.run_ssh(
+        return self.run_ssh(
             f"rm {file}"
         )
 
