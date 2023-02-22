@@ -48,7 +48,7 @@ object RaptorScala {
 
       val rdd_raw: RDD[({{get.datatype}}, {{raster.datatype}})] = join.map(v => (v.feature.getAs[{{get.datatype}}]("{{get.field}}"), v.m))
 
-      spark.createDataset(rdd_raw).toDF(Seq("{{get.field}}", "value"): _*).createOrReplaceTempView("df_raw")
+      spark.createDataset(rdd_raw).toDF(Seq("{{get.field}}", "{{raster.field}}"): _*).createOrReplaceTempView("df_raw")
       val zonal_stats: DataFrame = spark.sql("{{sql_query}}")
 
       zonal_stats.coalesce(1).write.option("header",true).csv("/data/beast_result")

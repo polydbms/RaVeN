@@ -42,29 +42,30 @@ class Ingestor:
         feature_key, feature = list(features.items())[0]
         return ", ".join(
             [
-                f"{aggregation}(value) as {feature_key}_{aggregation}"
+                f"{aggregation}(raptorjoined.{feature_key}) as {feature_key}_{aggregation}"
                 for aggregation in feature["aggregations"]
             ]
         )
 
     def __parse_get(self, get):
-        return SQLBased.parse_get(self.__handle_aggregations, get)
+        return SQLBased.parse_get(self.__handle_aggregations, get, vector_table_name="raptorjoined",
+                                  raster_table_name="raptorjoined")
 
     def __parse_condition(self, condition):
-        return SQLBased.parse_condition(condition)
+        return SQLBased.parse_condition(condition, vector_table_name="raptorjoined", raster_table_name="raptorjoined")
 
     def __parse_group(self, group):
-        return SQLBased.parse_group(group)
+        return SQLBased.parse_group(group, vector_table_name="raptorjoined", raster_table_name="raptorjoined")
 
     def __parse_order(self, order):
-        return SQLBased.parse_order(order)
+        return SQLBased.parse_order(order, vector_table_name="raptorjoined", raster_table_name="raptorjoined")
 
     def __translate(self, workload):
         selection = self.__parse_get(workload["get"]) if "get" in workload else ""
         group = self.__parse_group(workload["group"]) if "group" in workload else ""
         order = self.__parse_order(workload["order"]) if "order" in workload else ""
         limit = f'limit {workload["limit"]}' if "limit" in workload else ""
-        query = f"{selection} from df_raw as vector {group} {order} {limit}"
+        query = f"{selection} from df_raw as raptorjoined {group} {order} {limit}"
 
         return query
 
@@ -111,7 +112,12 @@ class Ingestor:
         raster_type = ("Float" if "64" in raster_type_raw else "Float") \
             if "Float" in raster_type_raw else \
             ("Int" if "64" in raster_type_raw else "Int")  # FIXME Double and Long seem to not be supported
-        raster_field = re.search("([^<>!=]*)", list(self.workload["get"]["raster"][0].keys())[0]).group(1).strip()
+        # raster_field = re.search("([^<>!=]*)",
+        #                          list(
+        #                              next(
+        #                                  filter(lambda v: type(v) is dict, self.workload["get"]["raster"])
+        #                              ).keys())[0]).group(1).strip()
+        raster_field = "sval"
 
         sql_query = self.__translate(self.workload)
 

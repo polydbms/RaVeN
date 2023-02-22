@@ -10,7 +10,7 @@ class SQLBased:
         )
 
     @staticmethod
-    def parse_get(handle_aggregations_fn, get):
+    def parse_get(handle_aggregations_fn, get, vector_table_name="vector", raster_table_name="raster"):
         vector = []
         raster = []
         if "vector" in get:
@@ -18,7 +18,7 @@ class SQLBased:
                 if isinstance(feature, dict):
                     vector.append(handle_aggregations_fn("vector", feature))
                 else:
-                    vector.append(f"vector.{feature}")
+                    vector.append(f"{vector_table_name}.{feature}")
             vector = ", ".join(vector)
         else:
             vector = ""
@@ -27,7 +27,7 @@ class SQLBased:
                 if isinstance(feature, dict):
                     raster.append(handle_aggregations_fn("raster", feature))
                 else:
-                    raster.append(f"raster.{feature}")
+                    raster.append(f"{raster_table_name}.{feature}")
             raster = ", ".join(raster)
         else:
             raster = ""
@@ -42,14 +42,14 @@ class SQLBased:
         return f"from {table1} JOIN {table2} {condition}"
 
     @staticmethod
-    def parse_condition(condition):
+    def parse_condition(condition, vector_table_name="vector", raster_table_name="raster"):
         vector = (
-            "and ".join(["vector." + feature for feature in condition["vector"]])
+            "and ".join([f"{vector_table_name}." + feature for feature in condition["vector"]])
             if "vector" in condition
             else ""
         )
         raster = (
-            "and ".join(["raster." + feature for feature in condition["raster"]])
+            "and ".join([f"{raster_table_name}." + feature for feature in condition["raster"]])
             if "raster" in condition
             else ""
         )
@@ -64,14 +64,14 @@ class SQLBased:
             return f""
 
     @staticmethod
-    def parse_group(group):
+    def parse_group(group, vector_table_name="vector", raster_table_name="raster"):
         vector = (
-            ", ".join(["vector." + feature for feature in group["vector"]])
+            ", ".join([f"{vector_table_name}." + feature for feature in group["vector"]])
             if "vector" in group
             else ""
         )
         raster = (
-            ", ".join(["raster." + feature for feature in group["raster"]])
+            ", ".join([f"{raster_table_name}." + feature for feature in group["raster"]])
             if "raster" in group
             else ""
         )
@@ -79,14 +79,14 @@ class SQLBased:
         return f"group by {vector} {raster}"
 
     @staticmethod
-    def parse_order(order):
+    def parse_order(order, vector_table_name="vector", raster_table_name="raster"):
         vector = (
-            ", ".join(["vector." + feature for feature in order["vector"]])
+            ", ".join([f"{vector_table_name}." + feature for feature in order["vector"]])
             if "vector" in order
             else ""
         )
         raster = (
-            ", ".join(["raster." + feature for feature in order["raster"]])
+            ", ".join([f"{raster_table_name}." + feature for feature in order["raster"]])
             if "raster" in order
             else ""
         )
