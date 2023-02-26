@@ -33,7 +33,15 @@ class Evaluator:
 
     @staticmethod
     def different_configs(result_files: list[Path]):
-        result_files_srs = pd.DataFrame({"inp_files": result_files})
+        result_files_all = pd.DataFrame({"inp_files": result_files})
+        result_files_all["stem"] = result_files_all["inp_files"].apply(lambda f: f.stem.split(".")[0])
+        result_files_all["warm_start"] = result_files_all["inp_files"].apply(lambda f: f.suffixes[-2])
+        result_files_srs = result_files_all\
+            .groupby("stem")\
+            .apply(lambda s: s.sort_values("warm_start", ascending=False).head(1))\
+            .reset_index(drop=True)\
+            .get(["inp_files"])
+
         rf_splits = pd.concat(
             [result_files_srs,
              result_files_srs["inp_files"].map(lambda p: p.stem.split(".")[0]).str.split("_", expand=True)],
