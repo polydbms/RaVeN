@@ -1,3 +1,4 @@
+import copy
 import re
 from pathlib import Path
 
@@ -29,20 +30,43 @@ class Executor:
 
         for feature in features:
             for aggregation in features[feature]["aggregations"]:
+                feature_clean = 'oid' if feature == "__oid" else feature
+
                 match aggregation:
                     case "count":
-                        aggregates.append(f"sum(pvc.count) as {feature}_{aggregation}")
+                        aggregates.append(f"sum(pvc.count) as {feature_clean}_{aggregation}")
                     case "sum":
-                        aggregates.append(f"sum(pvc.count * pvc.value) as {feature}_{aggregation}")
+                        aggregates.append(f"sum(pvc.count * pvc.value) as {feature_clean}_{aggregation}")
                     case "avg":
-                        aggregates.append(f"sum(pvc.count * pvc.value) / sum(pvc.count) as {feature}_{aggregation}")
+                        aggregates.append(f"sum(pvc.count * pvc.value) / sum(pvc.count) as {feature_clean}_{aggregation}")
                     case _:
-                        aggregates.append(f"{aggregation}({type}.{feature}) as {feature}_{aggregation}")
+                        aggregates.append(f"{aggregation}({type}.{feature}) as {feature_clean}_{aggregation}")
 
         return ", ".join(aggregates)
 
     def __parse_get(self, get):
-        return SQLBased.parse_get(self.__handle_aggregations, get)
+        vector = []
+        raster = []
+        if "vector" in get:
+            for feature in get["vector"]:
+                if isinstance(feature, dict):
+                    vector.append(self.__handle_aggregations("vector", feature))
+                else:
+                    vector.append('vector.__oid as "oid"' if feature == "__oid" else f"vector.{feature}")
+            vector = ", ".join(vector)
+        else:
+            vector = ""
+        if "raster" in get:
+            for feature in get["raster"]:
+                if isinstance(feature, dict):
+                    raster.append(self.__handle_aggregations("raster", feature))
+                else:
+                    raster.append(f"raster.{feature}")
+            raster = ", ".join(raster)
+        else:
+            raster = ""
+        raster = f", {raster}" if raster else ""
+        return f"select {vector} {raster}"
 
     def __parse_join(self, join):
         return SQLBased.parse_join(join)
@@ -109,7 +133,18 @@ class Executor:
 
     @measure_time
     def run_query(self, workload, warm_start_no: int, **kwargs) -> Path:
-        query = self.__translate(workload)
+        workload_mod = copy.deepcopy(workload)
+
+        if workload_mod.get("get", {}).get("vector", {}):
+            workload_mod["get"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+        if workload_mod.get("condition", {}).get("vector", {}):
+            workload_mod["condition"]["vector"] = list(map(lambda x: re.sub("(^|\W)OID($|\W)", "__oid", x) , workload_mod["condition"]["vector"]))
+        if workload_mod.get("group", {}).get("vector", {}):
+            workload_mod["group"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+        if workload_mod.get("order", {}).get("vector", {}):
+            workload_mod["order"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+
+        query = self.__translate(workload_mod)
         query = query.replace("{self.table1}", self.table_vector)
         query = query.replace("{self.table2}", self.table_raster)
         print(f"query to run: {query}")
