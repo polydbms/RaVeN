@@ -1,18 +1,11 @@
 experiments:
-  controller:
-    results_folder: ~/git/master-raster-vector/data/results
-    results_db: ~/git/master-raster-vector/data/results.db
-  hosts:
-    - host: "sgx10.dima.tub"
-      base_path: /local-ssd/gdusella-ldap
-      public_key_path: ~/.ssh/lrv.pub
   data: # if undefined cmd parameters can be used to manually define data
     raster: /home/gereon/git/master-raster-vector/benchi/data/sentinel2a_mol_band9
     vector: /home/gereon/git/master-raster-vector/benchi/data/ALKIS_bezirk_MOL
   workload:
     get: 
       vector:
-        - schluessel
+        - oid
       raster: 
         - sval:
             aggregations:
@@ -32,11 +25,11 @@ experiments:
         - sval >= 0
     group:
       vector: 
-        - schluessel
+        - oid
     order:
       vector: 
-        - schluessel
-  parameters:
+        - oid
+#  parameters:
 #    vectorize_type:
 #      - polygons
 #      - points
@@ -47,14 +40,14 @@ experiments:
 #      - auto
 #      - 1x1830
 #      - 2x2
-    vectorize_type:
-      - points
-    vectorize_format:
-      - shp
-    align_to_crs: vector
-    align_crs_at_stage:
-      - preprocess
-      - execution
+#    vectorize_type:
+#      - points
+#    vectorize_format:
+#      - shp
+#    align_to_crs: vector
+#    align_crs_at_stage:
+#      - preprocess
+#      - execution
 
   systems:
     - name: postgis

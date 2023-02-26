@@ -11,7 +11,7 @@ experiments:
   workload:
     get: 
       vector:
-        - schluessel
+        - oid
       raster: 
         - sval:
             aggregations:
@@ -31,10 +31,10 @@ experiments:
         - sval >= 0
     group:
       vector: 
-        - schluessel
+        - oid
     order:
       vector: 
-        - schluessel
+        - oid
   systems: 
     - name: postgis
       port: 25432

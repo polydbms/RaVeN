@@ -20,20 +20,21 @@ from hub.utils.system import System
 class FileIO:
 
     @staticmethod
-    def read_experiments_config(filename, system=None) -> tuple[list[BenchmarkRun], int]:
+    def read_experiments_config(experiments_filename: str, controller_config_filename: str,
+                                system=None) -> tuple[list[BenchmarkRun], int]:
         capabilities = Capabilities.read_capabilities()
 
-        with open(PROJECT_ROOT.joinpath(filename), mode="r") as c:
-            try:
-                host_params = FileIO.get_host_params(filename)
+        host_params = FileIO.get_host_params(controller_config_filename)
 
+        with PROJECT_ROOT.joinpath(experiments_filename).open(mode="r") as c:
+            try:
                 yamlfile = yaml.safe_load(c)
                 experiments = yamlfile["experiments"]
                 workload = experiments["workload"]
                 data = experiments["data"] if "data" in experiments else None
 
                 parameters = experiments.get("parameters", {})
-                systems = [s for s in FileIO.get_systems(filename) if s.name == system or system is None]
+                systems = [s for s in FileIO.get_systems(experiments_filename) if s.name == system or system is None]
                 iterations = int(experiments.get("iterations", 1))
                 warm_starts = int(experiments.get("warm_starts", 3))
                 timeout = int(experiments.get("timeout", 60 * 60 * 3))
@@ -93,7 +94,7 @@ class FileIO:
                         workload,
                         host_params,
                         benchmark_params,
-                        Path(filename).parts[-1],
+                        Path(experiments_filename).parts[-1],
                         warm_starts,
                         timeout
                     ))
@@ -104,7 +105,7 @@ class FileIO:
                 init_db.setup_duckdb_tables()
                 init_db.initialize_files(runs_no_dupes)
                 init_db.initialize_parameters(runs_no_dupes)
-                init_db.initialize_experiments(runs_no_dupes, Path(filename).parts[-1])
+                init_db.initialize_experiments(runs_no_dupes, Path(experiments_filename).parts[-1])
 
                 return runs_no_dupes, iterations
             except yaml.YAMLError as exc:
@@ -112,17 +113,17 @@ class FileIO:
                 return [], -1
 
     @staticmethod
-    def get_host_params(filename) -> HostParameters:
-        with open(PROJECT_ROOT.joinpath(filename), mode="r") as c:
+    def get_host_params(config_filename: str) -> HostParameters:
+        with PROJECT_ROOT.joinpath(config_filename).open(mode="r") as c:
             try:
                 yamlfile = yaml.safe_load(c)
 
                 return [HostParameters(h["host"],  # TODO rename to "host"
                                        h["public_key_path"],
                                        Path(h["base_path"]),
-                                       yamlfile["experiments"]["controller"]["results_folder"],
-                                       Path(yamlfile["experiments"]["controller"]["results_db"]).expanduser())
-                        for h in yamlfile["experiments"]["hosts"]][0]  # FIXME remove [0] eventually
+                                       yamlfile["config"]["controller"]["results_folder"],
+                                       Path(yamlfile["config"]["controller"]["results_db"]).expanduser())
+                        for h in yamlfile["config"]["hosts"]][0]  # FIXME remove [0] eventually
 
             except yaml.YAMLError as exc:
                 raise Exception(f"error while processing host parameters: {exc}")

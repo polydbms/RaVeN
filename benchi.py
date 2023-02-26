@@ -138,8 +138,10 @@ class Setup:
 
         return list(map(lambda resfile: resfile[0], result_files_not_empty))
 
-    def benchmark(self, experiment_file_name, system=None, post_cleanup=True, single_run=True) -> list[Path]:
-        runs, iterations = FileIO.read_experiments_config(experiment_file_name, system)  # todo use iterations
+    def benchmark(self, experiment_file_name: str, config_file: str, system=None, post_cleanup=True,
+                  single_run=True) -> list[Path]:
+        runs, iterations = FileIO.read_experiments_config(experiment_file_name, config_file,
+                                                          system)  # todo use iterations
         print(f"running {len(runs)} experiments")
         print([str(r.benchmark_params) for r in runs])
 
@@ -152,27 +154,27 @@ class Setup:
                 print(str(run))
                 result_files.extend(self.__run_tasks(run))
                 if post_cleanup:
-                    self.clean(experiment_file_name)
+                    self.clean(config_file)
             else:
                 for r in runs:
                     result_files.extend(self.__run_tasks(r))
-                    self.clean(experiment_file_name)
+                    self.clean(config_file)
 
         else:
             for r in runs:
                 result_files.extend(self.__run_tasks(r))
-                self.clean(experiment_file_name)
+                self.clean(config_file)
 
         return result_files
 
-    def evaluate(self, experiment_file_name, result_files: list[Path]):
-        host_params = FileIO.get_host_params(experiment_file_name)
+    def evaluate(self, config_filename: str, result_files: list[Path]):
+        host_params = FileIO.get_host_params(config_filename)
         print(result_files)
         evaluator = Evaluator(result_files, host_params)
         evaluator.get_accuracy()
 
-    def clean(self, experiment_file_name: str):
-        host_params = FileIO.get_host_params(experiment_file_name)
+    def clean(self, config_filename: str):
+        host_params = FileIO.get_host_params(config_filename)
 
         network_manager = NetworkManager(host_params, "cleanup", None, None)
         network_manager.run_ssh("""kill $(ps aux | grep "docker stats" | awk {\\'print $2\\'} )""")
@@ -185,13 +187,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("command", help="Use either start or clean.")
     parser.add_argument("--system", help="Specify which system should be benchmarked")
-    # parser.add_argument("--vector", help="Specify the path to vector dataset")
-    # parser.add_argument("--raster", help="Specify the path to raster dataset")
+    parser.add_argument("--config",
+                        help="Specify the path to the controller config file",
+                        required=True)
     parser.add_argument("--experiment",
                         help="Specify the path to the experiment definition file",
                         required=True,
                         action="append")
-    # parser.add_argument("--repeat", help="Specify number of iterations an experiment will be repeated")
     parser.add_argument("--postcleanup",
                         help="Whether to run a cleanup after running the benchmark. Only works together with '--system <system>'",
                         action=argparse.BooleanOptionalAction,
@@ -210,10 +212,11 @@ def main():
     setup = Setup()
     if args.command == "start":
         for experiment_file_name in args.experiment:
-            result_files = setup.benchmark(experiment_file_name, args.system, args.postcleanup, args.singlerun)
+            result_files = setup.benchmark(experiment_file_name, args.config, args.system, args.postcleanup,
+                                           args.singlerun)
 
             if len(result_files) > 1 and args.eval:
-                setup.evaluate(experiment_file_name, result_files)
+                setup.evaluate(args.config, result_files)
     if args.command == "clean":
         setup.clean(args.experiment[0])
 
