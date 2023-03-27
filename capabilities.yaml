@@ -15,6 +15,11 @@ systems:
     - beast
   require_geotiff_ending:
     - beast
+  pixels_as_points:
+    - beast
+    - postgis
+  pixels_as_polygons:
+    - rasdaman
 
 #  align_crs_at:
 #    preprocess:

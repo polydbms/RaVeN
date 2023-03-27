@@ -136,6 +136,10 @@ class DuckDBRunCursor:
 
     @staticmethod
     def _convert_to_bytes(value: str) -> int:
+        if "e" in value:
+            regex_exp = re.compile("e\+(\d+)")
+            exp = int(regex_exp.search(value).group(1))
+            value = regex_exp.sub("0" * exp, value)
         regex_str = re.compile("([0-9.]+)([PpTtGgMmKk]?)(i?)([Bb])")
         match = regex_str.match(value)
         val, factor_str, base_str, unit = match.group(1, 2, 3, 4)

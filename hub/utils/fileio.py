@@ -11,6 +11,7 @@ from hub.duckdb.init_duckdb import InitializeDuckDB
 from hub.enums.rasterfiletype import RasterFileType
 from hub.enums.stage import Stage
 from hub.enums.vectorfiletype import VectorFileType
+from hub.enums.vectorizationtype import VectorizationType
 from hub.utils.capabilities import Capabilities
 from hub.utils.datalocation import DataLocation
 from hub.enums.datatype import DataType
@@ -85,6 +86,12 @@ class FileIO:
                             benchmark_params.raster_target_crs = CRS.from_user_input(benchmark_params.vector_target_crs)
                         case DataType.RASTER:
                             benchmark_params.vector_target_crs = CRS.from_user_input(benchmark_params.raster_target_crs)
+
+                    if benchmark_params.system.name in capabilities["pixels_as_points"]:
+                        benchmark_params.vectorize_type = VectorizationType.TO_POINTS
+
+                    if benchmark_params.system.name in capabilities["pixels_as_polygons"]:
+                        benchmark_params.vectorize_type = VectorizationType.TO_POLYGONS
 
                     benchmark_params.validate(capabilities)
 

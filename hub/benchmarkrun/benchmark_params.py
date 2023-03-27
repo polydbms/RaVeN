@@ -35,7 +35,7 @@ class BenchmarkParameters:
                  raster_tile_size=TileSize(100, 100),
                  raster_depth=sys.maxsize,
                  raster_resolution=1.0,
-                 vectorize_type=VectorizationType.TO_POLYGONS,
+                 vectorize_type=VectorizationType.TO_POINTS,
                  vector_target_format=None,
                  vector_target_crs=None,
                  vector_resolution=1.0,
