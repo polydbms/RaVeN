@@ -17,7 +17,7 @@ experiments:
     join:
       table1: vector
       table2: raster
-      condition: intersect(raster, vector)
+      condition: {intersect,contains,bestrasvecjoin}(raster, vector)
     condition:
       vector:
         - nutzart = 'Landwirtschaft'
@@ -73,6 +73,8 @@ experiments:
 
   iterations: 2
   warm_starts: 3
+  timeout: 10800
+
   systems:
     - name: postgis
       port: 25432

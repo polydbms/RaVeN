@@ -7,11 +7,12 @@ from hub.benchmarkrun.host_params import HostParameters
 
 
 class Evaluator:
-    def __init__(self, result_files: list[Path], host_params: HostParameters) -> None:
+    def __init__(self, result_files: list[Path], host_params: HostParameters, evalfolder="") -> None:
         self.host_params = host_params
         self.result_files = self.different_configs(result_files)
         self.timestring = datetime.now().strftime('%Y%m%d-%H%M%S')
-        self.eval_output_folder = self.host_params.controller_result_base_folder.joinpath(f"eval_{self.timestring}")
+        self.eval_output_folder = self.host_params.controller_result_base_folder\
+            .joinpath(f"eval_{evalfolder or self.timestring}")
         self.eval_output_folder.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
@@ -36,10 +37,10 @@ class Evaluator:
         result_files_all = pd.DataFrame({"inp_files": result_files})
         result_files_all["stem"] = result_files_all["inp_files"].apply(lambda f: f.stem.split(".")[0])
         result_files_all["warm_start"] = result_files_all["inp_files"].apply(lambda f: f.suffixes[-2])
-        result_files_srs = result_files_all\
-            .groupby("stem")\
-            .apply(lambda s: s.sort_values("warm_start", ascending=False).head(1))\
-            .reset_index(drop=True)\
+        result_files_srs = result_files_all \
+            .groupby("stem") \
+            .apply(lambda s: s.sort_values("warm_start", ascending=False).head(1)) \
+            .reset_index(drop=True) \
             .get(["inp_files"])
 
         rf_splits = pd.concat(
@@ -49,8 +50,14 @@ class Evaluator:
         different_vals_per_col = rf_splits.loc[:, ~(rf_splits.to_numpy()[0] == rf_splits.to_numpy()).all(0)]
         return different_vals_per_col.astype(str).agg("_".join, axis=1).to_dict()
 
-    def __get_base(self):
-        path, config = next(iter(self.result_files.items()))
+    def __get_base(self, base_run_str):
+        if base_run_str != "":
+            path, config = next(filter(lambda f: base_run_str in f[0].stem, self.result_files.items()))
+        else:
+            path, config = next(iter(self.result_files.items()))
+
+        del self.result_files[path]
+
         df = self.__read_result(path)
         index = self.__get_index(df)
         df = df.sort_values(by=[index])
@@ -59,7 +66,7 @@ class Evaluator:
         return df, index, columns, config
 
     def __get_secondary(self):
-        secondary_config = list(self.result_files.items())[1:]
+        secondary_config = list(self.result_files.items())
         df_list = []
         for path, config in secondary_config:
             df = self.__read_result(path)
@@ -93,8 +100,8 @@ class Evaluator:
             average_diff.append((pair[1], df[f"diff_{pair[1]}"].mean()))
         return df, average_diff
 
-    def get_accuracy(self):
-        base_df, base_index, base_columns, base_system = self.__get_base()
+    def get_accuracy(self, base_run_str=""):
+        base_df, base_index, base_columns, base_system = self.__get_base(base_run_str)
         secondary = self.__get_secondary()
         for system_df, system_index, system_columns, system in secondary:
             out = pd.DataFrame()
@@ -104,5 +111,7 @@ class Evaluator:
             out.to_csv(
                 self.eval_output_folder.joinpath(f"{base_system}_vs_{system}.{self.timestring}.csv"))
             accuracy = pd.DataFrame(average_diff, columns=["Feature", "Accuracy"])
-            accuracy.to_csv(self.eval_output_folder
-                            .joinpath(f"{base_system}_vs_{system}_accuracy.{self.timestring}.csv"))
+            acc_file = self.eval_output_folder.joinpath(f"{base_system}_vs_{system}_accuracy.{self.timestring}.csv")
+            accuracy.to_csv(acc_file)
+
+            print(f"acc file for {base_system} and {system}: {acc_file}")

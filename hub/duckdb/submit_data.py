@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 import duckdb
+import numpy as np
 import pandas as pd
 from duckdb import DuckDBPyConnection
 from pandas import DataFrame
@@ -111,6 +112,7 @@ class DuckDBRunCursor:
 
     @staticmethod
     def _parse_docker_stats(util_df: DataFrame):
+        util_df.replace("--", np.NAN, inplace=True)
         util_df.dropna(inplace=True, axis=0)
         util_df[["MemUsage", "MemLimit"]] = util_df["MemUsage"].str.split(" / ", expand=True)
         util_df[["NetIO_in", "NetIO_out"]] = util_df["NetIO"].str.split(" / ", expand=True)

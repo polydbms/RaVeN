@@ -122,7 +122,9 @@ class PreprocessConfig:
 
     def remove_intermediates(self):
         for folder in self.intermediate_folders:
-            shutil.rmtree(folder)
+            print(f"removing {folder}")
+            subprocess.call(f"rm -r {folder}", shell=True)
+
 
     def copy_to_output(self):
         print(f"copying vector files from {self.vector_folder}")

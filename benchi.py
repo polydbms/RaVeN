@@ -167,25 +167,31 @@ class Setup:
 
         return result_files
 
-    def evaluate(self, config_filename: str, result_files: list[Path]):
+    def evaluate(self, config_filename: str, result_files: list[Path], base_run_str="", evalfolder=""):
         host_params = FileIO.get_host_params(config_filename)
         print(result_files)
-        evaluator = Evaluator(result_files, host_params)
-        evaluator.get_accuracy()
+        evaluator = Evaluator(result_files, host_params, evalfolder)
+        evaluator.get_accuracy(base_run_str)
 
     def clean(self, config_filename: str):
         host_params = FileIO.get_host_params(config_filename)
 
         network_manager = NetworkManager(host_params, "cleanup", None, None)
-        network_manager.run_ssh("""kill $(ps aux | grep "docker stats" | awk {\\'print $2\\'} )""")
-        network_manager.run_ssh("docker stop $(docker ps -q)")
-        network_manager.run_ssh("docker rm $(docker ps -aq)")
-        network_manager.run_ssh("docker volume rm $(docker volume ls -q)")
+        file_transporter = FileTransporter(network_manager)
+
+        file_transporter.send_file(Path("hub/teardown.sh"), Path("config/teardown.sh"))
+        network_manager.run_ssh(f"chmod 755 {host_params.host_base_path.joinpath('config/teardown.sh')}")
+        network_manager.run_ssh(f"bash {host_params.host_base_path.joinpath('config/teardown.sh')}")
+
+        # network_manager.run_ssh("""kill $(ps aux | grep "docker stats" | awk {\\'print $2\\'} )""")
+        # network_manager.run_ssh("docker stop $(docker ps -q)")
+        # network_manager.run_ssh("docker rm $(docker ps -aq)")
+        # network_manager.run_ssh("docker volume rm $(docker volume ls -q)")
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", help="Use either start or clean.")
+    parser.add_argument("command", help="Use either start, clean, or eval.")
     parser.add_argument("--system", help="Specify which system should be benchmarked")
     parser.add_argument("--config",
                         help="Specify the path to the controller config file",
@@ -206,6 +212,13 @@ def main():
                         help="Whether to run the evaluation",
                         action=argparse.BooleanOptionalAction,
                         default=True)
+    parser.add_argument("--resultsfile",
+                        help="specify files for running the eval",
+                        nargs="+")
+    parser.add_argument("--evalbase",
+                        help="specify which system should act as the baseline in eval mode. If none is specified, the lexicographically first string is chosen.")
+    parser.add_argument("--evalfolder",
+                        help="specify the name of the output eval folder.")
 
     args = parser.parse_args()
     print(args)
@@ -216,9 +229,11 @@ def main():
                                            args.singlerun)
 
             if len(result_files) > 1 and args.eval:
-                setup.evaluate(args.config, result_files)
+                setup.evaluate(args.config, result_files, args.evalbase)
     if args.command == "clean":
-        setup.clean(args.experiment[0])
+        setup.clean(args.config)
+    if args.command == "eval":
+        setup.evaluate(args.config, list(map(lambda f: Path(f), args.resultsfile)), args.evalbase, args.evalfolder)
 
 
 if __name__ == "__main__":

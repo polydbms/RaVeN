@@ -32,7 +32,7 @@ class BenchmarkParameters:
                  system: System,
                  raster_target_format=None,
                  raster_target_crs=None,
-                 raster_tile_size=TileSize(100, 100),
+                 raster_tile_size=TileSize(-1, -1),
                  raster_depth=sys.maxsize,
                  raster_resolution=1.0,
                  vectorize_type=VectorizationType.TO_POINTS,
