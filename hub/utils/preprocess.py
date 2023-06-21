@@ -24,6 +24,13 @@ from hub.utils.capabilities import Capabilities
 
 
 def print_timings(dataset, comment):
+    """
+    print the amount of time taken for a given function as timing marker strings
+    :param dataset: the class of data processed
+    :param comment: the function that is running
+    :return:
+    """
+
     def decorator_print_timings(func):
         @wraps(func)
         def _decorator_print_timings(self, *args, **kwargs):
@@ -37,6 +44,9 @@ def print_timings(dataset, comment):
 
 
 class PreprocessConfig:
+    """
+    class that wraps the preprocess parameters obtained from the controller
+    """
     system: str
 
     _vector_folder: Path
@@ -57,6 +67,11 @@ class PreprocessConfig:
     # intermediate_folders: list[Path]  # FIXME this should be done properly
 
     def __init__(self, args, capabilities):
+        """
+
+        :param args: the arguments sent by the controller
+        :param capabilities: the capabilities the systems have, based on the capabilities.yaml
+        """
         self.system = args.system
 
         self._vector_folder = Path(args.vector_path)
@@ -121,12 +136,19 @@ class PreprocessConfig:
         return self._raster_folder.joinpath(self._raster_file)
 
     def remove_intermediates(self):
+        """
+        remove intermediate results from the file system
+        :return:
+        """
         for folder in self.intermediate_folders:
             print(f"removing {folder}")
             subprocess.call(f"rm -r {folder}", shell=True)
 
-
     def copy_to_output(self):
+        """
+        copy the final intermediate result to the output folder
+        :return:
+        """
         print(f"copying vector files from {self.vector_folder}")
         shutil.rmtree(self.vector_output_folder, ignore_errors=True)
         self.vector_output_folder.mkdir(parents=True, exist_ok=True)
@@ -153,10 +175,21 @@ class PreprocessConfig:
 
     @staticmethod
     def get_random_str(length):
+        """
+        generate a random string
+        :param length: the length of the string
+        :return: the random string
+        """
         return ''.join(random.choice(string.ascii_lowercase) for i in range(length))
 
     @staticmethod
     def _find_file(folder: Path, file_type_class: Type[RasterFileType | VectorFileType]) -> Path:
+        """
+        find a file based on the given class of spatial data
+        :param folder: the folder teh file resides in
+        :param file_type_class: the class of spatial data
+        :return:
+        """
         for e in list(map(lambda t: f"*{t.value}", file_type_class)):
             files = [f for f in folder.glob(e)]
             if len(files) > 0:
@@ -182,7 +215,15 @@ class PreprocessConfig:
 
 
 class Preprocessor:
+    """
+    main utility for preprocessing data
+    """
     def __init__(self, config: PreprocessConfig, base_tmp_folder: Path) -> None:
+        """
+        init
+        :param config: the config the preprocessing steps shall be based on
+        :param base_tmp_folder: the path to the root of temporary locations
+        """
         self.logger = {}
         self.config = config
         self.base_tmp_folder = base_tmp_folder
@@ -224,25 +265,50 @@ class Preprocessor:
         return self.get_raster().rio.crs
 
     def update_vector_folder(self):
+        """
+        sets the new (temporary) location of data for a vector dataset
+        :return:
+        """
         self.config.set_vector_folder(self._vector_tmp_out_folder)
 
     def update_vector_suffix(self):
+        """
+        updates the suffix to the one the vector data should have in the end
+        :return:
+        """
         self.config.set_vector_suffix(self.config.vector_target_suffix)
 
     def update_raster_folder(self):
+        """
+        sets the new (temporary) location of data for a raster dataset
+        :return:
+        """
         self.config.set_raster_folder(self._raster_tmp_out_folder)
 
     def update_raster_suffix(self):
+        """
+        updates the suffix to the one the raster data should have in the end
+        :return:
+        """
         self.config.set_raster_suffix(self.config.raster_target_suffix)
 
 
 class CRSPreprocessor(Preprocessor):
+    """
+    preprocessor for performing coordinate reference system transformations
+    """
     def __init__(self, config: PreprocessConfig) -> None:
         super().__init__(config, Path(f"/data/reproject_tmp"))
 
     @measure_time
     @print_timings("raster", "reproject")
     def reproject_raster(self, *args, **kwargs):
+        """
+        reprojects a raster dataset to the target CRS using gdalwarp
+        :param args:
+        :param kwargs:
+        :return:
+        """
         print(f"reprojecting raster file {self.config.raster_file}")
 
         # rio_target_crs = rasterio.crs.CRS().from_user_input(self.config.raster_target_crs)
@@ -267,6 +333,13 @@ class CRSPreprocessor(Preprocessor):
     @measure_time
     @print_timings("vector", "reproject")
     def reproject_vector(self, *args, **kwargs):
+        """
+
+        reprojects a vector dataset to the target CRS using ogr2ogr
+        :param args:
+        :param kwargs:
+        :return:
+        """
         print(f"reprojecting vector file {self.config.vector_file}")
 
         # vector = self.get_vector()
@@ -289,12 +362,21 @@ class CRSPreprocessor(Preprocessor):
 
 
 class FileConverterPreprocessor(Preprocessor):
+    """
+    preprocessor for performing translations between different file types
+    """
     def __init__(self, config: PreprocessConfig) -> None:
         super().__init__(config, Path(f"/data/translate_tmp"))
 
     @measure_time
     @print_timings("raster", "translate")
     def raster_to_geotiff(self, *args, **kwargs):
+        """
+        translates a raster dataset into a GeoTIFF
+        :param args:
+        :param kwargs:
+        :return:
+        """
         print(f"translating raster file {self.config.raster_file} to geotiff")
 
         output_file = self._raster_tmp_out_folder \
@@ -310,6 +392,10 @@ class FileConverterPreprocessor(Preprocessor):
     @measure_time
     @print_timings("raster", "translate")
     def raster_to_xyz(self):
+        """
+        transforms a raster dataset into a xyz file
+        :return:
+        """
         print(f"translating raster file {self.config.raster_file} to xyz")
 
         output_file = self._raster_tmp_out_folder \
@@ -323,13 +409,22 @@ class FileConverterPreprocessor(Preprocessor):
         self.update_raster_folder()
 
 
-class FileTypeProcessor(Preprocessor):
+class FileTypeProcessor(Preprocessor): #TODO merge with FileConverterProcessor
+    """
+    preprocessor for converting classes of spatial data into non-spatial datatypes
+    """
     def __init__(self, config: PreprocessConfig) -> None:
         super().__init__(config, Path(f"/data/convert_tmp"))
 
     @measure_time
     @print_timings(dataset="vector", comment="rasterize")
     def shape_to_wkt(self, *args, **kwargs):
+        """
+        converts a shape file into a json object containing the metadata of the objects and spatial information as Well-Known text
+        :param args:
+        :param kwargs:
+        :return:
+        """
         print(f"converting file {self.config.vector_file} from shp to wkt")
 
         vector = self.get_vector()
@@ -362,12 +457,21 @@ class FileTypeProcessor(Preprocessor):
 
 
 class DataModelProcessor(Preprocessor):
+    """
+    preprocessor for converting classes of spatial data between each other
+    """
     def __init__(self, config: PreprocessConfig, output=None) -> None:
         super().__init__(config, Path(f"/data/transform_tmp"))
 
     @measure_time
     @print_timings("raster", "vectorize")
     def vectorize_polygons(self, *args, **kwargs):
+        """
+        vectorize a raster file into polygons using gdal_polygonize.py
+        :param args:
+        :param kwargs:
+        :return:
+        """
         print(f"vectorizing raster file {self.config.raster_file} with polygons")
 
         output_file = self._raster_tmp_out_folder \
@@ -385,6 +489,13 @@ class DataModelProcessor(Preprocessor):
 
     @print_timings("raster", "vectorize")
     def vectorize_points(self, *args, **kwargs):
+        """
+
+        vectorize a XYZ raster file into points using geopandas
+        :param args:
+        :param kwargs:
+        :return:
+        """
         print(f"vectorizing raster file {self.config.raster_file} with points")
 
         output_file = self._raster_tmp_out_folder \
@@ -404,6 +515,11 @@ class DataModelProcessor(Preprocessor):
         self.update_raster_suffix()
 
     def get_driver_name(self, output_file):
+        """
+        returns the GDAL Driver name corresponding to a file type
+        :param output_file:
+        :return:
+        """
         raster_target_suffix = VectorFileType.get_by_value(self.config.raster_target_suffix)
 
         if raster_target_suffix == VectorFileType.SHP:
@@ -451,6 +567,14 @@ class DataModelProcessor(Preprocessor):
 
 
 def main():
+    """
+    main method for preprocessing spatial datasets. is ivided into 3 stages
+
+    1. transform the coordinate reference systems
+    2. if necessary, translate file types
+    3. if necessary, rasterize vector datasets or vectorize raster datasets
+    :return:
+    """
     capabilities = Capabilities.read_capabilities()
     parser = argparse.ArgumentParser()
     parser.add_argument("--vector_path", help="Specify the path to vector dataset", required=True)

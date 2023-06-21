@@ -11,11 +11,12 @@ from jinja2 import Template
 from hub.executor._sqlbased import SQLBased
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
+from hub.utils.interfaces import IngestionInterface
 from hub.utils.network import NetworkManager
 import geopandas as gpd
 
 
-class Ingestor:
+class Ingestor(IngestionInterface):
     def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager,
                  benchmark_params: BenchmarkParameters, workload=None) -> None:
         if workload is None:

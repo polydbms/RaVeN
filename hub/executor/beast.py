@@ -2,10 +2,11 @@ from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
+from hub.utils.interfaces import ExecutorInterface
 from hub.utils.network import NetworkManager
 
 
-class Executor:
+class Executor(ExecutorInterface):
     def __init__(self, vector_path: DataLocation,
                  raster_path: DataLocation,
                  network_manager: NetworkManager,

@@ -23,6 +23,13 @@ class FileIO:
     @staticmethod
     def read_experiments_config(experiments_filename: str, controller_config_filename: str,
                                 system=None) -> tuple[list[BenchmarkRun], int]:
+        """
+        loads the experiment config based on a workload file
+        :param experiments_filename: the location of the experiment file
+        :param controller_config_filename: the location of the controller config
+        :param system: the system, if the benchmark shall only be run for a single system
+        :return: a set of benchmark runs and their corresponding IDs in the database
+        """
         capabilities = Capabilities.read_capabilities()
 
         host_params = FileIO.get_host_params(controller_config_filename)
@@ -121,11 +128,16 @@ class FileIO:
 
     @staticmethod
     def get_host_params(config_filename: str) -> HostParameters:
+        """
+        loads the hsot parameters from a file
+        :param config_filename: the location of the host parameter file
+        :return:
+        """
         with PROJECT_ROOT.joinpath(config_filename).open(mode="r") as c:
             try:
                 yamlfile = yaml.safe_load(c)
 
-                return [HostParameters(h["host"],  # TODO rename to "host"
+                return [HostParameters(h["host"],
                                        h["public_key_path"],
                                        Path(h["base_path"]),
                                        yamlfile["config"]["controller"]["results_folder"],
@@ -137,6 +149,11 @@ class FileIO:
 
     @staticmethod
     def get_systems(filename) -> list[System]:
+        """
+        returns all listed systems in the workload file
+        :param filename: the loaction of the workload file
+        :return: a list of Systems
+        """
         with open(PROJECT_ROOT.joinpath(filename), mode="r") as c:
             try:
                 yamlfile = yaml.safe_load(c)

@@ -9,6 +9,9 @@ from hub.utils.network import NetworkManager
 
 
 class FileTransporter:
+    """
+    wrapper around scp to perform remote file movement operations
+    """
     def __init__(self, network_manager: NetworkManager) -> None:
         self.network_manager = network_manager
         # self.system = network_manager.system_full
@@ -27,6 +30,13 @@ class FileTransporter:
 
     @measure_time
     def send_file(self, local: Path, remote: Path, **kwargs):
+        """
+        sends a single file to the host
+        :param local: the path on the controller
+        :param remote: the path on the host
+        :param kwargs:
+        :return:
+        """
         if local.exists():
             command = (
                 self.rsync_command_send.replace("options_plch", "")
@@ -38,6 +48,13 @@ class FileTransporter:
 
     @measure_time
     def send_folder(self, local: Path, remote: Path, **kwargs):
+        """
+        sends a folder to the host
+        :param local: the path on the controller
+        :param remote: the path on the host
+        :param kwargs:
+        :return:
+        """
         if local.exists():
             command = (
                 self.rsync_command_send.replace("options_plch", "-r")
@@ -49,6 +66,13 @@ class FileTransporter:
 
     @measure_time
     def get_file(self, remote, local, **kwargs):
+        """
+        retrieves a single file from the host
+        :param remote: the path on the host
+        :param local: the path on the controller
+        :param kwargs:
+        :return:
+        """
         command = (
             self.scp_command_receive.replace("options_plch", "")
             .replace("from_File_plch", str(self.host_base_path.joinpath(remote)))
@@ -58,6 +82,13 @@ class FileTransporter:
 
     @measure_time
     def get_folder(self, remote: Path, local: Path, **kwargs):
+        """
+        retrieves a folder from the host
+        :param remote: the path on the host
+        :param local: the path on the controller
+        :param kwargs:
+        :return:
+        """
         command = (
             self.rsync_command_receive.replace("options_plch", "-r")
             .replace("from_File_plch", str(self.host_base_path.joinpath(remote)))
@@ -67,6 +98,11 @@ class FileTransporter:
 
     @measure_time
     def send_configs(self, **kwargs):
+        """
+        sends all config files from the controller to the host
+        :param kwargs:
+        :return:
+        """
         host_config_path = self.host_base_path.joinpath("config")
         # print(host_config_path)
         self.network_manager.run_remote_mkdir(host_config_path)
@@ -77,7 +113,12 @@ class FileTransporter:
 
     @measure_time
     def send_data(self, file: DataLocation, **kwargs):
-        """Method for sending data to remote."""
+        """
+        sends a dataset from the controller to the host
+        :param file: the dataset
+        :param kwargs:
+        :return:
+        """
         # print(file)
         host_dir_up = file.host_dir.joinpath("../")
         self.network_manager.run_remote_mkdir(file.host_dir)
@@ -94,4 +135,9 @@ class FileTransporter:
             print("sent nothing")
 
     def get_measurements(self, measurements_loc: MeasurementsLocation):
+        """
+        retrives measurements files from the host
+        :param measurements_loc: the lcoation of the measurements
+        :return:
+        """
         self.get_folder(measurements_loc.host_measurements_folder, measurements_loc.controller_measurements_folder)

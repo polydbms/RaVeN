@@ -5,7 +5,9 @@ from hub.duckdb.submit_data import DuckDBConnector
 
 
 class InitializeDuckDB:
-
+    """
+    initialize a newly created duckdb instance
+    """
     def __init__(self, connection: DuckDBConnector):
         self._connection = connection.get_cursor()
 
@@ -128,7 +130,11 @@ class InitializeDuckDB:
 
         print("initialized tables")
 
-    def initialize_files(self, experiments: list[BenchmarkRun]):
+    def initialize_files(self, experiments: list[BenchmarkRun]) -> None:
+        """
+        inserts data into the files table based on the first benchmark run parameters object
+        :param experiments: the list of benchmark runs
+        """
         experiment = experiments[0]
         rasterfile = experiment.raster
         raster_ingest = self._connection.execute(
@@ -143,7 +149,13 @@ class InitializeDuckDB:
         print(
             f"initialized files, added raster: {True if raster_ingest else False}, vector: {True if vector_ingest else False}")
 
-    def initialize_experiments(self, experiments: list[BenchmarkRun], experiments_file):
+    def initialize_experiments(self, experiments: list[BenchmarkRun], experiments_file) -> None:
+        """
+        inserts the experiment name into the database
+        :param experiments:
+        :param experiments_file:
+        :return:
+        """
         experiment = experiments[0]
         rastername = experiment.raster.name
         vectorname = experiment.vector.name
@@ -154,7 +166,12 @@ class InitializeDuckDB:
 
         print(f"initialized experiments, added new experiment: {True if experiment_add else False}")
 
-    def initialize_parameters(self, experiments: list[BenchmarkRun]):
+    def initialize_parameters(self, experiments: list[BenchmarkRun]) -> None:
+        """
+        inserts new parameter combinations into the database
+        :param experiments: the lsit of experiments
+        :return:
+        """
         # max_id = conn.execute("SELECT max(id) from parameters").fetchone()
         # max_id = int(max_id[0]) if max_id[0] else 1
         old_exp = self._connection.execute("select * from parameters").fetch_df().set_index("id")

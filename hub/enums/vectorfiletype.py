@@ -2,6 +2,9 @@ from enum import Enum
 
 
 class VectorFileType(Enum):
+    """
+    supported raster file types
+    """
     SHP = ".shp"
     GEOJSON = ".geojson"
     WKT = ".wkt"

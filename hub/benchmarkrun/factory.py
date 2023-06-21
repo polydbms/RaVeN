@@ -13,10 +13,20 @@ from hub.utils.system import System
 
 
 class BenchmarkRunFactory:
+    """
+    creates the different benchmark parameter combinations based on the parameters definition in the benchmark config file
+    """
+
     def __init__(self, capabilities):
         self.capabilities = capabilities
 
     def create_params_iterations(self, systems: list[System], params_dict: dict) -> list[BenchmarkParameters]:
+        """
+        create the iterations
+        :param systems: the systems to create parameter combinations for
+        :param params_dict: the parameters
+        :return: the benchmark parameters as BenchmarkParameters obejcts
+        """
         params_list = [BenchmarkParameters(system) for system in systems]
         return self._create_param_iter_step(params_dict, params_list)
 

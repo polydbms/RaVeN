@@ -12,6 +12,9 @@ from hub.utils.system import System
 
 
 class BenchmarkParameters:
+    """
+    The parameters set for each benchmark run
+    """
     system: System
 
     raster_target_format: RasterFileType | VectorFileType
@@ -95,6 +98,7 @@ class BenchmarkParameters:
         # ]
 
     def validate(self, capabilities) -> bool:
+        """Validate the parameter combinations based on a set of rules"""
         # if self.raster_target_format is None:
         #     raster_type_check = True
         # else:

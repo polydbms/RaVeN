@@ -6,6 +6,9 @@ from hub.utils.datalocation import DataLocation
 
 
 class BenchmarkRun:
+    """
+    Contains all information necessary for a single benchmark run
+    """
     raster: DataLocation
     vector: DataLocation
     workload: dict
@@ -17,6 +20,17 @@ class BenchmarkRun:
     def __init__(self, raster: DataLocation, vector: DataLocation, workload: dict,
                  host_params: HostParameters, benchmark_params: BenchmarkParameters, experiment_name_file: str,
                  warm_starts: int, query_timeout: int):
+        """
+        the Init function
+        :param raster: all information on the raster data
+        :param vector: all information on the vector data
+        :param workload: the query described in the Benchi DSL
+        :param host_params: the static parameters of the host
+        :param benchmark_params: the benchmark-run specific paramteres
+        :param experiment_name_file: the name of the benchmark
+        :param warm_starts: the amount of warm starts to be done
+        :param query_timeout: the query-timeout after which an execution shall be aborted
+        """
         self.raster = raster
         self.vector = vector
         self.workload = workload

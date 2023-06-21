@@ -13,17 +13,33 @@ from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 
 
 class DuckDBConnector:
+    """
+    the wrapper class around duckdb that abstracts database calls
+    """
     _connection: DuckDBPyConnection
 
     def __init__(self, db_filename: Path):
+        """
+        initializes the connection
+        :param db_filename: the location of the database
+        """
         self._connection = duckdb.connect(database=str(db_filename), read_only=False)
         self._benchmark_set_id = -1
         self._is_initialized = False
 
     def get_cursor(self) -> DuckDBPyConnection:
+        """
+        returns a cursor of the database
+        :return:
+        """
         return self._connection.cursor()
 
     def get_id_of_parameter(self, param: BenchmarkParameters) -> int:
+        """
+        returns the id of a given benchmark parameter set
+        :param param: the benchmark parameter object
+        :return: the parameter id
+        """
         with self.get_cursor() as c:
             param_df = pd.DataFrame([param.__dict__]).fillna('')
             param_df_cleaned = c.execute("select * from param_df").fetch_df()
@@ -34,6 +50,11 @@ class DuckDBConnector:
             return int(param_db_row.head(1).index[0])
 
     def initialize_benchmark_set(self, experiment: str):
+        """
+        initializes a new benchmark set consisting of one or many benchmark runs
+        :param experiment: the experiment name
+        :return:
+        """
         if not self._is_initialized:
             with self.get_cursor() as conn:
                 bench_set = conn.execute("insert into benchmark_set (experiment, exec_start) values (?, ?) returning *",
@@ -45,6 +66,12 @@ class DuckDBConnector:
             self._is_initialized = True
 
     def initialize_benchmark_run(self, params: BenchmarkParameters, iteration: int):
+        """
+        initializes a benchmark run in the database
+        :param params: the benchmark parameters object
+        :param iteration: the iteration of the run
+        :return:
+        """
         param_id = self.get_id_of_parameter(params)
 
         with self.get_cursor() as conn:
@@ -61,11 +88,24 @@ class DuckDBConnector:
 
 
 class DuckDBRunCursor:
+    """
+    a duckdb cursor to allow slightly parallel data entry
+    """
     def __init__(self, connection: DuckDBPyConnection, run_id: int):
+        """
+
+        :param connection: the duckdb connection
+        :param run_id: the run id
+        """
         self._connection = connection
         self._run_id = run_id
 
     def write_timings_marker(self, marker: str):
+        """
+        inserts a timings marker into the database
+        :param marker: the timings string
+        :return:
+        """
         marker, timestamp, event, stage, system, dataset, comment = tuple(marker.split(","))
 
         with self._connection.cursor() as conn:
@@ -82,6 +122,11 @@ class DuckDBRunCursor:
                          ])
 
     def add_resource_utilization(self, util_files: list[Path]):
+        """
+        inserts a set of resource utilization file into the database
+        :param util_files: the resource utilization files
+        :return:
+        """
         for f in util_files:
             stage = f.stem
             util_df = pd.read_csv(f, delimiter="\t")
@@ -92,6 +137,11 @@ class DuckDBRunCursor:
                 conn.execute("insert into resource_util select * from parsed_util_df")
 
     def add_results_file(self, filename: Path) -> (Path, bool):
+        """
+        inserts the location to a results file into the database
+        :param filename: the filename
+        :return: the path and the information, whether it is empty or not
+        """
         match filename.suffixes[0].split("-"):
             case [".cold"]:
                 warm_start_no = 0
@@ -112,6 +162,11 @@ class DuckDBRunCursor:
 
     @staticmethod
     def _parse_docker_stats(util_df: DataFrame):
+        """
+        a helper class that parses docker stats strings
+        :param util_df:
+        :return:
+        """
         util_df.replace("--", np.NAN, inplace=True)
         util_df.dropna(inplace=True, axis=0)
         util_df[["MemUsage", "MemLimit"]] = util_df["MemUsage"].str.split(" / ", expand=True)
@@ -138,6 +193,11 @@ class DuckDBRunCursor:
 
     @staticmethod
     def _convert_to_bytes(value: str) -> int:
+        """
+        converts a suffixed value to byres
+        :param value:
+        :return:
+        """
         if "e" in value:
             regex_exp = re.compile("e\+(\d+)")
             exp = int(regex_exp.search(value).group(1))

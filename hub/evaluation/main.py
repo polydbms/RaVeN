@@ -7,6 +7,9 @@ from hub.benchmarkrun.host_params import HostParameters
 
 
 class Evaluator:
+    """
+    class that performs the accuracy analysis between results based on a user-defined function
+    """
     def __init__(self, result_files: list[Path], host_params: HostParameters, evalfolder="") -> None:
         self.host_params = host_params
         self.result_files = self.different_configs(result_files)

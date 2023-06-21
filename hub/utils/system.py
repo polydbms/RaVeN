@@ -1,4 +1,7 @@
 class System:
+    """
+    data class representing a system
+    """
     _name: str
     _port: int
 

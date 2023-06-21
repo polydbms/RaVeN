@@ -14,6 +14,9 @@ from hub.utils.system import System
 
 
 class Setup:
+    """
+    the main utility containing all benchi-related routines
+    """
     def __init__(self) -> None:
         self.logger = {}
 
@@ -24,8 +27,25 @@ class Setup:
         return getattr(module, class_name)
 
     def __run_tasks(self, run: BenchmarkRun, iteration=1) -> list[Path]:
+        """
+        performs a single benchmark run. the following stages are executed:
+
+        1. setup including sending config and datasets to the host
+        2. preprocess stage
+        3. ingestion stage
+        4. execution stage, as often as warm starts are specified + 1 cold start
+        5. teardown
+        6. transferring results to the database
+        :param run: the benchmark run
+        :param iteration: the iteration of the run
+        :return:
+        """
         system: System = run.benchmark_params.system
         print(system)
+
+        """
+        Setup
+        """
 
         run_cursor = run.host_params.controller_db_connection.initialize_benchmark_run(run.benchmark_params, iteration)
 
@@ -37,6 +57,10 @@ class Setup:
         network_manager = NetworkManager(run.host_params, run.benchmark_params.system.name, run.measurements_loc,
                                          run_cursor, run.query_timeout)
         transporter = FileTransporter(network_manager)
+
+        """
+        transfer configs and datasets to the host
+        """
 
         transporter.send_configs(log_time=self.logger)
         print(run.vector)
@@ -53,6 +77,10 @@ class Setup:
         with open("out.log", "a") as f:
             f.write(f"Preprocessing data\n")
         print("Preprocessing data")
+
+        """
+        Preprocess stage
+        """
 
         network_manager.start_measure_docker("preprocess", prerecord=False)
         command = run.host_params.host_base_path.joinpath(f'config/{system}/preprocess.sh')
@@ -84,6 +112,10 @@ class Setup:
         print("Wait 5s until docker is ready")
         sleep(5)
 
+        """
+        Ingestion stage
+        """
+
         with open("out.log", "a") as f:
             f.write(f"Ingesting data\n")
         print("Ingesting data")
@@ -94,6 +126,10 @@ class Setup:
         ingestor.ingest_raster(log_time=self.logger)
         ingestor.ingest_vector(log_time=self.logger)
         network_manager.stop_measure_docker()
+
+        """
+        Execution stage
+        """
 
         with open("out.log", "a") as f:
             f.write(f"Run query\n")
@@ -112,12 +148,17 @@ class Setup:
         result_files.append(executor.run_query(run.workload, warm_start_no=0, log_time=self.logger))
         network_manager.add_meta_marker_end()
 
+        # i warm starts
         for i in range(1, run.warm_starts + 1):
             sleep(10)
             print(f"running warm start {i} out of {run.warm_starts} for parameters {run.benchmark_params}")
             network_manager.add_meta_marker_start(i)
             result_files.append(executor.run_query(run.workload, warm_start_no=i, log_time=self.logger))
             network_manager.add_meta_marker_end()
+
+        """
+        Cleanup
+        """
 
         with open("out.log", "a") as f:
             f.write(f"--------------------- Post-Benchmark ------------------- \n")
@@ -128,6 +169,10 @@ class Setup:
         transporter.get_measurements(run.measurements_loc)
 
         executor.post_run_cleanup()
+
+        """
+        transfer results to database
+        """
 
         run_cursor.add_resource_utilization(
             [run.measurements_loc.controller_measurements_folder.joinpath(f"{e.value}.csv") for e in list(Stage)]
@@ -140,6 +185,15 @@ class Setup:
 
     def benchmark(self, experiment_file_name: str, config_file: str, system=None, post_cleanup=True,
                   single_run=True) -> list[Path]:
+        """
+        anchor function that starts a benchmark set
+        :param experiment_file_name: the path to the experiment definintion
+        :param config_file: the location of the config file
+        :param system: the system-under-test
+        :param post_cleanup: whether to perform a cleanup after the run. only evaluated if a single run is performed
+        :param single_run: whether to perform only a single run (the first in the lsit of experiments). Intended for debugging purposes
+        :return: a list of paths containing references to the results
+        """
         runs, iterations = FileIO.read_experiments_config(experiment_file_name, config_file,
                                                           system)  # todo use iterations
         print(f"running {len(runs)} experiments")
@@ -168,12 +222,25 @@ class Setup:
         return result_files
 
     def evaluate(self, config_filename: str, result_files: list[Path], base_run_str="", evalfolder=""):
+        """
+        start the evaluator
+        :param config_filename: the config for which results shall be evaluated
+        :param result_files: the list of result files
+        :param base_run_str: the parameter combination the evaluation shall be based on
+        :param evalfolder: the location where results of the evaluation shall be stored
+        :return:
+        """
         host_params = FileIO.get_host_params(config_filename)
         print(result_files)
         evaluator = Evaluator(result_files, host_params, evalfolder)
         evaluator.get_accuracy(base_run_str)
 
     def clean(self, config_filename: str):
+        """
+        the cleanup routine
+        :param config_filename: the config for which the cleanup shall be performed
+        :return:
+        """
         host_params = FileIO.get_host_params(config_filename)
 
         network_manager = NetworkManager(host_params, "cleanup", None, None)
@@ -190,6 +257,10 @@ class Setup:
 
 
 def main():
+    """
+    the main method containing the CLI
+    :return:
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("command", help="Use either start, clean, or eval.")
     parser.add_argument("--system", help="Specify which system should be benchmarked")

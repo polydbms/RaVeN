@@ -2,6 +2,9 @@ from enum import Enum
 
 
 class Stage(Enum):
+    """
+    the stage
+    """
     PREPROCESS = "preprocess"
     INGESTION = "ingestion"
     EXECUTION = "execution"

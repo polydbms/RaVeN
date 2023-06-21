@@ -4,6 +4,9 @@ from configuration import PROJECT_ROOT
 
 
 class Capabilities:
+    """
+    a wrapper for loading the capabilities.yaml file
+    """
     @staticmethod
     def read_capabilities() -> dict:
         with open(PROJECT_ROOT.joinpath("capabilities.yaml"), mode="r") as c:

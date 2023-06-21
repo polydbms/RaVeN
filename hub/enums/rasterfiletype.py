@@ -2,6 +2,9 @@ from enum import Enum
 
 
 class RasterFileType(Enum):
+    """
+    supported raster file types
+    """
     TIFF = ".tiff"
     JP2 = ".jp2"
 

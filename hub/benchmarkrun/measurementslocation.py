@@ -6,7 +6,16 @@ from hub.duckdb.submit_data import DuckDBRunCursor
 
 
 class MeasurementsLocation:
+    """
+    the location of all measurements
+    """
     def __init__(self, host_params: HostParameters, benchmark_params: BenchmarkParameters):
+        """
+        initializes the measurements location. takes host and benchmark params and creates a measurement folder on the
+        controller as a location to store them. also initializes a timings file used as a backup.
+        :param host_params: the hsot parameters
+        :param benchmark_params: the benchmark run specific parameters
+        """
         self._file_prepend = f"{benchmark_params}"
 
         self._controller_measurements_folder = host_params.controller_result_folder \

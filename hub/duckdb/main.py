@@ -7,6 +7,10 @@ from hub.utils.fileio import FileIO
 
 
 def main():
+    """
+    initilaize a database without starting a full benchi run
+    :return:
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--experiment_conf", help="The config file to an experiment", required=True)
     parser.add_argument("--config",

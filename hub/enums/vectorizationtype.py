@@ -2,6 +2,9 @@ from enum import Enum
 
 
 class VectorizationType(Enum):
+    """
+    the kind of vectorization
+    """
     TO_POINTS = "points"
     TO_POLYGONS = "polygons"
 
