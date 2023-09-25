@@ -299,8 +299,9 @@ def main():
             result_files = setup.benchmark(experiment_file_name, args.config, args.system, args.postcleanup,
                                            args.singlerun)
 
-            if len(result_files) > 1 and args.eval:
-                setup.evaluate(args.config, result_files, args.evalbase)
+            print(" ".join(list(map(lambda p: str(p), result_files))))
+            # if len(result_files) > 1 and args.eval:
+            #     setup.evaluate(args.config, result_files, args.evalbase)
     if args.command == "clean":
         setup.clean(args.config)
     if args.command == "eval":

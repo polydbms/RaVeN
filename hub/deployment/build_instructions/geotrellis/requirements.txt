@@ -29,7 +29,7 @@ Shapely~=1.8.5.post1
 snuggs~=1.4.7
 idna~=3.4
 urllib3~=1.26.12
-gdal>=3.5.3
-duckdb==0.6.1
+gdal==3.6.2
 geopyspark~=0.4.2
-pyspark~=3.4.1
+pyspark==3.3.2
+protobuf~=3.20.3
