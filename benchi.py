@@ -210,13 +210,13 @@ class Setup:
                 if post_cleanup:
                     self.clean(config_file)
             else:
-                for r in runs:
-                    result_files.extend(self.__run_tasks(r))
+                for run in list(filter(lambda r: r.benchmark_params.system.name == system, runs)):
+                    result_files.extend(self.__run_tasks(run))
                     self.clean(config_file)
 
         else:
-            for r in runs:
-                result_files.extend(self.__run_tasks(r))
+            for run in runs:
+                result_files.extend(self.__run_tasks(run))
                 self.clean(config_file)
 
         return result_files

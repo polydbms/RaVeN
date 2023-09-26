@@ -1,0 +1,46 @@
+experiments:
+  data:
+    raster: /data/glc/GlcShare_v10_Dominant
+    vector: /data/us_county
+  workload:
+    get:
+      vector:
+        - AFFGEOID
+      raster:
+        - sval
+        - sval:
+            aggregations:
+              - count
+    join:
+      table1: vector
+      table2: raster
+      condition: intersect(raster, vector)
+    group:
+      vector:
+        - AFFGEOID
+      raster:
+        - sval
+    order:
+      vector:
+        - AFFGEOID
+      raster:
+        - sval
+
+  parameters:
+    raster_tile_size:
+      - auto
+    vectorize_type:
+      - polygons
+    align_to_crs: raster
+    align_crs_at_stage:
+      - preprocess
+
+  timeout: 7200
+
+  systems:
+    - name: postgis
+      port: 25432
+    - name: beast
+    - name: sedona
+    - name: omnisci
+      port: 6274

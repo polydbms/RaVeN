@@ -53,7 +53,7 @@ experiments:
 
     vector_format:
       - shp
-      - wkt
+      - geojson
     vectorize_format:
       - geojson
       - shp
