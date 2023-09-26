@@ -19,6 +19,6 @@ services:
       - --config
       - config/controller_config.yaml
       - --experiment
-      - recipes/glc-.compose.yaml
+      - recipes/county-glc.yaml
       - start
 
