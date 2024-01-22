@@ -135,14 +135,14 @@ class Executor:
     def run_query(self, workload, warm_start_no: int, **kwargs) -> Path:
         workload_mod = copy.deepcopy(workload)
 
-        if workload_mod.get("get", {}).get("vector", {}):
-            workload_mod["get"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
-        if workload_mod.get("condition", {}).get("vector", {}):
-            workload_mod["condition"]["vector"] = list(map(lambda x: re.sub("(^|\W)OID($|\W)", "__oid", x) , workload_mod["condition"]["vector"]))
-        if workload_mod.get("group", {}).get("vector", {}):
-            workload_mod["group"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
-        if workload_mod.get("order", {}).get("vector", {}):
-            workload_mod["order"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+        # if workload_mod.get("get", {}).get("vector", {}):
+        #     workload_mod["get"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+        # if workload_mod.get("condition", {}).get("vector", {}):
+        #     workload_mod["condition"]["vector"] = list(map(lambda x: re.sub("(^|\W)OID($|\W)", "__oid", x) , workload_mod["condition"]["vector"]))
+        # if workload_mod.get("group", {}).get("vector", {}):
+        #     workload_mod["group"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+        # if workload_mod.get("order", {}).get("vector", {}):
+        #     workload_mod["order"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
 
         query = self.__translate(workload_mod)
         query = query.replace("{self.table1}", self.table_vector)

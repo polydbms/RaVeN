@@ -166,5 +166,24 @@ class BenchmarkRunFactory:
 
                         updated_params_list.remove(param)
 
+                case "vector_filter_at_stage":
+                    # if param.system.name in self.capabilities["no_st_transform"]:
+                    #     param.align_crs_at_stage = Stage.PREPROCESS
+                    # else: TODO maybe enable to use systems that do not support filtering
+                        for s in params_dict["vector_filter_at_stage"]:
+                            p = copy.deepcopy(param)
+                            p.vector_filter_at_stage = Stage.get_by_value(s)
+                            updated_params_list.append(p)
+
+                        updated_params_list.remove(param)
+
+                case "raster_clip":
+                    for r in params_dict["raster_clip"]:
+                        p = copy.deepcopy(param)
+                        p.raster_clip = bool(r)
+                        updated_params_list.append(p)
+
+                    updated_params_list.remove(param)
+
         del params_dict[params_key]
         return self._create_param_iter_step(params_dict, updated_params_list)

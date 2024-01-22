@@ -43,10 +43,10 @@ class NetworkManager:
         self.query_timeout = query_timeout
 
         self.ssh_options = f"" \
-                           f"-F ssh/config " \
+                           f"-F /home/gereon/.ssh/config " \
                            f"-o 'StrictHostKeyChecking=no' " \
                            f"-o 'IdentitiesOnly=yes' " \
-                           f"-i {self.private_key_path}"
+                           f"-i {self.private_key_path}" #FIXME config path
         self.ssh_command = (
             f"ssh {self.ssh_connection} {self.ssh_options}"
         )
@@ -112,6 +112,9 @@ class NetworkManager:
                     print("RETURN CODE", return_code)
                     print("\n\n")
                     # Process has finished, read rest of the output
+                    if "ssh" in command and return_code == 255:
+                        raise Exception("Unable to establish SSH connection")
+
                     for output in process.stdout.readlines():
                         print(output.strip())
                     return return_code
@@ -254,7 +257,7 @@ class NetworkManager:
                 print(f"{init_line_counter} ", end="")
                 init_line_counter += 1
 
-            if (prerecord and init_line_counter > 3) or (not prerecord and init_measurement_flag in str(output)):
+            if (prerecord and init_line_counter > 1) or (not prerecord and init_measurement_flag in str(output)):
                 print("")
                 print(f"initialized and pre-loaded docker measurements for stage {stage}")
                 break
@@ -278,7 +281,7 @@ class NetworkManager:
                 print(f"{outro_line_counter} ", end="")
                 outro_line_counter += 1
 
-            if outro_line_counter > 20:
+            if outro_line_counter > 1:
                 print("\n", output.strip(), "\n")
                 print(f"completed docker measurements")
                 self.measure_docker.terminate()

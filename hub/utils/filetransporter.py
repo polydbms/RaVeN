@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from configuration import PROJECT_ROOT
+from hub.configuration import PROJECT_ROOT
 from hub.benchmarkrun.measurementslocation import MeasurementsLocation
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
@@ -39,7 +39,8 @@ class FileTransporter:
         """
         if local.exists():
             command = (
-                self.rsync_command_send.replace("options_plch", "")
+                # self.rsync_command_send.replace("options_plch", "")
+                self.scp_command_send.replace("options_plch", "")
                 .replace("from_File_plch", str(local))
                 .replace("to_File_plch", str(self.host_base_path.joinpath(remote)))
             )
@@ -57,7 +58,8 @@ class FileTransporter:
         """
         if local.exists():
             command = (
-                self.rsync_command_send.replace("options_plch", "-r")
+                # self.rsync_command_send.replace("options_plch", "-r")
+                self.scp_command_send.replace("options_plch", "-r")
                 .replace("from_File_plch", str(local))
                 .replace("to_File_plch", str(self.host_base_path.joinpath(remote)))
             )
@@ -90,8 +92,9 @@ class FileTransporter:
         :return:
         """
         command = (
-            self.rsync_command_receive.replace("options_plch", "-r")
-            .replace("from_File_plch", str(self.host_base_path.joinpath(remote)))
+            self.scp_command_receive.replace("options_plch", "-r")
+            # self.rsync_command_receive.replace("options_plch", "-r")
+            .replace("from_File_plch", str(self.host_base_path.joinpath(remote)) + "/.")  # FIXME scp adaptation
             .replace("to_File_plch", str(local))
         )
         return self.network_manager.run_command(command)
@@ -107,7 +110,7 @@ class FileTransporter:
         # print(host_config_path)
         self.network_manager.run_remote_mkdir(host_config_path)
         self.send_folder(
-            Path(f"{PROJECT_ROOT}/hub/deployment/files/{self.network_manager.system_name}"),
+            Path(f"{PROJECT_ROOT}/deployment/files/{self.network_manager.system_name}"),
             host_config_path
         )
 
@@ -124,8 +127,8 @@ class FileTransporter:
         self.network_manager.run_remote_mkdir(file.host_dir)
         self.network_manager.run_remote_mkdir(file.host_dir_preprocessed)
         if file.type == FileType.FILE:
-            raise NotImplementedError("Single Files are currently not supported")
-            # self.send_file(file.controller_location, file.host_dir)
+            # raise NotImplementedError("Single Files are currently not supported")
+            self.send_folder(file.controller_location, host_dir_up)
         elif file.type == FileType.FOLDER:
             self.send_folder(file.controller_location, host_dir_up)
         elif file.type == FileType.ZIP_ARCHIVE:
@@ -140,4 +143,6 @@ class FileTransporter:
         :param measurements_loc: the lcoation of the measurements
         :return:
         """
+        print(measurements_loc.host_measurements_folder)
+        print(measurements_loc.controller_measurements_folder)
         self.get_folder(measurements_loc.host_measurements_folder, measurements_loc.controller_measurements_folder)

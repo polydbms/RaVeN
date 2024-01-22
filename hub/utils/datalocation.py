@@ -1,7 +1,10 @@
+import json
+import subprocess
 import zipfile
 from pathlib import Path
 
 import geopandas.io.file
+import pyproj
 from pyproj import CRS
 from rioxarray import rioxarray
 
@@ -20,13 +23,13 @@ class DataLocation:
     _host_base_dir: Path
     _file: Path
     _data_type: DataType
-    _name: str
+    _dir_name: str
     _preprocessed: bool
     _controller_location: Path
     _target_suffix: VectorFileType | RasterFileType
 
     def __init__(self,
-                 path: str,
+                 path_str: str,
                  data_type: DataType,
                  host_params: HostParameters,
                  benchmark_params: BenchmarkParameters,
@@ -34,35 +37,43 @@ class DataLocation:
         """
         initiializes the data lcoation. if the proveided path is a folder or zip archive, it tries to find the first
         available file. also prepares paths for the host and docker container based on the file
-        :param path: the path to the dataset
+        :param path_str: the path to the dataset
         :param data_type: the class of data stored
         :param host_params: the hsot parameters
         :param benchmark_params: the benchmark-specific parameters
         :param name: the name of the dataset
         """
-        self._controller_location = Path(path).expanduser()
         self._benchmark_params = benchmark_params
         self._host_params = host_params
         self._host_base_dir = host_params.host_base_path
+        self._data_type = data_type
 
-        if not self._controller_location.exists():
-            raise FileNotFoundError(f"Path {path} to input for {data_type} data does not exist")
+        path = Path(path_str).expanduser()
 
-        if self._controller_location.is_dir():
+        if not path.exists():
+            raise FileNotFoundError(f"Path {path_str} to input for {data_type} data does not exist")
+
+        if path.is_dir():
             self.type = FileType.FOLDER
-        elif zipfile.is_zipfile(self._controller_location):
+            self._controller_location = path
+            self._file = self._find_file(
+                ["*.shp"] if self._data_type == DataType.VECTOR else ["*.tif", "*.tiff", "*.geotiff", "*.jp2"])
+        elif zipfile.is_zipfile(path):
             self.type = FileType.ZIP_ARCHIVE
+            raise NotImplementedError("ZIP Files are currently not supported")
         else:
             self.type = FileType.FILE
+            self._controller_location = path.parent
+            self._file = Path(path.name)
+            if self._file.suffix in {".tif", ".tiff", ".geotiff"}.difference({str(RasterFileType.TIFF.value)}):
+                new_f = self._file.with_suffix(str(RasterFileType.TIFF.value))
+                self._file.rename(new_f)
+                self._file = Path(new_f.name)
 
-        self._name = self._controller_location.stem if name is None else name
+        self._dir_name = self._controller_location.stem if name is None else name
 
-        self._data_type = data_type
-        self._file = self._find_file(
-            ["*.shp"] if self._data_type == DataType.VECTOR else ["*.tif", "*.tiff", "*.geotiff", "*.jp2"])
-
-        self._host_dir = self._host_base_dir.joinpath("data").joinpath(self._name)
-        self._docker_dir = Path("/data").joinpath(Path(self._name))
+        self._host_dir = self._host_base_dir.joinpath("data").joinpath(self._dir_name)
+        self._docker_dir = Path("/data").joinpath(Path(self._dir_name))
 
         self._preprocessed = False
 
@@ -82,15 +93,20 @@ class DataLocation:
                     if self._benchmark_params.vector_target_format is None \
                     else self._benchmark_params.vector_target_format
 
+        # if self._data_type == DataType.VECTOR:
+        #     self.type = json.loads(
+        #         subprocess.check_output(f"ogrinfo -nocount -json -nomd {self.controller_file}", shell=True).decode(
+        #             "utf-8"))["layers"][0]["fields"]
+
     def _find_file(self, ending: [str]) -> Path:
         """
         find a dataset file within a folder. Normalizes tiff files to a common file ending
         :param ending: the file endings possible to be used by benchi
         :return:
         """
-        if self.type == FileType.FILE:
-            raise NotImplementedError("Single Files are currently not supported")
-        elif self.type == FileType.FOLDER:
+        # if self.type == FileType.FILE:
+        #     raise NotImplementedError("Single Files are currently not supported")
+        if self.type == FileType.FOLDER:
             for e in ending:
                 files = [f for f in self._controller_location.glob(e)]
                 if len(files) > 0:
@@ -102,7 +118,8 @@ class DataLocation:
 
                     return Path(files[0].name)
         elif self.type == FileType.ZIP_ARCHIVE:
-            raise NotImplementedError("Files inside ZIP are not getting renamed right now")
+            raise NotImplementedError("ZIP Files are currently not supported")
+
             # return Path(
             #     [f for f in zipfile.Path(self._controller_location).iterdir() if Path(f.name).match(ending)][0].name)
         else:
@@ -194,7 +211,7 @@ class DataLocation:
         the name of the dataset
         :return:
         """
-        return self._name
+        return self._dir_name
 
     @property
     def controller_location(self) -> Path:
@@ -267,17 +284,24 @@ class DataLocation:
         """
         match self._data_type:
             case DataType.VECTOR:
-                return geopandas.read_file(self.controller_file, rows=1).crs
+                crs = json.loads(
+                    subprocess.check_output(f'ogrinfo -json -nocount -nomd {self.controller_file}', shell=True)
+                    .decode('utf-8'))["layers"][0]["geometryFields"][0]["coordinateSystem"]["projjson"]["base_crs"][
+                    "id"]["code"]
+                return pyproj.CRS.from_epsg(crs)
             case DataType.RASTER:
                 rio_epsg = rioxarray.open_rasterio(str(self.controller_file), masked=True).squeeze().rio.crs.to_epsg()
 
                 return CRS.from_epsg(rio_epsg)
+
+    def get_vector_types(self):
+        return
 
     def __str__(self):
         return ",".join(
             [str(self._controller_location),
              str(self._data_type),
              str(self._file),
-             self._name,
+             self._dir_name,
              str(self._preprocessed)]
         )

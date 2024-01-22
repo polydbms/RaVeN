@@ -1,8 +1,10 @@
+import json
+import logging
 import re
 import subprocess
 from pathlib import Path
 
-from configuration import PROJECT_ROOT
+from hub.configuration import PROJECT_ROOT
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.enums.vectorfiletype import VectorFileType
 from hub.evaluation.measure_time import measure_time
@@ -13,7 +15,9 @@ from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.interfaces import IngestionInterface
 from hub.utils.network import NetworkManager
-import geopandas as gpd
+
+
+# import geopandas as gpd
 
 
 class Ingestor(IngestionInterface):
@@ -28,7 +32,8 @@ class Ingestor(IngestionInterface):
         self.raster = raster_path
         self.host_base_path = self.network_manager.host_params.host_base_path
         self.benchmark_params = benchmark_params
-        self.raptor_scala_path = Path(f"hub/deployment/files/beast/scala-beast/src/main/scala/benchi/RaptorScala.scala")
+        self.raptor_scala_path = PROJECT_ROOT.joinpath(
+            f"deployment/files/beast/scala-beast/src/main/scala/benchi/RaptorScala.scala")
 
         rendered = self.render_template()
         self.__save_template(rendered)
@@ -88,7 +93,8 @@ class Ingestor(IngestionInterface):
 
     def render_template(self):
         template_path = Path(
-            PROJECT_ROOT.joinpath("hub/deployment/files/beast/RaptorScala.scala.j2"))
+            PROJECT_ROOT.joinpath("deployment/files/beast/RaptorScala.scala.j2"))
+        logging.info(template_path)
         template = self.__read_template(template_path)
 
         raster_conditions = list(
@@ -161,15 +167,21 @@ class Ingestor(IngestionInterface):
         return f"{op} {target}"
 
     def __dtype_to_scala(self, name):
-        vector_dtypes = gpd.read_file(self.vector.controller_file, rows=1).dtypes
-        match vector_dtypes[name].name:
-            case "object":
+        vectortypes = json.loads(
+            subprocess.check_output(f"ogrinfo -nocount -json -nomd {self.vector.controller_file}", shell=True).decode(
+                "utf-8"))["layers"][0]["fields"]
+        fieldtype = next(filter(lambda c: c["name"] == name, vectortypes))["type"]
+        # vector_dtypes = gpd.read_file(self.vector.controller_file, rows=1).dtypes
+        match fieldtype:
+            case "String":
                 return "String"
-            case "float64":
+            case "Real":
                 return "Float"
-            case "int64":
+            case "Integer64":
                 return "Int"
-            case "bool":
+            case "Integer":
+                return "Int"
+            case "Boolean":
                 return "Boolean"
             case _:
-                raise Exception(f"dtype {vector_dtypes[name].name} has not been implemented yet")
+                raise Exception(f"type {fieldtype} has not been implemented yet")

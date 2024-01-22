@@ -7,7 +7,6 @@ import threading
 import urllib.parse as parser
 from concurrent.futures import ThreadPoolExecutor
 
-import geopandas as gpd
 import requests
 
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
@@ -46,7 +45,7 @@ class Executor:
             "count": self.__get_count,
         }
         self.headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        self.crs = gpd.read_file(self.vector_path.controller_file, rows=1).crs.to_epsg()
+        self.crs = self.vector_path.get_crs().to_epsg()
         self.crs_url = f"{self.base_url}/def/crs/EPSG/0/{self.crs}"
 
     def __get_avg(self, geometry):
@@ -286,9 +285,9 @@ class Executor:
 
         self.network_manager.write_timings_marker(f"benchi_marker,,end,execution,rasdaman,aggregations,")
         f.close()
-        self.network_manager.stop_socks_proxy()
 
         return result_path
 
     def post_run_cleanup(self):
+        self.network_manager.stop_socks_proxy()
         self.vector_path.controller_wkt.unlink()

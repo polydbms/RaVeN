@@ -6,11 +6,11 @@ services:
       context: .
       target: benchi
     volumes:
-      - benchi/config:/hub/config
-      - benchi/recipes:/hub/recipes
-      - data:/data
-      - benchi/ssh/config:/hub/ssh/config
-      - benchi/ssh/keys:/hub/ssh/keys
+      - ./benchi/config:/hub/config
+      - ./benchi/recipes:/hub/recipes
+      - ./data:/data
+      - ./benchi/ssh/config:/hub/ssh/config
+      - ./benchi/ssh/keys:/hub/ssh/keys
     environment:
       PYTHONUNBUFFERED: 1
     command:

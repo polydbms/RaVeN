@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from configuration import PROJECT_ROOT
+from hub.configuration import PROJECT_ROOT
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.enums.vectorfiletype import VectorFileType
 from hub.evaluation.measure_time import measure_time
@@ -40,7 +40,7 @@ class Ingestor:
             print(f"{path} not found")
 
     def render_template(self):
-        template_path = Path(PROJECT_ROOT.joinpath("hub/deployment/files/sedona/sedona.py.j2"))
+        template_path = Path(PROJECT_ROOT.joinpath("deployment/files/sedona/sedona.py.j2"))
         template = self.__read_template(template_path)
         raster_name = self.raster.name
         vector_name = self.vector.name
@@ -62,7 +62,7 @@ class Ingestor:
         return rendered
 
     def __save_template(self, template):
-        template_path = Path(f"hub/deployment/files/sedona/sedona_ingested.py.j2")
+        template_path = Path(f"deployment/files/sedona/sedona_ingested.py.j2")
         with open(template_path, "w") as f:
             f.write(template)
 

@@ -1,4 +1,4 @@
-FROM osgeo/gdal:ubuntu-small-3.6.0 as requirements
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.8.0 as requirements
 
 RUN apt-get update && apt-get upgrade -y && apt-get install python3-pip -y
 COPY requirements.txt ./requirements.txt
@@ -11,7 +11,7 @@ RUN pip install --user -r ./requirements.txt
 #CMD [ "/bin/bash" ]
 
 
-FROM osgeo/gdal:ubuntu-small-3.6.0 as preprocess
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.8.0 as preprocess
 WORKDIR /preprocess
 COPY --from=requirements /root/.local /root/.local
 COPY ./configuration.py configuration.py
@@ -28,7 +28,7 @@ COPY ./capabilities.yaml capabilities.yaml
 CMD [ "/bin/bash" ]
 
 
-FROM osgeo/gdal:ubuntu-small-3.6.0 as benchi
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.8.0 as benchi
 COPY --from=requirements /root/.local /root/.local
 RUN apt update && apt upgrade -y && apt install openssh-client rsync -y
 WORKDIR /hub

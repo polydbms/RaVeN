@@ -114,7 +114,7 @@ class Executor:
         rendered = self.__render_template(query)
         self.__save_template(rendered)
         self.transporter.send_file(
-            Path("hub/deployment/files/sedona/sedona_prep.py"),
+            Path("deployment/files/sedona/sedona_prep.py"),
             self.host_base_path.joinpath("config/sedona/executor.py"),
             **kwargs
         )
@@ -134,8 +134,8 @@ class Executor:
         return result_path
 
     def post_run_cleanup(self):
-        Path("hub/deployment/files/sedona/sedona_prep.py").unlink()
-        Path("hub/deployment/files/sedona/sedona_ingested.py.j2").unlink()
+        Path("deployment/files/sedona/sedona_prep.py").unlink()
+        Path("deployment/files/sedona/sedona_ingested.py.j2").unlink()
 
     def __read_template(self, path):
         try:
@@ -146,7 +146,7 @@ class Executor:
             print(f"{path} not found")
 
     def __render_template(self, query):
-        template_path = Path("hub/deployment/files/sedona/sedona_ingested.py.j2")
+        template_path = Path("deployment/files/sedona/sedona_ingested.py.j2")
         template = self.__read_template(template_path)
         payload = {
             "query": query,
@@ -155,6 +155,6 @@ class Executor:
         return rendered
 
     def __save_template(self, template):
-        template_path = Path(f"hub/deployment/files/sedona/sedona_prep.py")
+        template_path = Path(f"deployment/files/sedona/sedona_prep.py")
         with open(template_path, "w") as f:
             f.write(template)

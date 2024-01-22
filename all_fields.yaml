@@ -70,6 +70,12 @@ experiments:
     align_crs_at_stage:
       - preprocess
       - execution
+    raster_clip:
+      - Yes
+      - No
+    vector_filter_at_stage:
+      - preprocess
+      - execution
 
   iterations: 2
   warm_starts: 3

@@ -51,7 +51,10 @@ class InitializeDuckDB:
             vector_resolution double, 
 
             align_to_crs varchar,
-            align_crs_at_stage varchar
+            align_crs_at_stage varchar,
+            
+            vector_filter_at_stage varchar,
+            raster_clip boolean
         )
         """)  # systems_table
 
@@ -139,12 +142,12 @@ class InitializeDuckDB:
         rasterfile = experiment.raster
         raster_ingest = self._connection.execute(
             "insert into files (name, type, filename) select ? as name, ? as type, ? as filename where ? not in (select name from files) returning *",
-            [rasterfile.name, "raster", str(rasterfile), rasterfile.name]).fetchone()[0]
+            [rasterfile.name, "raster", str(rasterfile), rasterfile.name]).fetchone()
 
         vectorfile = experiment.vector
         vector_ingest = self._connection.execute(
             "insert into files (name, type, filename) select ? as name, ? as type, ? as filename where ? not in (select name from files) returning *",
-            [vectorfile.name, "vector", str(vectorfile), vectorfile.name]).fetchone()[0]
+            [vectorfile.name, "vector", str(vectorfile), vectorfile.name]).fetchone()
 
         print(
             f"initialized files, added raster: {True if raster_ingest else False}, vector: {True if vector_ingest else False}")
@@ -162,7 +165,7 @@ class InitializeDuckDB:
 
         experiment_add = self._connection.execute(
             "insert into experiments (filename, raster_file, vector_file) select ? as filename, ? as raster_file, ? as vector_file where ? not in (select filename from experiments)",
-            [experiments_file, rastername, vectorname, experiments_file]).fetchone()[0]
+            [experiments_file, rastername, vectorname, experiments_file]).fetchone()
 
         print(f"initialized experiments, added new experiment: {True if experiment_add else False}")
 
@@ -187,7 +190,7 @@ class InitializeDuckDB:
 
         print(
             f"initialized parameters, added {len(cleaned)} new, "
-            f"now {self._connection.execute('SELECT count(*) from parameters').fetchone()[0]} exist")
+            f"now {self._connection.execute('SELECT count(*) from parameters').fetchone()} exist")
 
     def __del__(self):
         self._connection.close()

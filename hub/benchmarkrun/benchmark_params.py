@@ -31,6 +31,9 @@ class BenchmarkParameters:
     align_to_crs: DataType
     align_crs_at_stage: Stage
 
+    vector_filter_at_stage: Stage
+    raster_clip: bool
+
     def __init__(self,
                  system: System,
                  raster_target_format=None,
@@ -43,7 +46,9 @@ class BenchmarkParameters:
                  vector_target_crs=None,
                  vector_resolution=1.0,
                  align_to_crs=None,
-                 align_crs_at_stage=None) -> None:
+                 align_crs_at_stage=None,
+                 vector_filter_at_stage=Stage.PREPROCESS,
+                 raster_clip=True) -> None:
         self.system = system
 
         self.raster_target_format = raster_target_format
@@ -59,6 +64,8 @@ class BenchmarkParameters:
 
         self.align_to_crs = align_to_crs
         self.align_crs_at_stage = align_crs_at_stage
+        self.vector_filter_at_stage = vector_filter_at_stage
+        self.raster_clip = raster_clip
 
     def __str__(self):
         return "_".join([
