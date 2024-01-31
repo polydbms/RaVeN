@@ -1,6 +1,6 @@
-# ST_Benchi
+# RaVeN
+
+**Ra**ster-**Ve**ctor joi**n**
 
 
-![ST_Benchi logo](stbenchi_logo.svg)
-
-This is the source code for *ST_Benchi*, a benchmarking framework capable of performing zonal statistics benchmarks. You can find the complete documentation in the [wiki of this GitHub project](https://github.com/polydbms/st_benchi/wiki).
+This is the source code for *RaVeN*, a framework for abstracting and comparing Spatial Systems capable of computing zonal statistics. You can find the complete documentation in the [wiki of this GitHub project](https://github.com/polydbms/RaVeN/wiki).
