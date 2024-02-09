@@ -2,7 +2,7 @@ from pathlib import Path
 
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.benchmarkrun.host_params import HostParameters
-from hub.duckdb.submit_data import DuckDBRunCursor
+from hub.zsresultsdb.submit_data import DuckDBRunCursor
 
 
 class MeasurementsLocation:

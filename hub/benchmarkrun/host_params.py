@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
-from hub.duckdb.submit_data import DuckDBConnector
+from hub.zsresultsdb.submit_data import DuckDBConnector
 
 
 class HostParameters:

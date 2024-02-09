@@ -1,9 +1,9 @@
 #!/bin/bash
 
 echo "Preprocessing data"
-docker pull preprocess
+docker pull ghcr.io/polydbms/preprocess:0.5.0-1
 echo "benchi_marker,$(date +%s.%N),start,preprocess,omnisci,,"
-docker run -e PYTHONUNBUFFERED=1 -v $(dirname $0)/../../data:/data --name "preprocess_omnisci" --rm preprocess python preprocess.py $1
+docker run -e PYTHONUNBUFFERED=1 -v $(dirname $0)/../../data:/data --name "preprocess_omnisci" --rm  ghcr.io/polydbms/preprocess:0.5.0-1 python preprocess.py $1
 echo "benchi_marker,$(date +%s.%N),end,preprocess,omnisci,,"
 
 echo "Starting Container in background"

@@ -145,8 +145,8 @@ class Executor:
         #     workload_mod["order"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
 
         query = self.__translate(workload_mod)
-        query = query.replace("{self.table1}", self.table_vector)
-        query = query.replace("{self.table2}", self.table_raster)
+        query = query.replace("{self.table_vec}", self.table_vector)
+        query = query.replace("{self.table_ras}", self.table_raster)
         print(f"query to run: {query}")
 
         relative_results_file = Path(

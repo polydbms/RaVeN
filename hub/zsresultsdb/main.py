@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 
 from hub.benchmarkrun.benchmark_run import BenchmarkRun
-from hub.duckdb.init_duckdb import InitializeDuckDB
+from hub.zsresultsdb.init_duckdb import InitializeDuckDB
 from hub.utils.fileio import FileIO
 
 

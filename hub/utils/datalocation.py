@@ -285,8 +285,7 @@ class DataLocation:
             case DataType.VECTOR:
                 crs = json.loads(
                     subprocess.check_output(f'ogrinfo -json -nocount -nomd {self.controller_file}', shell=True)
-                    .decode('utf-8'))["layers"][0]["geometryFields"][0]["coordinateSystem"]["projjson"]["base_crs"][
-                    "id"]["code"]
+                    .decode('utf-8'))["layers"][0]["geometryFields"][0]["coordinateSystem"]["projjson"]["id"]["code"]
                 return pyproj.CRS.from_epsg(crs)
             case DataType.RASTER:
                 rio_epsg = rioxarray.open_rasterio(str(self.controller_file), masked=True).squeeze().rio.crs.to_epsg()

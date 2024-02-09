@@ -3,10 +3,10 @@ systems:
     - rasdaman
   vectorize:
     - omnisci
-    - sedona
+    #- sedona
   same_crs:
     - postgis
-    - sedona
+    #- sedona
   no_st_transform:
     - omnisci
   variable_tile_size:

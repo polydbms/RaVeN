@@ -342,7 +342,7 @@ class CRSFilterPreprocessor(Preprocessor):
         #     out.rio.write_nodata(0, inplace=True)
         #     out.rio.to_raster(str(output_file))
 
-        if self.config.raster_clip:
+        if self.config.raster_clip and False: # TODO shapely has a bug, so deactivating this temporarily
             extent = json.loads(
                 subprocess.check_output(f'ogrinfo -json -nocount -nomd {self.config.vector_file_path}', shell=True)
                 .decode('utf-8'))["layers"][0]["geometryFields"][0]["extent"]
@@ -358,7 +358,7 @@ class CRSFilterPreprocessor(Preprocessor):
 
         subprocess.call(f"gdalwarp "
                         f"-t_srs {self.config.raster_target_crs} "
-                        f"{f'-te_srs {self.get_raster_crs().to_string()} -te {l} {b} {r} {t}' if self.config.raster_clip else ''} "
+                        # f"{f'-te_srs {self.get_raster_crs().to_string()} -te {l} {b} {r} {t}' if self.config.raster_clip else ''} " TODO shapely-bug, also this line does not obey raster_clip
                         f"{self.config.raster_file_path} "
                         f"{output_file}",
                         shell=True)

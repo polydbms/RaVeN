@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 from hub.benchmarkrun.benchmark_run import BenchmarkRun
-from hub.duckdb.submit_data import DuckDBConnector
+from hub.zsresultsdb.submit_data import DuckDBConnector
 
 
 class InitializeDuckDB:

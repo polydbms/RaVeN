@@ -11,7 +11,7 @@ from qgis.core import QgsFeatureRequest, QgsProject, QgsVectorLayer, QgsGraduate
     QgsLayerTreeLayer, \
     QgsStyle
 
-from hub.duckdb.init_duckdb import InitializeDuckDB
+from hub.zsresultsdb.init_duckdb import InitializeDuckDB
 from hub.gui.main_ui import Ui_RaVeN
 from hub.gui.webdialog import WebDialog
 from hub.raven import Setup

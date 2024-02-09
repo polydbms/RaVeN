@@ -15,8 +15,6 @@ experiments:
               - count
               - sum
     join:
-      table1: vector
-      table2: raster
       condition: {intersect,contains,bestrasvecjoin}(raster, vector)
     condition:
       vector:

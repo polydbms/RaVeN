@@ -3,7 +3,7 @@ version: '2.1'
 services:
 
   sedona:
-    image: registry.gitlab.com/zergar/benchi/sedona:3.3.1-2
+    image: ghcr.io/polydbms/sedona:1.5.1-3.5.0
     volumes:
       - ../../data:/data
       - ../../config:/config

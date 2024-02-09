@@ -31,10 +31,10 @@ class Executor:
         return SQLBased.parse_get(self.__handle_aggregations, get)
 
     def __parse_join(self, join):
-        table1 = "{self.table1}" + f' as {join["table1"]}'
-        table2 = "{self.table2}" + f' as {join["table2"]}'
+        table_ras = "{self.table_vec}" + f' as vector'
+        table_vec = "{self.table_ras}" + f' as raster'
         condition = f'on {join["condition"]}'
-        return f"from {table1} JOIN {table2} {condition}"
+        return f"from {table_vec} JOIN {table_ras} {condition}"
 
     def __parse_condition(self, condition):
         return SQLBased.parse_condition(condition)
@@ -90,8 +90,8 @@ class Executor:
     @measure_time
     def run_query(self, workload, warm_start_no: int, **kwargs) -> Path:
         query = self.__translate(workload)
-        query = query.replace("{self.table1}", self.table_vector)
-        query = query.replace("{self.table2}", self.table_raster)
+        query = query.replace("{self.table_vec}", self.table_vector)
+        query = query.replace("{self.table_ras}", self.table_raster)
         print(f"query to run: {query}")
 
         relative_results_file = Path(f"data/results/{self.network_manager.measurements_loc.file_prepend}.{'cold' if warm_start_no == 0 else f'warm-{warm_start_no}'}.csv")

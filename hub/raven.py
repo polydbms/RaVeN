@@ -118,7 +118,7 @@ class Setup:
             f'--raster_target_suffix {run.benchmark_params.raster_target_format.value} '
             f'--raster_output_folder {run.raster.docker_dir_preprocessed} '
             f'--raster_target_crs {raster_target_crs} '
-            # f'--raster_clip {run.benchmark_params.raster_clip} '
+            f'--{"" if run.benchmark_params.raster_clip else "no-"}raster_clip '
             # f'{f for f in r} ' vector filter
             f'"',
             log_time=self.logger,

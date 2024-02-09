@@ -1,7 +1,7 @@
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.benchmarkrun.host_params import HostParameters
 from hub.benchmarkrun.measurementslocation import MeasurementsLocation
-from hub.duckdb.submit_data import DuckDBConnector, DuckDBRunCursor
+from hub.zsresultsdb.submit_data import DuckDBConnector, DuckDBRunCursor
 from hub.utils.datalocation import DataLocation
 
 

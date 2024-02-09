@@ -40,7 +40,7 @@ class FileTransporter:
         if local.exists():
             command = (
                 # self.rsync_command_send.replace("options_plch", "")
-                self.scp_command_send.replace("options_plch", "")
+                self.rsync_command_send.replace("options_plch", "")
                 .replace("from_File_plch", str(local))
                 .replace("to_File_plch", str(self.host_base_path.joinpath(remote)))
             )
@@ -59,7 +59,7 @@ class FileTransporter:
         if local.exists():
             command = (
                 # self.rsync_command_send.replace("options_plch", "-r")
-                self.scp_command_send.replace("options_plch", "-r")
+                self.rsync_command_send.replace("options_plch", "-r")
                 .replace("from_File_plch", str(local))
                 .replace("to_File_plch", str(self.host_base_path.joinpath(remote)))
             )
@@ -92,7 +92,7 @@ class FileTransporter:
         :return:
         """
         command = (
-            self.scp_command_receive.replace("options_plch", "-r")
+            self.rsync_command_receive.replace("options_plch", "-r")
             # self.rsync_command_receive.replace("options_plch", "-r")
             .replace("from_File_plch", str(self.host_base_path.joinpath(remote)) + "/.")  # FIXME scp adaptation
             .replace("to_File_plch", str(local))

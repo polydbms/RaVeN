@@ -1,6 +1,6 @@
 experiments:
   data:
-    raster: /home/gereon/git/dima/data/datasets/GlcShare_v10_Dominant
+    raster: /home/gereon/git/dima/data/datasets/PRISM_ppt_stable_4kmD2_20210901
     vector: /home/gereon/git/dima/data/datasets/us_county
   workload:
     get:

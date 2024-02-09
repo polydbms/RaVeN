@@ -3,10 +3,9 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-import duckdb
 import numpy as np
 import pandas as pd
-from duckdb import DuckDBPyConnection
+from duckdb import DuckDBPyConnection, connect
 from pandas import DataFrame
 
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
@@ -23,7 +22,7 @@ class DuckDBConnector:
         initializes the connection
         :param db_filename: the location of the database
         """
-        self._connection = duckdb.connect(database=str(db_filename), read_only=False)
+        self._connection = connect(database=str(db_filename), read_only=False)
         self._benchmark_set_id = -1
         self._is_initialized = False
 

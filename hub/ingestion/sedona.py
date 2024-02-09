@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from hub.enums.rasterfiletype import RasterFileType
 from hub.configuration import PROJECT_ROOT
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.enums.vectorfiletype import VectorFileType
@@ -40,12 +41,12 @@ class Ingestor:
             print(f"{path} not found")
 
     def render_template(self):
-        template_path = Path(PROJECT_ROOT.joinpath("deployment/files/sedona/sedona.py.j2"))
+        template_path = PROJECT_ROOT.joinpath("deployment/files/sedona/sedona.py.j2")
         template = self.__read_template(template_path)
         raster_name = self.raster.name
         vector_name = self.vector.name
-        vector_reader, vector_method = self._get_reader_from_filetype(self.benchmark_params.vector_target_format)
-        raster_reader, raster_method = self._get_reader_from_filetype(self.benchmark_params.raster_target_format)
+        vector_reader, vector_method = self._get_vector_reader_from_filetype(self.benchmark_params.vector_target_format)
+        raster_reader, raster_method = self._get_raster_reader_from_filetype(self.benchmark_params.raster_target_format)
 
         payload = {
             "vector_path": self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed,
@@ -62,12 +63,12 @@ class Ingestor:
         return rendered
 
     def __save_template(self, template):
-        template_path = Path(f"deployment/files/sedona/sedona_ingested.py.j2")
+        template_path = PROJECT_ROOT.joinpath(f"deployment/files/sedona/sedona_ingested.py.j2")
         with open(template_path, "w") as f:
             f.write(template)
 
     @staticmethod
-    def _get_reader_from_filetype(filetype: VectorFileType) -> (str, str):
+    def _get_vector_reader_from_filetype(filetype: VectorFileType) -> (str, str):
         match filetype:
             case VectorFileType.SHP:
                 return "ShapefileReader", "readToGeometryRDD"
@@ -80,3 +81,10 @@ class Ingestor:
             case _:
                 raise Exception(f"Cannot ingest Vector file with format {filetype}")
 
+    @staticmethod
+    def _get_raster_reader_from_filetype(filetype: RasterFileType) -> (str, str):
+        match filetype:
+            case RasterFileType.TIFF:
+                return None, "RS_FromGeoTiff"
+            case _:
+                raise Exception(f"Cannot ingest Raster file with format {filetype}")

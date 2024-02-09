@@ -36,10 +36,10 @@ class SQLBased:
 
     @staticmethod
     def parse_join(join):
-        table1 = "{self.table1}" + f' as {join["table1"]}'
-        table2 = "{self.table2}" + f' as {join["table2"]}'
+        table_ras = "{self.table_vec}" + f' as vector'
+        table_vec = "{self.table_ras}" + f' as raster'
         condition = f'on {join["condition"]}'
-        return f"from {table1} JOIN {table2} {condition}"
+        return f"from {table_ras} JOIN {table_vec} {condition}"
 
     @staticmethod
     def parse_condition(condition, vector_table_name="vector", raster_table_name="raster"):

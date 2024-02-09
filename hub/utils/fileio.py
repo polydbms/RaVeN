@@ -6,7 +6,7 @@ from hub.benchmarkrun.benchmark_run import BenchmarkRun
 from hub.benchmarkrun.factory import BenchmarkRunFactory
 from hub.benchmarkrun.host_params import HostParameters
 from hub.configuration import PROJECT_ROOT
-from hub.duckdb.init_duckdb import InitializeDuckDB
+from hub.zsresultsdb.init_duckdb import InitializeDuckDB
 from hub.enums.datatype import DataType
 from hub.utils.capabilities import Capabilities
 from hub.utils.datalocation import DataLocation

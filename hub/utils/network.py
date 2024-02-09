@@ -7,7 +7,7 @@ from typing import Any
 
 from hub.benchmarkrun.host_params import HostParameters
 from hub.benchmarkrun.measurementslocation import MeasurementsLocation
-from hub.duckdb.submit_data import DuckDBRunCursor
+from hub.zsresultsdb.submit_data import DuckDBRunCursor
 from hub.evaluation.measure_time import measure_time
 
 
