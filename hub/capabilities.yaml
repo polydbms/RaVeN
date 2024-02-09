@@ -20,6 +20,9 @@ systems:
     - postgis
   pixels_as_polygons:
     - rasdaman
+  import_at_exec:
+    - sedona
+    - beast
 
 #  align_crs_at:
 #    preprocess:

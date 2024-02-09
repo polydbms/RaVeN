@@ -46,7 +46,7 @@ class BenchmarkParameters:
                  vector_target_crs=None,
                  vector_resolution=1.0,
                  align_to_crs=None,
-                 align_crs_at_stage=None,
+                 align_crs_at_stage=Stage.PREPROCESS,
                  vector_filter_at_stage=Stage.PREPROCESS,
                  raster_clip=True) -> None:
         self.system = system
@@ -85,24 +85,72 @@ class BenchmarkParameters:
 
     # def to_dict(self):
     #     return pandas.
-        # return [
-        #     self.system.name,
-        #
-        #     self.raster_target_format.value.lstrip(".") if self.raster_target_format is not None else "",
-        #     str(self.raster_target_crs.to_epsg()) if self.raster_target_crs is not None else "",
-        #     self.raster_tile_size.postgis_str,
-        #     self.raster_depth,
-        #     self.raster_resolution,
-        #     self.vectorize_type.value,
-        #
-        #     self.vector_target_format.value.lstrip(".") if self.vector_target_format is not None else "",
-        #     str(self.vector_target_crs.to_epsg()) if self.vector_target_crs is not None else "",
-        #     self.vector_resolution,
-        #
-        #     self.iterations,
-        #     self.align_to_crs.value if self.align_to_crs is not None else "",
-        #     self.align_crs_at_stage.value if self.align_crs_at_stage is not None else "",
-        # ]
+    # return [
+    #     self.system.name,
+    #
+    #     self.raster_target_format.value.lstrip(".") if self.raster_target_format is not None else "",
+    #     str(self.raster_target_crs.to_epsg()) if self.raster_target_crs is not None else "",
+    #     self.raster_tile_size.postgis_str,
+    #     self.raster_depth,
+    #     self.raster_resolution,
+    #     self.vectorize_type.value,
+    #
+    #     self.vector_target_format.value.lstrip(".") if self.vector_target_format is not None else "",
+    #     str(self.vector_target_crs.to_epsg()) if self.vector_target_crs is not None else "",
+    #     self.vector_resolution,
+    #
+    #     self.iterations,
+    #     self.align_to_crs.value if self.align_to_crs is not None else "",
+    #     self.align_crs_at_stage.value if self.align_crs_at_stage is not None else "",
+    # ]
+
+    def adjust_by_capabilities(self, capabilities, vector_dl, raster_dl):
+        if self.vector_target_crs is None:
+            self.vector_target_crs = vector_dl.get_crs()
+
+        if self.vector_target_format is None:
+            vector_target_format = RasterFileType.TIFF \
+                if self.system.name in capabilities["rasterize"] \
+                else vector_dl.suffix
+
+            self.vector_target_format = vector_target_format
+            vector_dl.target_suffix = vector_target_format
+
+        if self.raster_target_crs is None:
+            self.raster_target_crs = raster_dl.get_crs()
+
+        if self.raster_target_format is None:
+            raster_target_format = VectorFileType.SHP \
+                if self.system.name in capabilities["vectorize"] \
+                else raster_dl.suffix
+
+            self.raster_target_format = raster_target_format
+            raster_dl.target_suffix = raster_target_format
+
+        if self.system.name in capabilities["same_crs"]:
+            if self.align_to_crs is None:
+                self.align_to_crs = DataType.VECTOR
+
+            if self.align_crs_at_stage is None:
+                self.align_crs_at_stage = Stage.PREPROCESS
+        else:
+            if self.align_crs_at_stage is Stage.PREPROCESS:
+                self.align_to_crs = DataType.VECTOR
+
+        if self.system.name in capabilities["ingest_raster_tiff_only"]:
+            self.raster_target_format = RasterFileType.TIFF
+
+        match self.align_to_crs:
+            case DataType.VECTOR:
+                self.raster_target_crs = CRS.from_user_input(self.vector_target_crs)
+            case DataType.RASTER:
+                self.vector_target_crs = CRS.from_user_input(self.raster_target_crs)
+
+        if self.system.name in capabilities["pixels_as_points"]:
+            self.vectorize_type = VectorizationType.TO_POINTS
+
+        if self.system.name in capabilities["pixels_as_polygons"]:
+            self.vectorize_type = VectorizationType.TO_POLYGONS
 
     def validate(self, capabilities) -> bool:
         """Validate the parameter combinations based on a set of rules"""
@@ -150,17 +198,17 @@ class BenchmarkParameters:
 
     def __eq__(self, other):
         return self.system == other.system and \
-               self.raster_target_format == other.raster_target_format and \
-               self.raster_target_crs == other.raster_target_crs and \
-               self.raster_tile_size == other.raster_tile_size and \
-               self.raster_depth == other.raster_depth and \
-               self.raster_resolution == other.raster_resolution and \
-               self.vectorize_type == other.vectorize_type and \
-               self.vector_target_format == other.vector_target_format and \
-               self.vector_target_crs == other.vector_target_crs and \
-               self.vector_resolution == other.vector_resolution and \
-               self.align_to_crs == other.align_to_crs and \
-               self.align_crs_at_stage == other.align_crs_at_stage
+            self.raster_target_format == other.raster_target_format and \
+            self.raster_target_crs == other.raster_target_crs and \
+            self.raster_tile_size == other.raster_tile_size and \
+            self.raster_depth == other.raster_depth and \
+            self.raster_resolution == other.raster_resolution and \
+            self.vectorize_type == other.vectorize_type and \
+            self.vector_target_format == other.vector_target_format and \
+            self.vector_target_crs == other.vector_target_crs and \
+            self.vector_resolution == other.vector_resolution and \
+            self.align_to_crs == other.align_to_crs and \
+            self.align_crs_at_stage == other.align_crs_at_stage
 
     def __hash__(self):
         return hash(('system', self.system,

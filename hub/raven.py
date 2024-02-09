@@ -18,8 +18,29 @@ class Setup:
     the main utility containing all benchi-related routines
     """
 
-    def __init__(self) -> None:
+    def __init__(self, progress_listener=None) -> None:
         self.logger = {}
+        self._progress = 0
+        self._max_progress = 0
+        self._progress_listener = progress_listener
+
+    @property
+    def progress(self) -> int:
+        return self._progress
+
+    def increase_progress(self):
+        self._progress += 1
+        if self._progress_listener:
+            self._progress_listener(self._progress, self._max_progress)
+
+    @property
+    def max_progress(self) -> int:
+        return self._max_progress
+
+    def init_progress(self, runs, iterations, warm_starts) -> None:
+        print(f"runs: {runs}, warm_starts: {warm_starts}, iterations: {iterations}")
+        self._max_progress = runs * iterations * (7 + warm_starts)
+        self._progress = 0
 
     @staticmethod
     def __importer(module, class_name):
@@ -54,6 +75,8 @@ class Setup:
                                          run_cursor, run.query_timeout)
         transporter = FileTransporter(network_manager)
 
+        self.increase_progress()
+
         """
         transfer configs and datasets to the host
         """
@@ -67,6 +90,8 @@ class Setup:
         # Give execute permission
         network_manager.run_ssh(f"chmod +x {run.host_params.host_base_path.joinpath('config/**/*.sh')}",
                                 log_time=self.logger)
+
+        self.increase_progress()
 
         """
         Preprocess stage
@@ -104,6 +129,8 @@ class Setup:
         # print("Wait 5s until docker is ready")
         # sleep(5)
 
+        self.increase_progress()
+
         """
         Ingestion stage
         """
@@ -112,7 +139,13 @@ class Setup:
         Ingestor = self.__importer(f"hub.ingestion.{system}", "Ingestor")
         ingestor = Ingestor(run.vector, run.raster, network_manager, run.benchmark_params, run.workload)
         ingestor.ingest_raster(log_time=self.logger)
+
+        self.increase_progress()
+
         ingestor.ingest_vector(log_time=self.logger)
+
+        self.increase_progress()
+
         network_manager.stop_measure_docker()
 
         """
@@ -132,6 +165,8 @@ class Setup:
         result_files.append(executor.run_query(run.workload, warm_start_no=0, log_time=self.logger))
         network_manager.add_meta_marker_end()
 
+        self.increase_progress()
+
         # i warm starts
         for i in range(1, run.warm_starts + 1):
             sleep(10)
@@ -139,6 +174,8 @@ class Setup:
             network_manager.add_meta_marker_start(i)
             result_files.append(executor.run_query(run.workload, warm_start_no=i, log_time=self.logger))
             network_manager.add_meta_marker_end()
+
+            self.increase_progress()
 
         """
         Cleanup
@@ -149,6 +186,8 @@ class Setup:
         transporter.get_measurements(run.measurements_loc)
 
         executor.post_run_cleanup()
+
+        self.increase_progress()
 
         """
         transfer results to database

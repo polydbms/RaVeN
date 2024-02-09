@@ -11,6 +11,8 @@ class EditTileTableModel(QAbstractTableModel):
         QAbstractTableModel.__init__(self)
         self.data = []
         self.headers = ["Width", "Height"]
+        self.default_width = 100
+        self.default_height = 100
 
     def flags(self, index):
         return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
@@ -52,6 +54,6 @@ class EditTileTableModel(QAbstractTableModel):
         # self.beginInsertRows(QModelIndex(), row, row + count)
         # self.data[row:row + count - 1].extend([TileSize(0, 0) for _ in range(count)])
         self.beginInsertRows(QModelIndex(), len(self.data), len(self.data))
-        self.data.append(TileSize(0, 0))
+        self.data.append(TileSize(self.default_width, self.default_height))
         self.endInsertRows()
         return True

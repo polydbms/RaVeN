@@ -10,7 +10,7 @@ class HostParameters:
     """
     _host_base_path: Path
     _controller_result_folder: Path
-    _controller_db_connection: DuckDBConnector
+    _controller_db_connection: DuckDBConnector | None
     _ssh_connection: str
     _public_key_path: Path
     _run_folder: str
@@ -36,7 +36,12 @@ class HostParameters:
         self._controller_result_base_folder = Path(controller_result_folder).expanduser()
         self._controller_result_folder = self._controller_result_base_folder \
             .joinpath(self._run_folder)
-        self._controller_db_connection = DuckDBConnector(db_filename=controller_result_db)
+        self._controller_result_db = Path(controller_result_db)
+        self._controller_db_connection = None
+
+    def connect_db(self):
+        self._controller_db_connection = DuckDBConnector(db_filename=self._controller_result_db)
+
 
     @property
     def public_key_path(self):
@@ -76,6 +81,8 @@ class HostParameters:
 
     @property
     def controller_db_connection(self):
+        if self._controller_db_connection is None:
+            self.connect_db()
         return self._controller_db_connection
 
     def __str__(self):

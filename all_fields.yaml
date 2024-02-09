@@ -66,7 +66,9 @@ experiments:
       - 0.8
       - 0.32
 
-    align_to_crs: vector | raster | both # align vector crs to raster crs or vice versa or do 2 runs
+    align_to_crs:
+      - vector
+      - raster
     align_crs_at_stage:
       - preprocess
       - execution

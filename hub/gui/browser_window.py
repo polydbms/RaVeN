@@ -15,13 +15,14 @@ from PyQt5.QtWidgets import *  # type: ignore
 
 class Ui_Web(object):
 
-    def __init__(self):
+    def __init__(self, window_name="RaVeN Viewer"):
         self.tabs = {}
+        self.window_name = window_name
 
     def setupUi(self, Dialog):
         if not Dialog.objectName():
             Dialog.setObjectName(u"RaVeN Viewer")
-        Dialog.resize(647, 692)
+        Dialog.resize(700, 750)
         # self.buttonBox = QDialogButtonBox(Dialog)
         # self.buttonBox.setObjectName(u"buttonBox")
         # self.buttonBox.setGeometry(QRect(200, 530, 341, 32))
@@ -34,8 +35,6 @@ class Ui_Web(object):
         # self.tabWidget.setMinimumHeight(400)
         self.tabWidget.setContentsMargins(0, 0, 0, 0)
         # self.tabWidget.setGeometry(QRect(10, 10, 521, 501))
-        self.add_tab("End-to-End Runtime Overview", "/home/gereon/git/dima/vldb-benchi/figures/introplot-usg.png")
-        self.add_tab("Phase Breakdown", "/home/gereon/git/dima/vldb-benchi/figures/breakdown_amtrak.png")
 
         layout.addWidget(self.tabWidget)
         self.retranslateUi(Dialog)
@@ -47,7 +46,7 @@ class Ui_Web(object):
     # setupUi
 
     def retranslateUi(self, Dialog):
-        Dialog.setWindowTitle(QCoreApplication.translate("RaVeN Viewer", u"RaVeN Viewer", None))
+        Dialog.setWindowTitle(QCoreApplication.translate("RaVeN Viewer", self.window_name, None))
 
     # retranslateUi
 
@@ -78,11 +77,12 @@ class ImageTab(QWidget):
         self.pixmap = QPixmap(img_url)
 
         # adding image to label
-        self.label.setPixmap(self.pixmap.scaled(parent.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.label.setPixmap(self.pixmap.scaled(1200, 1200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        # self.label.setPixmap(self.pixmap.scaled(parent.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
         layout.addWidget(self.label)
         self.setLayout(layout)
         self.label.setScaledContents(True)
-        self.label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored   )
+        self.label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
 
         # Optional, resize label to image size
         # self.label.resize(parent.width(), parent.height())

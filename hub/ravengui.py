@@ -1,26 +1,22 @@
 import logging
 import re
+import threading
 
 import pandas as pd
-from PyQt5 import QtCore
-from PyQt5.QtCore import QRect, Qt, QMetaObject, QCoreApplication, QVariant, QAbstractTableModel, QModelIndex
-from PyQt5.QtGui import QStandardItemModel, QFont
-from PyQt5.QtSql import QSqlTableModel
-from PyQt5.QtWidgets import QAction, QFormLayout, QComboBox, QLabel, QLineEdit, QDialogButtonBox, QWidget, \
-    QDialog, QCheckBox, QSpinBox, QTableView, QPushButton, QListWidget, QTextEdit, QHBoxLayout, QListWidgetItem, QFrame, \
-    QSpacerItem, QSizePolicy
-from pyqt_editable_list_widget import EditableListWidget
+import processing
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QAction, QDialog, QProgressBar
+from qgis.core import QgsFeatureRequest, QgsProject, QgsVectorLayer, QgsGraduatedSymbolRenderer, \
+    QgsSymbol, \
+    QgsLayerTreeLayer, \
+    QgsStyle
 
-from hub.gui.browser_window import Ui_Web
+from hub.duckdb.init_duckdb import InitializeDuckDB
 from hub.gui.main_ui import Ui_RaVeN
-# from hub.raven import Setup
-# from hub.utils.fileio import FileIO
-# from hub.utils.system import System
-# from qgis.gui import QgsMapLayerComboBox, QgsFieldComboBox, QgsCheckableComboBox, QgsQueryBuilder
-# from qgis.core import QgsMapLayerProxyModel, QgsFeatureRequest, QgsField, QgsProject, QgsVectorLayerJoinInfo, \
-#     QgsVectorLayer, QgsGraduatedSymbolRenderer, QgsSymbol, QgsRendererRange, QgsSymbolLayerUtils, QgsLayerTreeLayer, \
-#     QgsStyludo
-# import processing
+from hub.gui.webdialog import WebDialog
+from hub.raven import Setup
+from hub.utils.fileio import FileIO
+from hub.utils.system import System
 
 formatter = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging.basicConfig(level=logging.DEBUG, format=formatter)
@@ -29,7 +25,21 @@ logging.basicConfig(level=logging.DEBUG, format=formatter)
 class Raven:
     def __init__(self, iface):
         self.iface = iface
-        # self.benchi = Setup()
+        self.benchi = Setup(self.increase_progress_bar)
+
+    def show_progress_toast(self):
+        progressMessageBar = self.iface.messageBar().createMessage("Running RaVeN …")
+        print(progressMessageBar)
+
+        self.progress = QProgressBar()
+        self.progress.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.progress.setMaximum(self.benchi.max_progress)
+        progressMessageBar.layout().addWidget(self.progress)
+        self.iface.messageBar().pushWidget(progressMessageBar, 0)
+
+    def increase_progress_bar(self, progress, max_progress):
+        # self.iface.statusBarIface().showMessage("Running RaVeN … {} %".format(int(progress / max_progress)))
+        self.progress.setValue(progress)
 
     def initGui(self):
         self.raven_button = QAction("RaVeN", self.iface.mainWindow())
@@ -48,127 +58,110 @@ class Raven:
         del self.web_button
 
     def run_raven(self):
-        self.dialog = RaVeNDialog(iface=self.iface)
-        self.dialog.exec()
+        self.dialog_raven = RaVeNDialog(self.iface, self.execute_tasks)
+        self.dialog_raven.show()
 
     def run_results(self):
-        self.dialog = WebDialog(iface=self.iface)
-        self.dialog.exec()
+        self.dialog_web = WebDialog(iface=self.iface, window_name="RaVeN Results")
+        self.dialog_web.ui.add_tab("End-to-End Runtime Overview",
+                                   "/home/gereon/git/dima/tpctc-graphs/plots/demo-e2e.png")
+        self.dialog_web.ui.add_tab("Phase Breakdown", "/home/gereon/git/dima/vldb-benchi/figures/breakdown_amtrak.png")
+        self.dialog_web.show()
 
-class WebDialog(QDialog):
-    def __init__(self, iface, parent=None):
-        super().__init__(parent)
-        self.iface = iface
-        # Create an instance of the GUI
-        self.ui = Ui_Web()
-        # Run the .setupUi() method to show the GUI
-        self.ui.setupUi(self)
+    def execute_tasks(self, runs, inp_vector, vector_fields, inp_raster, inp_raster_agg, iterations, warm_starts):
+        if len(runs) > 0:
+            self.benchi.init_progress(1, iterations.value(), warm_starts.value())
+            self.show_progress_toast()
+
+            runs[0].host_params.controller_db_connection.initialize_benchmark_set("qgis.yaml")
+
+            result_files = []
+            run = runs[0]
+            # run = next(iter(runs))
+            print(str(run))
+
+            def run_bg():
+                result_files.extend(self.benchi.run_tasks(run))
+
+                raven_result_layer = inp_vector.currentLayer().materialize(
+                    QgsFeatureRequest().setFilterFids(inp_vector.currentLayer().allFeatureIds()))
+                raven_result_layer.setName("RaVeN Result")
+                raven_result_layer.startEditing()
+
+                result = pd.read_csv(str(result_files[0]))
+                types = []
+                for colname, type in result.dtypes.items():
+                    match type:
+                        case "int64":
+                            types.append('"Integer"')
+                        case "float64":
+                            types.append('"Real"')
+                        case _:
+                            types.append('"String"')
+
+                with result_files[0].with_suffix(".csvt").open(mode="w") as f:
+                    f.write(",".join(types))
+
+                raven_join = processing.run('qgis:joinattributestable',
+                                            {"INPUT": inp_vector.currentLayer(),
+                                             "FIELD": vector_fields[0],
+                                             "INPUT_2": str(result_files[0]),
+                                             "FIELD_2": vector_fields[0],
+                                             "METHOD": 1,
+                                             "DISCARD_NONMATCHING": False,
+                                             "PREFIX": "",
+                                             "OUTPUT": "memory"})
+                raven_layer = QgsVectorLayer(raven_join['OUTPUT'], "RaVeN Result", "ogr")
+                QgsProject.instance().addMapLayer(raven_layer)
+
+                # first add the layer without showing it
+                QgsProject.instance().addMapLayer(raven_layer, False)
+                # obtain the layer tree of the top-level group in the project
+                layerTree = self.iface.layerTreeCanvasBridge().rootGroup()
+                # the position is a number starting from 0, with -1 an alias for the end
+                layerTree.insertChildNode(0, QgsLayerTreeLayer(raven_layer))
+
+                first_agg_name = next(filter(lambda n: (inp_raster_agg.checkedItems()[0].lower()) in (n.lower()),
+                                             list(result.columns)))
+
+                renderer = QgsGraduatedSymbolRenderer.createRenderer(raven_layer, first_agg_name, 10,
+                                                                     QgsGraduatedSymbolRenderer.Mode.EqualInterval,
+                                                                     QgsSymbol.defaultSymbol(raven_layer.geometryType()),
+                                                                     QgsStyle().defaultStyle().colorRamp('Blues'))
+
+                # Apply the renderer to the layer
+                raven_layer.setRenderer(renderer)
+
+                raven_layer.triggerRepaint()
+                self.iface.messageBar().clearWidgets()
+
+                cleanup_thread = threading.Thread(target=self.benchi.clean, name="Cleanup",
+                                                  args=["/home/gereon/git/dima/benchi/controller_config.qgis.yaml"])
+                cleanup_thread.start()
+
+            main_thread = threading.Thread(target=run_bg, name="Main Run")
+            main_thread.start()
+
 
 class RaVeNDialog(QDialog):
-    def __init__(self, iface, parent=None):
+    def __init__(self, iface, execute_benchmarks, parent=None):
         super().__init__(parent)
         self.iface = iface
         # Create an instance of the GUI
         self.ui = Ui_RaVeN()
         # Run the .setupUi() method to show the GUI
         self.ui.setupUi(self)
+        self.execute_benchmarks = execute_benchmarks
 
-    # def accept(self):
-    #     if self.ui.inp_vector.currentLayer().storageType() == "ESRI Shapefile":
-    #         pattern = re.compile(r'(.+?)\|layername=(.+)')
-    #         match = pattern.match(self.ui.inp_vector.currentLayer().source())
-    #         vector_file = f"{match.group(1)}/{match.group(2)}.shp"
-    #     else:
-    #         vector_file = self.ui.inp_vector.currentLayer().source()
-    #
-    #     raster_file = self.ui.inp_raster.currentLayer().source()
-    #
-    #     vector_fields = [self.ui.inp_vector_field.currentField()]
-    #
-    #     parameters = {}
-    #
-    #     runs, iterations = FileIO.create_configs({"raster": raster_file, "vector": vector_file},
-    #                                              {}, "qgis.yaml", self.ui.inp_system.currentText(),
-    #                                              [System('postgis', 25432),
-    #                                               System('omnisci', 6274),
-    #                                               System('sedona', 80),
-    #                                               System('beast', 80),
-    #                                               System('rasdaman', 8080)],
-    #                                              {'get': {'vector': vector_fields, 'raster': [
-    #                                                  {'sval': {
-    #                                                      'aggregations': self.ui.inp_raster_agg.checkedItems()}}]},
-    #                                               'join': {'table1': 'vector',
-    #                                                        'table2': 'raster',
-    #                                                        'condition': 'intersect(raster, vector)'},
-    #                                               'group': {'vector': vector_fields},
-    #                                               'order': {'vector': vector_fields}}
-    #
-    #                                              , "/home/gereon/git/dima/benchi/controller_config.qgis.yaml",
-    #                                              parameters)
-    #     print(f"running {len(runs)} experiments")
-    #     print([str(r.benchmark_params) for r in runs])
-    #
-    #     runs[0].host_params.controller_db_connection.initialize_benchmark_set("qgis.yaml")
-    #
-    #     setup = Setup()
-    #     result_files = []
-    #
-    #     if len(runs) > 0:
-    #         run = runs[0]
-    #         # run = next(iter(runs))
-    #         print(str(run))
-    #         result_files.extend(setup.run_tasks(run))
-    #
-    #         raven_result_layer = self.ui.inp_vector.currentLayer().materialize(
-    #             QgsFeatureRequest().setFilterFids(self.ui.inp_vector.currentLayer().allFeatureIds()))
-    #         raven_result_layer.setName("RaVeN Result")
-    #         raven_result_layer.startEditing()
-    #
-    #         result = pd.read_csv(str(result_files[0]))
-    #         types = []
-    #         for colname, type in result.dtypes.items():
-    #             match type:
-    #                 case "int64":
-    #                     types.append('"Integer"')
-    #                 case "float64":
-    #                     types.append('"Real"')
-    #                 case _:
-    #                     types.append('"String"')
-    #
-    #         with result_files[0].with_suffix(".csvt").open(mode="w") as f:
-    #             f.write(",".join(types))
-    #
-    #         raven_join = processing.run('qgis:joinattributestable',
-    #                                     {"INPUT": self.ui.inp_vector.currentLayer(),
-    #                                      "FIELD": vector_fields[0],
-    #                                      "INPUT_2": str(result_files[0]),
-    #                                      "FIELD_2": vector_fields[0],
-    #                                      "METHOD": 1,
-    #                                      "DISCARD_NONMATCHING": False,
-    #                                      "PREFIX": "",
-    #                                      "OUTPUT": "memory"})
-    #         raven_layer = QgsVectorLayer(raven_join['OUTPUT'], "RaVeN Result", "ogr")
-    #         QgsProject.instance().addMapLayer(raven_layer)
-    #
-    #         # first add the layer without showing it
-    #         QgsProject.instance().addMapLayer(raven_layer, False)
-    #         # obtain the layer tree of the top-level group in the project
-    #         layerTree = self.iface.layerTreeCanvasBridge().rootGroup()
-    #         # the position is a number starting from 0, with -1 an alias for the end
-    #         layerTree.insertChildNode(0, QgsLayerTreeLayer(raven_layer))
-    #
-    #         first_agg_name = next(filter(lambda n: (self.ui.inp_raster_agg.checkedItems()[0].lower()) in (n.lower()),
-    #                                      list(result.columns)))
-    #
-    #         renderer = QgsGraduatedSymbolRenderer.createRenderer(raven_layer, first_agg_name, 10,
-    #                                                              QgsGraduatedSymbolRenderer.Mode.EqualInterval,
-    #                                                              QgsSymbol.defaultSymbol(raven_layer.geometryType()),
-    #                                                              QgsStyle().defaultStyle().colorRamp('Blues'))
-    #
-    #         # Apply the renderer to the layer
-    #         raven_layer.setRenderer(renderer)
-    #
-    #         raven_layer.triggerRepaint()
-    #
-    #     setup.clean("/home/gereon/git/dima/benchi/controller_config.qgis.yaml")
-    #     self.hide()
+    def accept(self):
+        runs, iterations, vector_fields = self.ui.get_runs_from_ui()
+
+        host_params = FileIO.get_host_params("/home/gereon/git/dima/benchi/controller_config.qgis.yaml")
+        InitializeDuckDB(host_params.controller_db_connection, runs, "qgis.yaml")
+
+        print(f"running {len(runs)} experiments")
+        print([str(r.benchmark_params) for r in runs])
+        self.hide()
+
+        self.execute_benchmarks(runs, self.ui.inp_vector, vector_fields, self.ui.inp_raster, self.ui.inp_raster_agg,
+                                self.ui.inp_iterations, self.ui.inp_warm_starts)

@@ -3,7 +3,6 @@ import subprocess
 import zipfile
 from pathlib import Path
 
-import geopandas.io.file
 import pyproj
 from pyproj import CRS
 from rioxarray import rioxarray

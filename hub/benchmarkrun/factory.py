@@ -139,21 +139,29 @@ class BenchmarkRunFactory:
                     updated_params_list.remove(param)
 
                 case "align_to_crs":
-                    match params_dict["align_to_crs"]:
-                        case "vector":
-                            param.align_to_crs = DataType.VECTOR
-                        case "raster":
-                            param.align_to_crs = DataType.RASTER
-                        case "both":
-                            p_v = copy.deepcopy(param)
-                            p_v.align_to_crs = DataType.VECTOR
-                            updated_params_list.append(p_v)
+                    if isinstance(params_dict["align_to_crs"], list):
+                        for s in params_dict["align_to_crs"]:
+                            p = copy.deepcopy(param)
+                            p.align_to_crs = DataType.get_by_value(s)
+                            updated_params_list.append(p)
 
-                            p_r = copy.deepcopy(param)
-                            p_r.align_to_crs = DataType.RASTER
-                            updated_params_list.append(p_r)
+                        updated_params_list.remove(param)
+                    else:
+                        match params_dict["align_to_crs"]:
+                            case "vector":
+                                param.align_to_crs = DataType.VECTOR
+                            case "raster":
+                                param.align_to_crs = DataType.RASTER
+                            case "both":
+                                p_v = copy.deepcopy(param)
+                                p_v.align_to_crs = DataType.VECTOR
+                                updated_params_list.append(p_v)
 
-                            updated_params_list.remove(param)
+                                p_r = copy.deepcopy(param)
+                                p_r.align_to_crs = DataType.RASTER
+                                updated_params_list.append(p_r)
+
+                                updated_params_list.remove(param)
 
                 case "align_crs_at_stage":
                     if param.system.name in self.capabilities["no_st_transform"]:

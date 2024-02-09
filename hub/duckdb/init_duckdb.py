@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pandas as pd
 
 from hub.benchmarkrun.benchmark_run import BenchmarkRun
@@ -8,8 +10,13 @@ class InitializeDuckDB:
     """
     initialize a newly created duckdb instance
     """
-    def __init__(self, connection: DuckDBConnector):
+    def __init__(self, connection: DuckDBConnector, runs, filename):
         self._connection = connection.get_cursor()
+
+        self.setup_duckdb_tables()
+        self.initialize_files(runs)
+        self.initialize_parameters(runs)
+        self.initialize_experiments(runs, Path(filename).parts[-1])
 
     def setup_duckdb_tables(self):
         self._connection.execute("""

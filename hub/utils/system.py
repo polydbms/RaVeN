@@ -6,7 +6,9 @@ class System:
     _port: int
 
     def __init__(self, name: str, port: int):
-        self._name = name
+        match name:
+            case "heavyai": self._name = "omnisci"
+            case _: self._name = name
         self._port = port
 
     @property
