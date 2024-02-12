@@ -43,7 +43,7 @@ class NetworkManager:
         self.query_timeout = query_timeout
 
         self.ssh_options = f"" \
-                           f"-F /home/gereon/.ssh/config " \
+                           f"-F /hub/ssh/config " \
                            f"-o 'StrictHostKeyChecking=no' " \
                            f"-o 'IdentitiesOnly=yes' " \
                            f"-i {self.private_key_path}" #FIXME config path
