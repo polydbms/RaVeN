@@ -50,7 +50,7 @@ class Ingestor:
 
         payload = {
             "vector_path": self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed,
-            "raster_path": self.raster.docker_dir if self.benchmark_params.raster_target_format == VectorFileType.SHP else self.raster.docker_file_preprocessed,
+            "raster_path": self.raster.docker_file_preprocessed,
             "vector_name": vector_name,
             "raster_name": raster_name,
             "vector_reader": vector_reader,

@@ -33,8 +33,6 @@ class NetworkManager:
         self._host_params = host_params
         self.ssh_connection = host_params.ssh_connection
         self._measurements_loc = measurements_loc
-        self.private_key_path = host_params.public_key_path.with_suffix("")
-        print(self.private_key_path)
         self.system_name = system_name
         self.socks_proxy = None
         self.measure_docker = None
@@ -43,10 +41,9 @@ class NetworkManager:
         self.query_timeout = query_timeout
 
         self.ssh_options = f"" \
-                           f"-F /hub/ssh/config " \
+                           f"-F {host_params.ssh_config_path.expanduser()} " \
                            f"-o 'StrictHostKeyChecking=no' " \
-                           f"-o 'IdentitiesOnly=yes' " \
-                           f"-i {self.private_key_path}" #FIXME config path
+                           f"-o 'IdentitiesOnly=yes' "
         self.ssh_command = (
             f"ssh {self.ssh_connection} {self.ssh_options}"
         )

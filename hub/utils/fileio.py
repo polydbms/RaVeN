@@ -103,7 +103,7 @@ class FileIO:
                 yamlfile = yaml.safe_load(c)
 
                 return [HostParameters(h["host"],
-                                       h["public_key_path"],
+                                       h["ssh_config_path"],
                                        Path(h["base_path"]),
                                        yamlfile["config"]["controller"]["results_folder"],
                                        Path(yamlfile["config"]["controller"]["results_db"]).expanduser())

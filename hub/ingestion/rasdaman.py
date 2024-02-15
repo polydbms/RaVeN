@@ -39,7 +39,7 @@ class Ingestor:
 
     @measure_time
     def ingest_raster(self, **kwargs):
-        template_path = Path(PROJECT_ROOT.joinpath("deployment/files/rasdaman/ingestion.json.j2"))
+        template_path = PROJECT_ROOT.joinpath("deployment/files/rasdaman/ingestion.json.j2")
         try:
             with open(template_path) as file_:
                 template = Template(file_.read())
@@ -58,7 +58,7 @@ class Ingestor:
         print(payload)
 
         rendered = template.render(**payload)
-        ingest_def_path = Path("deployment/files/rasdaman/ingredients.json")
+        ingest_def_path = PROJECT_ROOT.joinpath("deployment/files/rasdaman/ingredients.json")
 
         with open(ingest_def_path, "w") as f:
             f.write(rendered)

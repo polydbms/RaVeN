@@ -13,6 +13,7 @@ systems:
     - postgis
   ingest_raster_tiff_only:
     - beast
+    - sedona
   require_geotiff_ending:
     - beast
   pixels_as_points:

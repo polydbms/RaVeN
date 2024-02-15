@@ -17,7 +17,6 @@ class FileTransporter:
         # self.system = network_manager.system_full
         self.host_base_path = self.network_manager.host_params.host_base_path
         remote = self.network_manager.ssh_connection
-        private_key_path = self.network_manager.private_key_path
         # self.ssh_command = (
         #     f"ssh {remote} {self.network_manager.ssh_options}"
         # )
