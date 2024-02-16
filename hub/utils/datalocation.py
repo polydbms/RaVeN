@@ -7,10 +7,10 @@ import pyproj
 from pyproj import CRS
 from rioxarray import rioxarray
 
-from hub.benchmarkrun.benchmark_params import BenchmarkParameters
-from hub.benchmarkrun.host_params import HostParameters
 from hub.enums.datatype import DataType
 from hub.enums.filetype import FileType
+from hub.benchmarkrun.benchmark_params import BenchmarkParameters
+from hub.benchmarkrun.host_params import HostParameters
 from hub.enums.rasterfiletype import RasterFileType
 from hub.enums.vectorfiletype import VectorFileType
 
@@ -31,7 +31,6 @@ class DataLocation:
                  path_str: str,
                  data_type: DataType,
                  host_params: HostParameters,
-                 benchmark_params: BenchmarkParameters,
                  name: str = None) -> None:
         """
         initiializes the data lcoation. if the proveided path is a folder or zip archive, it tries to find the first
@@ -39,13 +38,12 @@ class DataLocation:
         :param path_str: the path to the dataset
         :param data_type: the class of data stored
         :param host_params: the hsot parameters
-        :param benchmark_params: the benchmark-specific parameters
         :param name: the name of the dataset
         """
-        self._benchmark_params = benchmark_params
         self._host_params = host_params
         self._host_base_dir = host_params.host_base_path
         self._data_type = data_type
+        self._benchmark_params = None
 
         path = Path(path_str).expanduser()
 
@@ -82,6 +80,14 @@ class DataLocation:
             case DataType.RASTER:
                 self._suffix = RasterFileType.get_by_value(self._file.suffix)
 
+        # if self._data_type == DataType.VECTOR:
+        #     self.type = json.loads(
+        #         subprocess.check_output(f"ogrinfo -nocount -json -nomd {self.controller_file}", shell=True).decode(
+        #             "utf-8"))["layers"][0]["fields"]
+
+    def adjust_target_files(self, benchmark_params: BenchmarkParameters):
+        self._benchmark_params = benchmark_params
+
         match self._data_type:
             case DataType.RASTER:
                 self._target_suffix = self._suffix \
@@ -91,11 +97,6 @@ class DataLocation:
                 self._target_suffix = self._suffix \
                     if self._benchmark_params.vector_target_format is None \
                     else self._benchmark_params.vector_target_format
-
-        # if self._data_type == DataType.VECTOR:
-        #     self.type = json.loads(
-        #         subprocess.check_output(f"ogrinfo -nocount -json -nomd {self.controller_file}", shell=True).decode(
-        #             "utf-8"))["layers"][0]["fields"]
 
     def _find_file(self, ending: [str]) -> Path:
         """

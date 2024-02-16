@@ -1,7 +1,12 @@
 from pathlib import Path
 
 import yaml
+from pyproj import CRS
 
+from hub.enums.rasterfiletype import RasterFileType
+from hub.enums.stage import Stage
+from hub.enums.vectorfiletype import VectorFileType
+from hub.enums.vectorizationtype import VectorizationType
 from hub.benchmarkrun.benchmark_run import BenchmarkRun
 from hub.benchmarkrun.factory import BenchmarkRunFactory
 from hub.benchmarkrun.host_params import HostParameters
@@ -69,10 +74,13 @@ class FileIO:
 
         benchmark_params_raw = brf.create_params_iterations(systems, parameters)
         for benchmark_params in benchmark_params_raw:
-            raster_dl = DataLocation(data["raster"], DataType.RASTER, host_params, benchmark_params)
-            vector_dl = DataLocation(data["vector"], DataType.VECTOR, host_params, benchmark_params)
+            raster_dl = DataLocation(data["raster"], DataType.RASTER, host_params)
+            vector_dl = DataLocation(data["vector"], DataType.VECTOR, host_params)
 
-            benchmark_params.adjust_by_capabilities(capabilities, vector_dl, raster_dl)
+            FileIO.adjust_by_capabilities(benchmark_params, capabilities, vector_dl, raster_dl)
+
+            vector_dl.adjust_target_files(benchmark_params)
+            raster_dl.adjust_target_files(benchmark_params)
 
             benchmark_params.validate(capabilities)
 
@@ -90,6 +98,55 @@ class FileIO:
         runs_no_dupes = list(set(runs))
 
         return runs_no_dupes, iterations
+
+    @staticmethod
+    def adjust_by_capabilities(benchmark_params, capabilities, vector_dl: DataLocation, raster_dl: DataLocation):
+        if benchmark_params.vector_target_crs is None:
+            benchmark_params.vector_target_crs = vector_dl.get_crs()
+
+        if benchmark_params.vector_target_format is None:
+            vector_target_format = RasterFileType.TIFF \
+                if benchmark_params.system.name in capabilities["rasterize"] \
+                else vector_dl.suffix
+
+            benchmark_params.vector_target_format = vector_target_format
+            vector_dl.target_suffix = vector_target_format
+
+        if benchmark_params.raster_target_crs is None:
+            benchmark_params.raster_target_crs = raster_dl.get_crs()
+
+        if benchmark_params.raster_target_format is None:
+            raster_target_format = VectorFileType.SHP \
+                if benchmark_params.system.name in capabilities["vectorize"] \
+                else raster_dl.suffix
+
+            benchmark_params.raster_target_format = raster_target_format
+            raster_dl.target_suffix = raster_target_format
+
+        if benchmark_params.system.name in capabilities["same_crs"]:
+            if benchmark_params.align_to_crs is None:
+                benchmark_params.align_to_crs = DataType.VECTOR
+
+            if benchmark_params.align_crs_at_stage is None:
+                benchmark_params.align_crs_at_stage = Stage.PREPROCESS
+        else:
+            if benchmark_params.align_crs_at_stage is Stage.PREPROCESS:
+                benchmark_params.align_to_crs = DataType.VECTOR
+
+        if benchmark_params.system.name in capabilities["ingest_raster_tiff_only"]:
+            benchmark_params.raster_target_format = RasterFileType.TIFF
+
+        match benchmark_params.align_to_crs:
+            case DataType.VECTOR:
+                benchmark_params.raster_target_crs = CRS.from_user_input(benchmark_params.vector_target_crs)
+            case DataType.RASTER:
+                benchmark_params.vector_target_crs = CRS.from_user_input(benchmark_params.raster_target_crs)
+
+        if benchmark_params.system.name in capabilities["pixels_as_points"]:
+            benchmark_params.vectorize_type = VectorizationType.TO_POINTS
+
+        if benchmark_params.system.name in capabilities["pixels_as_polygons"]:
+            benchmark_params.vectorize_type = VectorizationType.TO_POLYGONS
 
     @staticmethod
     def get_host_params(config_filename: str) -> HostParameters:

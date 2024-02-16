@@ -21,18 +21,21 @@ class Ingestor:
         self.host_base_path = self.network_manager.host_params.host_base_path
         self.benchmark_params = benchmark_params
 
-        rendered = self.render_template()
-        self.__save_template(rendered)
+        self.controller_template_path = PROJECT_ROOT.joinpath("deployment/files/sedona/sedona.py.j2")
+        self.controller_ingest_template_path = PROJECT_ROOT.joinpath("deployment/files/sedona/sedona_ingested.py.j2")
+
 
     @measure_time
     def ingest_raster(self, **kwargs):
-        print("Ingestion and execution will be executed in the same time.")
+        print("Ingestion and execution will be executed in the same time. rendering template instead.")
+        rendered = self.render_template()
+        self.save_template(rendered)
 
     @measure_time
     def ingest_vector(self, **kwargs):
         print("Ingestion and execution will be executed in the same time.")
 
-    def __read_template(self, path):
+    def read_template(self, path):
         try:
             with open(path) as file_:
                 template = Template(file_.read())
@@ -41,12 +44,11 @@ class Ingestor:
             print(f"{path} not found")
 
     def render_template(self):
-        template_path = PROJECT_ROOT.joinpath("deployment/files/sedona/sedona.py.j2")
-        template = self.__read_template(template_path)
+        template = self.read_template(self.controller_template_path)
         raster_name = self.raster.name
         vector_name = self.vector.name
-        vector_reader, vector_method = self._get_vector_reader_from_filetype(self.benchmark_params.vector_target_format)
-        raster_reader, raster_method = self._get_raster_reader_from_filetype(self.benchmark_params.raster_target_format)
+        vector_reader, vector_method = self.get_vector_reader_from_filetype(self.benchmark_params.vector_target_format)
+        raster_reader, raster_method = self.get_raster_reader_from_filetype(self.benchmark_params.raster_target_format)
 
         payload = {
             "vector_path": self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed,
@@ -62,13 +64,12 @@ class Ingestor:
         rendered = template.render(**payload)
         return rendered
 
-    def __save_template(self, template):
-        template_path = PROJECT_ROOT.joinpath(f"deployment/files/sedona/sedona_ingested.py.j2")
-        with open(template_path, "w") as f:
+    def save_template(self, template):
+        with self.controller_ingest_template_path.open("w") as f:
             f.write(template)
 
     @staticmethod
-    def _get_vector_reader_from_filetype(filetype: VectorFileType) -> (str, str):
+    def get_vector_reader_from_filetype(filetype: VectorFileType) -> (str, str):
         match filetype:
             case VectorFileType.SHP:
                 return "ShapefileReader", "readToGeometryRDD"
@@ -82,7 +83,7 @@ class Ingestor:
                 raise Exception(f"Cannot ingest Vector file with format {filetype}")
 
     @staticmethod
-    def _get_raster_reader_from_filetype(filetype: RasterFileType) -> (str, str):
+    def get_raster_reader_from_filetype(filetype: RasterFileType) -> (str, str):
         match filetype:
             case RasterFileType.TIFF:
                 return None, "RS_FromGeoTiff"

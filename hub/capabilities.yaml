@@ -3,10 +3,10 @@ systems:
     - rasdaman
   vectorize:
     - omnisci
-    #- sedona
+    - sedona-vec
   same_crs:
     - postgis
-    #- sedona
+    - sedona-vec
   no_st_transform:
     - omnisci
   variable_tile_size:
@@ -23,6 +23,7 @@ systems:
     - rasdaman
   import_at_exec:
     - sedona
+    - sedona-vec
     - beast
 
 #  align_crs_at:

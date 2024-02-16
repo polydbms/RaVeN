@@ -104,53 +104,7 @@ class BenchmarkParameters:
     #     self.align_crs_at_stage.value if self.align_crs_at_stage is not None else "",
     # ]
 
-    def adjust_by_capabilities(self, capabilities, vector_dl, raster_dl):
-        if self.vector_target_crs is None:
-            self.vector_target_crs = vector_dl.get_crs()
 
-        if self.vector_target_format is None:
-            vector_target_format = RasterFileType.TIFF \
-                if self.system.name in capabilities["rasterize"] \
-                else vector_dl.suffix
-
-            self.vector_target_format = vector_target_format
-            vector_dl.target_suffix = vector_target_format
-
-        if self.raster_target_crs is None:
-            self.raster_target_crs = raster_dl.get_crs()
-
-        if self.raster_target_format is None:
-            raster_target_format = VectorFileType.SHP \
-                if self.system.name in capabilities["vectorize"] \
-                else raster_dl.suffix
-
-            self.raster_target_format = raster_target_format
-            raster_dl.target_suffix = raster_target_format
-
-        if self.system.name in capabilities["same_crs"]:
-            if self.align_to_crs is None:
-                self.align_to_crs = DataType.VECTOR
-
-            if self.align_crs_at_stage is None:
-                self.align_crs_at_stage = Stage.PREPROCESS
-        else:
-            if self.align_crs_at_stage is Stage.PREPROCESS:
-                self.align_to_crs = DataType.VECTOR
-
-        if self.system.name in capabilities["ingest_raster_tiff_only"]:
-            self.raster_target_format = RasterFileType.TIFF
-
-        match self.align_to_crs:
-            case DataType.VECTOR:
-                self.raster_target_crs = CRS.from_user_input(self.vector_target_crs)
-            case DataType.RASTER:
-                self.vector_target_crs = CRS.from_user_input(self.raster_target_crs)
-
-        if self.system.name in capabilities["pixels_as_points"]:
-            self.vectorize_type = VectorizationType.TO_POINTS
-
-        if self.system.name in capabilities["pixels_as_polygons"]:
-            self.vectorize_type = VectorizationType.TO_POLYGONS
 
     def validate(self, capabilities) -> bool:
         """Validate the parameter combinations based on a set of rules"""

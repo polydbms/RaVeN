@@ -22,22 +22,24 @@ sedona.sparkContext.setLogLevel("ERROR")
 
 vector_table = "{{vector_name}}"
 raster_table = "{{raster_name}}"
-print(f"benchi_marker,{time()},start,ingestion,sedona,vector,inner")
+print(f"benchi_marker,{time()},start,ingestion,sedona-vec,vector,inner")
 vec = {{vector_reader}}.{{vector_method}}(sedona.sparkContext, "{{vector_path}}")
 vec.analyze()
 vec.spatialPartitioning(GridType.KDBTREE)
 vec.buildIndex(IndexType.RTREE, True)
-Adapter.toDf(vec, sedona).repartition(1000).createOrReplaceTempView(vector_table)
-print(f"benchi_marker,{time()},end,ingestion,sedona,vector,inner")
+vec_df = Adapter.toDf(vec, sedona).repartition(1000).createOrReplaceTempView(vector_table)
+print(f"benchi_marker,{time()},end,ingestion,sedona-vec,vector,inner")
 
-print(f"benchi_marker,{time()},start,ingestion,sedona,raster,inner")
-ras = sedona.read.format("binaryFile").load("{{raster_path}}")
-ras = ras.withColumn("rast", expr("{{raster_method}}(content)"))
-ras.createOrReplaceTempView(raster_table)
-print(f"benchi_marker,{time()},end,ingestion,sedona,raster,inner")
+print(f"benchi_marker,{time()},start,ingestion,sedona-vec,raster,inner")
+ras = {{raster_reader}}.{{raster_method}}(sedona.sparkContext, "{{raster_path}}")
+ras.analyze()
+ras.spatialPartitioning(vec.getPartitioner())
+ras.buildIndex(IndexType.RTREE, True)
+ras_df = Adapter.toDf(ras, sedona).repartition(1000).createOrReplaceTempView(raster_table)
+print(f"benchi_marker,{time()},end,ingestion,sedona-vec,raster,inner")
 
 
-print(f"benchi_marker,{time()},start,execution,sedona,,")
+print(f"benchi_marker,{time()},start,execution,sedona-vec,,")
 spatial_gdf = sedona.sql(
                         """
                         {{query}}
@@ -46,6 +48,6 @@ spatial_gdf = sedona.sql(
 
 name = uuid.uuid4().hex
 spatial_gdf.coalesce(1).write.option("header","true").csv(name)
-print(f"benchi_marker,{time()},end,execution,sedona,,")
+print(f"benchi_marker,{time()},end,execution,sedona-vec,,")
 [a for a in Path(name).glob("*.csv")][0].rename("results.csv")
 shutil.move("results.csv", "/data/results/results_sedona.csv")

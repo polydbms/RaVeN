@@ -27,6 +27,9 @@ class Executor:
         self.raster = raster_path
         self.benchmark_params = benchmark_params
 
+        self.controller_ingest_template_path = PROJECT_ROOT.joinpath("deployment/files/sedona/sedona_ingested.py.j2")
+        self.controller_query_path = PROJECT_ROOT.joinpath("deployment/files/sedona/sedona_prep.py")
+
     def __handle_aggregations(self, type, features):
         return ", ".join(
             [
@@ -83,10 +86,10 @@ class Executor:
         query = query.replace("{self.table_ras}", self.raster.name)
         print(f"query to run: {query}")
 
-        rendered = self.__render_template(query)
-        self.__save_template(rendered)
+        rendered = self.render_template(query)
+        self.save_template(rendered)
         self.transporter.send_file(
-            PROJECT_ROOT.joinpath("deployment/files/sedona/sedona_prep.py"),
+            self.controller_query_path,
             self.host_base_path.joinpath("config/sedona/executor.py"),
             **kwargs
         )
@@ -106,10 +109,10 @@ class Executor:
         return result_path
 
     def post_run_cleanup(self):
-        PROJECT_ROOT.joinpath("deployment/files/sedona/sedona_prep.py").unlink()
-        PROJECT_ROOT.joinpath("deployment/files/sedona/sedona_ingested.py.j2").unlink()
+        self.controller_ingest_template_path.unlink()
+        self.controller_query_path.unlink()
 
-    def __read_template(self, path):
+    def read_template(self, path):
         try:
             with open(path) as file_:
                 template = Template(file_.read())
@@ -117,16 +120,14 @@ class Executor:
         except FileNotFoundError:
             print(f"{path} not found")
 
-    def __render_template(self, query):
-        template_path = PROJECT_ROOT.joinpath("deployment/files/sedona/sedona_ingested.py.j2")
-        template = self.__read_template(template_path)
+    def render_template(self, query):
+        template = self.read_template(self.controller_ingest_template_path)
         payload = {
             "query": query,
         }
         rendered = template.render(**payload)
         return rendered
 
-    def __save_template(self, template):
-        template_path = PROJECT_ROOT.joinpath(f"deployment/files/sedona/sedona_prep.py")
-        with open(template_path, "w") as f:
+    def save_template(self, template):
+        with self.controller_query_path.open("w") as f:
             f.write(template)
