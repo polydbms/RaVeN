@@ -8,8 +8,9 @@ import subprocess
 from time import time
 from functools import wraps
 from pathlib import Path
-from typing import Type
+from typing import Type, Optional
 
+import numpy as np
 import pandas as pd
 import geopandas as gpd
 import pyproj
@@ -19,6 +20,7 @@ import shapely.geometry
 import shapely
 from osgeo_utils import gdal_polygonize
 from pyproj import CRS
+from shapely import lib
 
 from hub.enums.rasterfiletype import RasterFileType
 from hub.enums.vectorfiletype import VectorFileType
@@ -342,7 +344,10 @@ class CRSFilterPreprocessor(Preprocessor):
         #     out.rio.write_nodata(0, inplace=True)
         #     out.rio.to_raster(str(output_file))
 
-        if self.config.raster_clip and False: # TODO shapely has a bug, so deactivating this temporarily
+        cmd_string = f"gdalwarp " \
+                     f"-t_srs {self.config.raster_target_crs} "
+
+        if self.config.raster_clip:  # and False: # TODO shapely has a bug, so deactivating this temporarily
             extent = json.loads(
                 subprocess.check_output(f'ogrinfo -json -nocount -nomd {self.config.vector_file_path}', shell=True)
                 .decode('utf-8'))["layers"][0]["geometryFields"][0]["extent"]
@@ -352,22 +357,24 @@ class CRSFilterPreprocessor(Preprocessor):
             pixel_size = max(affine_transf[0], -affine_transf[4])
             transformer = pyproj.Transformer.from_crs(self.get_vector_crs(), self.get_raster_crs(),
                                                       always_xy=True).transform
-            (l, b, r, t) = shapely.transform(shapely.geometry.box(*extent), transformer, include_z=False,
+            (l, b, r, t) = transform(shapely.geometry.box(*extent), transformer, include_z=False, # FIXME switch back to shapely if possible
                                              interleaved=False) \
                 .buffer(2 * pixel_size).bounds
 
-        subprocess.call(f"gdalwarp "
-                        f"-t_srs {self.config.raster_target_crs} "
-                        # f"{f'-te_srs {self.get_raster_crs().to_string()} -te {l} {b} {r} {t}' if self.config.raster_clip else ''} " TODO shapely-bug, also this line does not obey raster_clip
-                        f"{self.config.raster_file_path} "
-                        f"{output_file}",
-                        shell=True)
+            cmd_string += f"{f'-te_srs {self.get_raster_crs().to_string()} -te {l} {b} {r} {t}' if self.config.raster_clip else ''} "
+
+        cmd_string += f"{self.config.raster_file_path} " \
+                      f"{output_file}"
+
+        subprocess.call(cmd_string, shell=True)
 
         # TODO this could probably be streamlined for efficiency
 
         self.update_raster_folder()
 
         print(f"Transfered {self.config.raster_file_path} CRS to {self.config.raster_target_crs}")
+
+
 
     @measure_time
     @print_timings("vector", "reproject")
@@ -677,6 +684,87 @@ def main():
 
     preprocess_config.copy_to_output()
     preprocess_config.remove_intermediates()
+
+
+"""
+ The following code is the main branch version of the transform method from the Shapely library.
+
+BSD 3-Clause License
+
+Copyright (c) 2007, Sean C. Gillies. 2019, Casper van der Wel. 2007-2022, Shapely Contributors.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+ list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+ this list of conditions and the following disclaimer in the documentation
+ and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+ contributors may be used to endorse or promote products derived from
+ this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  """
+
+
+def transform(
+        geometry,
+        transformation,
+        include_z: Optional[bool] = False,
+        interleaved: bool = True,
+):
+    geometry_arr = np.array(geometry, dtype=np.object_)  # makes a copy
+    if include_z is None:
+        has_z = shapely.has_z(geometry_arr)
+        result = np.empty_like(geometry_arr)
+        result[has_z] = transform(
+            geometry_arr[has_z], transformation, True, interleaved
+        )
+        result[~has_z] = transform(
+            geometry_arr[~has_z], transformation, False, interleaved
+        )
+    else:
+        coordinates = lib.get_coordinates(geometry_arr, include_z, False)
+        if interleaved:
+            new_coordinates = transformation(coordinates)
+        else:
+            new_coordinates = np.asarray(
+                transformation(*coordinates.T), dtype=np.float64
+            ).T
+        # check the array to yield understandable error messages
+        if not isinstance(new_coordinates, np.ndarray) or new_coordinates.ndim != 2:
+            raise ValueError(
+                "The provided transformation did not return a two-dimensional numpy array"
+            )
+        if new_coordinates.dtype != np.float64:
+            raise ValueError(
+                "The provided transformation returned an array with an unexpected "
+                f"dtype ({new_coordinates.dtype})"
+            )
+        if new_coordinates.shape != coordinates.shape:
+            # if the shape is too small we will get a segfault
+            raise ValueError(
+                "The provided transformation returned an array with an unexpected "
+                f"shape ({new_coordinates.shape})"
+            )
+        result = lib.set_coordinates(geometry_arr, new_coordinates)
+    if result.ndim == 0 and not isinstance(geometry, np.ndarray):
+        return result.item()
+    return result
 
 
 if __name__ == "__main__":

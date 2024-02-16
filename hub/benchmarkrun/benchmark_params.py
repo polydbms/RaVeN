@@ -81,6 +81,8 @@ class BenchmarkParameters:
             str(self.vector_resolution).replace(".", "-"),
             f"AlignTo-{self.align_to_crs.value}" if self.align_to_crs is not None else "",
             f"AlignAt-{self.align_crs_at_stage.value}" if self.align_crs_at_stage is not None else "",
+            f"FilterAt-{self.vector_filter_at_stage.value}" if self.vector_filter_at_stage is not None else "",
+            f"Clip-{self.raster_clip}"
         ])
 
     # def to_dict(self):
@@ -103,8 +105,6 @@ class BenchmarkParameters:
     #     self.align_to_crs.value if self.align_to_crs is not None else "",
     #     self.align_crs_at_stage.value if self.align_crs_at_stage is not None else "",
     # ]
-
-
 
     def validate(self, capabilities) -> bool:
         """Validate the parameter combinations based on a set of rules"""
@@ -162,7 +162,9 @@ class BenchmarkParameters:
             self.vector_target_crs == other.vector_target_crs and \
             self.vector_resolution == other.vector_resolution and \
             self.align_to_crs == other.align_to_crs and \
-            self.align_crs_at_stage == other.align_crs_at_stage
+            self.align_crs_at_stage == other.align_crs_at_stage and \
+            self.vector_filter_at_stage == other.vector_filter_at_stage and \
+            self.raster_clip == other.raster_clip
 
     def __hash__(self):
         return hash(('system', self.system,
@@ -176,4 +178,6 @@ class BenchmarkParameters:
                      'vector_target_crs', self.vector_target_crs,
                      'vector_resolution', self.vector_resolution,
                      'align_to_crs', self.align_to_crs,
-                     'align_crs_at_stage', self.align_crs_at_stage))
+                     'align_crs_at_stage', self.align_crs_at_stage,
+                     'vector_filter_at_stage', self.vector_filter_at_stage,
+                     'raster_clip', self.raster_clip))

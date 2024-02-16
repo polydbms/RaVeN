@@ -1,3 +1,4 @@
+import base64
 import importlib
 from datetime import datetime
 from pathlib import Path
@@ -107,22 +108,33 @@ class Setup:
             if run.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
             else run.raster.get_crs().to_epsg()
 
-        network_manager.run_ssh(
-            f'{command} "--system {system} '
-            f'--vector_path {run.vector.docker_dir} '
-            f'--vector_target_suffix {run.benchmark_params.vector_target_format.value} '
-            f'--vector_output_folder {run.vector.docker_dir_preprocessed} '
-            f'--vector_target_crs {vector_target_crs} '
-            f'--vectorization_type {run.benchmark_params.vectorize_type.value} '
-            f'--raster_path {run.raster.docker_dir} '
-            f'--raster_target_suffix {run.benchmark_params.raster_target_format.value} '
-            f'--raster_output_folder {run.raster.docker_dir_preprocessed} '
-            f'--raster_target_crs {raster_target_crs} '
-            f'--{"" if run.benchmark_params.raster_clip else "no-"}raster_clip '
-            # f'{f for f in r} ' vector filter
-            f'"',
-            log_time=self.logger,
-        )
+        vector_filter = run.workload.get("condition", {}).get("vector",
+                                                              []) if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS else []
+
+        vector_filter_str = list(map(lambda f: f"""--vector_filter "{f}" """, vector_filter))
+
+        parameters = f'--system {system} ' \
+                     f'--vector_path {run.vector.docker_dir} ' \
+                     f'--vector_target_suffix {run.benchmark_params.vector_target_format.value} ' \
+                     f'--vector_output_folder {run.vector.docker_dir_preprocessed} ' \
+                     f'--vector_target_crs {vector_target_crs} ' \
+                     f'--vectorization_type {run.benchmark_params.vectorize_type.value} ' \
+                     f'--raster_path {run.raster.docker_dir} ' \
+                     f'--raster_target_suffix {run.benchmark_params.raster_target_format.value} ' \
+                     f'--raster_output_folder {run.raster.docker_dir_preprocessed} ' \
+                     f'--raster_target_crs {raster_target_crs} ' \
+                     f'--{"" if run.benchmark_params.raster_clip else "no-"}raster_clip ' \
+                     f'{" ".join(vector_filter_str)}' \
+                     f''
+
+        print(f"running {command} {parameters}")
+
+        "create a string that encodess parameters to a base64 string"
+
+        network_manager.run_ssh(f"{command} {base64.b64encode(parameters.encode('utf-8')).decode('utf-8')}",
+                                log_time=self.logger,
+                                )
+
         run.raster.set_preprocessed()
         run.vector.set_preprocessed()
         network_manager.stop_measure_docker()
