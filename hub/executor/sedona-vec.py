@@ -1,6 +1,6 @@
 import re
 
-from configuration import PROJECT_ROOT
+from hub.configuration import PROJECT_ROOT
 from hub.enums.datatype import DataType
 from hub.enums.stage import Stage
 from hub.executor._sqlbased import SQLBased
