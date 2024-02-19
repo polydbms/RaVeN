@@ -13,7 +13,7 @@ services:
   #        - rasdaman
 
   rasdaman:
-    image: registry.gitlab.com/zergar/benchi/rasdaman:try1.0.0-1
+    image: ghcr.io/polydbms/rasdaman:10.3.0
 #    links:
 #      - petascope
 #    depends_on:
