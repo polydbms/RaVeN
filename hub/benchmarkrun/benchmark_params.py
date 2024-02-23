@@ -26,7 +26,7 @@ class BenchmarkParameters:
 
     vector_target_format: VectorFileType | RasterFileType
     vector_target_crs: CRS
-    vector_resolution: float  # as reduction factor
+    vector_simplify: float  # as reduction factor
 
     align_to_crs: DataType
     align_crs_at_stage: Stage
@@ -44,7 +44,7 @@ class BenchmarkParameters:
                  vectorize_type=VectorizationType.TO_POINTS,
                  vector_target_format=None,
                  vector_target_crs=None,
-                 vector_resolution=1.0,
+                 vector_simplify=0.0,
                  align_to_crs=None,
                  align_crs_at_stage=Stage.PREPROCESS,
                  vector_filter_at_stage=Stage.PREPROCESS,
@@ -60,7 +60,7 @@ class BenchmarkParameters:
 
         self.vector_target_format = vector_target_format
         self.vector_target_crs = vector_target_crs
-        self.vector_resolution = vector_resolution
+        self.vector_simplify = vector_simplify
 
         self.align_to_crs = align_to_crs
         self.align_crs_at_stage = align_crs_at_stage
@@ -78,7 +78,7 @@ class BenchmarkParameters:
             self.vectorize_type.value,
             self.vector_target_format.value.lstrip(".") if self.vector_target_format is not None else "",
             str(self.vector_target_crs.to_epsg()) if self.vector_target_crs is not None else "",
-            str(self.vector_resolution).replace(".", "-"),
+            str(self.vector_simplify).replace(".", "-"),
             f"AlignTo-{self.align_to_crs.value}" if self.align_to_crs is not None else "",
             f"AlignAt-{self.align_crs_at_stage.value}" if self.align_crs_at_stage is not None else "",
             f"FilterAt-{self.vector_filter_at_stage.value}" if self.vector_filter_at_stage is not None else "",
@@ -116,7 +116,7 @@ class BenchmarkParameters:
 
         # raster_tile_size_check = self.raster_tile_size.width > 0 and self.raster_tile_size.height > 0
         raster_depth_check = self.raster_depth > 0
-        raster_resolution_check = 0 < self.raster_resolution <= 1
+        raster_resolution_check = self.raster_resolution >= 1
 
         # if self.vector_target_format is None:
         #     vector_type_check = True
@@ -124,7 +124,7 @@ class BenchmarkParameters:
         vector_type = RasterFileType if self.system.name in capabilities["rasterize"] else VectorFileType
         vector_type_check = isinstance(self.vector_target_format, vector_type)
 
-        vector_resolution_check = 0 < self.vector_resolution <= 1
+        vector_resolution_check = 0 <= self.vector_simplify
 
         # raster_tile_size_check and \
         if raster_type_check and \
@@ -146,7 +146,7 @@ class BenchmarkParameters:
             if not vector_type_check:
                 err_msg += f"vector target format check failed: {self.vector_target_format}, "
             if not vector_resolution_check:
-                err_msg += f"vector resolution check failed: {self.vector_resolution}, "
+                err_msg += f"vector resolution check failed: {self.vector_simplify}, "
 
             raise Exception(err_msg.strip(" ,"))
 
@@ -160,7 +160,7 @@ class BenchmarkParameters:
             self.vectorize_type == other.vectorize_type and \
             self.vector_target_format == other.vector_target_format and \
             self.vector_target_crs == other.vector_target_crs and \
-            self.vector_resolution == other.vector_resolution and \
+            self.vector_simplify == other.vector_simplify and \
             self.align_to_crs == other.align_to_crs and \
             self.align_crs_at_stage == other.align_crs_at_stage and \
             self.vector_filter_at_stage == other.vector_filter_at_stage and \
@@ -176,7 +176,7 @@ class BenchmarkParameters:
                      'vectorize_type', self.vectorize_type,
                      'vector_target_format', self.vector_target_format,
                      'vector_target_crs', self.vector_target_crs,
-                     'vector_resolution', self.vector_resolution,
+                     'vector_simplify', self.vector_simplify,
                      'align_to_crs', self.align_to_crs,
                      'align_crs_at_stage', self.align_crs_at_stage,
                      'vector_filter_at_stage', self.vector_filter_at_stage,

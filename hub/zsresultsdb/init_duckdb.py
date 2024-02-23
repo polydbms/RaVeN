@@ -55,7 +55,7 @@ class InitializeDuckDB:
 
             vector_target_format varchar,
             vector_target_crs varchar,
-            vector_resolution double, 
+            vector_simplify double, 
 
             align_to_crs varchar,
             align_crs_at_stage varchar,

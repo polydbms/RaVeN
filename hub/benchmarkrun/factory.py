@@ -130,10 +130,10 @@ class BenchmarkRunFactory:
 
                     updated_params_list.remove(param)
 
-                case "vector_resolution":
-                    for r in params_dict["vector_resolution"]:
+                case "vector_simplify":
+                    for r in params_dict["vector_simplify"]:
                         p = copy.deepcopy(param)
-                        p.vector_resolution = float(r)
+                        p.vector_simplify = float(r)
                         updated_params_list.append(p)
 
                     updated_params_list.remove(param)

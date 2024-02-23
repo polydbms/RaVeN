@@ -47,7 +47,7 @@ experiments:
       - 12
     raster_resolution:
       - 1
-      - 0.5
+      - 2
 
     vector_format:
       - shp
@@ -60,9 +60,10 @@ experiments:
       - points
     vector_target_crs:
       - epsg:4326
-    vector_resolution:
-      - 0.8
-      - 0.32
+    vector_simplify:
+      - 0
+      - 1
+      - 50
 
     align_to_crs:
       - vector

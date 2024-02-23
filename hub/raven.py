@@ -119,10 +119,12 @@ class Setup:
                      f'--vector_output_folder {run.vector.docker_dir_preprocessed} ' \
                      f'--vector_target_crs {vector_target_crs} ' \
                      f'--vectorization_type {run.benchmark_params.vectorize_type.value} ' \
+                     f'--vector_simplify {run.benchmark_params.vector_simplify} ' \
                      f'--raster_path {run.raster.docker_dir} ' \
                      f'--raster_target_suffix {run.benchmark_params.raster_target_format.value} ' \
                      f'--raster_output_folder {run.raster.docker_dir_preprocessed} ' \
                      f'--raster_target_crs {raster_target_crs} ' \
+                     f'--raster_resolution {run.benchmark_params.raster_resolution} ' \
                      f'--{"" if run.benchmark_params.raster_clip else "no-"}raster_clip ' \
                      f'{" ".join(vector_filter_str)}' \
                      f''

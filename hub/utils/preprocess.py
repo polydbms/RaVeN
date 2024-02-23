@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import random
 import re
 import shutil
@@ -62,6 +63,7 @@ class PreprocessConfig:
     vector_output_folder: Path
     vector_target_crs: CRS
     vectorization_type: VectorizationType
+    vector_simplify: float
 
     _raster_folder: Path
     _raster_file: str
@@ -69,6 +71,7 @@ class PreprocessConfig:
     raster_target_suffix: str
     raster_output_folder: Path
     raster_target_crs: CRS
+    raster_resolution: float
 
     vector_filter: list[str]
     raster_filter: list[str]
@@ -94,6 +97,7 @@ class PreprocessConfig:
         self.vector_output_folder = Path(args.vector_output_folder)
         self.vector_target_crs = CRS.from_epsg(args.vector_target_crs)
         self.vectorization_type = VectorizationType.get_by_value(args.vectorization_type)
+        self.vector_simplify = args.vector_simplify
 
         self._raster_folder = Path(args.raster_path)
         self._raster_file = self._find_file(self._raster_folder, RasterFileType).parts[-1]
@@ -101,6 +105,7 @@ class PreprocessConfig:
         self.raster_target_suffix = args.raster_target_suffix
         self.raster_output_folder = Path(args.raster_output_folder)
         self.raster_target_crs = CRS.from_epsg(args.raster_target_crs)
+        self.raster_resolution = args.raster_resolution
 
         self.vector_filter = args.vector_filter
         # self.raster_filter = []
@@ -223,12 +228,14 @@ class PreprocessConfig:
             str(self.vector_output_folder),
             str(self.vector_target_crs),
             str(self.vectorization_type),
+            str(self.vector_simplify),
             str(self._raster_folder),
             str(self._raster_file),
             str(self.raster_name),
             str(self.raster_target_suffix),
             str(self.raster_output_folder),
             str(self.raster_target_crs),
+            str(self.raster_resolution),
             str(self.raster_clip),
             str(" AND ".join(self.vector_filter))
         ])
@@ -324,7 +331,7 @@ class CRSFilterPreprocessor(Preprocessor):
 
     @measure_time
     @print_timings("raster", "reproject")
-    def clip_reproject_raster(self, *args, **kwargs):
+    def clip_reproject_resolution_raster(self, *args, **kwargs):
         """
         reprojects a raster dataset to the target CRS using gdalwarp
         :param args:
@@ -348,24 +355,40 @@ class CRSFilterPreprocessor(Preprocessor):
                      f"-t_srs {self.config.raster_target_crs} "
 
         if self.config.raster_clip:  # and False: # TODO shapely has a bug, so deactivating this temporarily
-            extent = json.loads(
+            extent = np.asarray(json.loads(
                 subprocess.check_output(f'ogrinfo -json -nocount -nomd {self.config.vector_file_path}', shell=True)
-                .decode('utf-8'))["layers"][0]["geometryFields"][0]["extent"]
+                .decode('utf-8'))["layers"][0]["geometryFields"][0]["extent"])
 
             affine_transf = self.get_raster().rio.transform()
 
             pixel_size = max(affine_transf[0], -affine_transf[4])
+            fixpoint = np.asarray([affine_transf[2], affine_transf[5], affine_transf[2], affine_transf[5]])\
+                .reshape((2, 2))
             transformer = pyproj.Transformer.from_crs(self.get_vector_crs(), self.get_raster_crs(),
                                                       always_xy=True).transform
-            (l, b, r, t) = transform(shapely.geometry.box(*extent), transformer, include_z=False, # FIXME switch back to shapely if possible
-                                             interleaved=False) \
-                .buffer(2 * pixel_size).bounds
+
+            extent_proj = np.asarray(transform(shapely.geometry.box(*extent), transformer, include_z=False,
+                                               # FIXME switch back to shapely if possible
+                                               interleaved=False).bounds).reshape((2, 2))
+
+            px_count = (extent_proj - fixpoint) / pixel_size
+            px_count[0] = np.floor(px_count[0]) - 2
+            px_count[1] = np.ceil(px_count[1]) + 2
+
+            (l, b, r, t) = list((px_count * pixel_size + fixpoint).reshape((4, 1)[0]))
 
             cmd_string += f"{f'-te_srs {self.get_raster_crs().to_string()} -te {l} {b} {r} {t}' if self.config.raster_clip else ''} "
+
+        if self.config.raster_resolution != 1.0:
+            width, height = json.loads(
+                subprocess.check_output(f'gdalinfo -json {self.config.raster_file_path}', shell=True)
+                .decode('utf-8'))["size"]
+            cmd_string += f"-ts {int(width / self.config.raster_resolution)} {int(height / self.config.raster_resolution)}"
 
         cmd_string += f"{self.config.raster_file_path} " \
                       f"{output_file}"
 
+        print(f"executing command for raster: {cmd_string}")
         subprocess.call(cmd_string, shell=True)
 
         # TODO this could probably be streamlined for efficiency
@@ -374,11 +397,9 @@ class CRSFilterPreprocessor(Preprocessor):
 
         print(f"Transfered {self.config.raster_file_path} CRS to {self.config.raster_target_crs}")
 
-
-
     @measure_time
     @print_timings("vector", "reproject")
-    def filter_reproject_vector(self, *args, **kwargs):
+    def filter_reproject_simplify_vector(self, *args, **kwargs):
         """
 
         reprojects a vector dataset to the target CRS using ogr2ogr
@@ -394,13 +415,18 @@ class CRSFilterPreprocessor(Preprocessor):
         # out.to_file(self._vector_tmp_out_folder.joinpath(self.config.vector_file), encoding="UTF-8")
 
         output_file = self._vector_tmp_out_folder.joinpath(self.config.vector_file)
-        subprocess.call(f"ogr2ogr "
-                        f"-t_srs {self.config.vector_target_crs} "
-                        f"""{'-where "' if self.config.vector_filter else ''} {' AND '.join(self.config.vector_filter)} {'"' if self.config.vector_filter else ''} """
-                        f"{output_file} "
-                        f"{self.config.vector_file_path} "
-                        f"-lco ENCODING=UTF-8 "
-                        f"",
+        cmd_string = f"ogr2ogr " \
+                     f"-t_srs {self.config.vector_target_crs} " \
+                     f"""{'-where "' if self.config.vector_filter else ''} {' AND '.join(self.config.vector_filter)} {'"' if self.config.vector_filter else ''} """ \
+                     f"-simplify {self.config.vector_simplify} " \
+                     f"{output_file} " \
+                     f"{self.config.vector_file_path} " \
+                     f"-lco ENCODING=UTF-8 " \
+                     f""
+
+        print(f"executing command for vector: {cmd_string}")
+
+        subprocess.call(cmd_string,
                         shell=True)
 
         self.update_vector_folder()
@@ -635,11 +661,15 @@ def main():
                         required=True)
     parser.add_argument("--vector_target_crs", help="target CRS for the vector file", required=True)
     parser.add_argument("--vectorization_type", help="vectorization type to be applied", required=True)
+    parser.add_argument("--vector_simplify", help="simplify the vector geometries using douglas-peucker",
+                        required=False, default=0.0, type=float)
     parser.add_argument("--raster_path", help="Specify the absolute path to raster dataset", required=True)
     parser.add_argument("--raster_target_suffix", help="target file suffix of the raster files", required=True)
     parser.add_argument("--raster_output_folder", help="absolute path to the output folder of the raster files",
                         required=True)
     parser.add_argument("--raster_target_crs", help="target CRS for the raster file", required=True)
+    parser.add_argument("--raster_resolution", help="target resolution for the raster file", required=False,
+                        default=1.0, type=float)
     parser.add_argument("--system", help="Specify which system should be benchmarked")
     parser.add_argument("--vector_filter", help="Filters to be applied on the vector feature fields", required=False,
                         action="append", default=[])
@@ -652,8 +682,8 @@ def main():
     # todo if CRS already correct
 
     crs_preprocessor = CRSFilterPreprocessor(preprocess_config)
-    crs_preprocessor.filter_reproject_vector(log_time=crs_preprocessor.logger)
-    crs_preprocessor.clip_reproject_raster(log_time=crs_preprocessor.logger)
+    crs_preprocessor.filter_reproject_simplify_vector(log_time=crs_preprocessor.logger)
+    crs_preprocessor.clip_reproject_resolution_raster(log_time=crs_preprocessor.logger)
 
     # TODO if raster -> raster needs to be converted
 
