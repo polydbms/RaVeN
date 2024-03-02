@@ -13,7 +13,7 @@ services:
   #        - rasdaman
 
   rasdaman:
-    image: ghcr.io/polydbms/rasdaman:10.3.0
+    image: ghcr.io/polydbms/rasdaman:10.1.0
 #    links:
 #      - petascope
 #    depends_on:
