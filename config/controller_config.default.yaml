@@ -5,4 +5,4 @@ config:
   hosts:
     - host: "benchmarkhost"
       base_path: /data/benchipath
-      ssh_config_path: ~/.ssh/config
+      ssh_config_path: /hub/ssh/config
