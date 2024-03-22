@@ -5,3 +5,11 @@ HOST *
     #ControlMaster auto
     #ControlPersist 120
     BatchMode yes
+
+
+HOST benchmarkhost
+    HostName the.host.name
+    User theuser
+    IdentityFile ssh/keys/identityfile
+    StrictHostKeyChecking no
+    IdentitiesOnly yes

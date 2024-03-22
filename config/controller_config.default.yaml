@@ -3,6 +3,6 @@ config:
     results_folder: /data/results
     results_db: /data/results.db
   hosts:
-    - host: "sgx10.dima.tub"
+    - host: "benchmarkhost"
       base_path: /data/benchipath
       ssh_config_path: ~/.ssh/config
