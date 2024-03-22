@@ -5,7 +5,7 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QLabel, QFrame, QFormLayout, QDialogButtonBox, QWidget, QCheckBox, QPushButton, QSpacerItem, \
     QSizePolicy, QTableView, QHBoxLayout, QListWidgetItem, QSpinBox
 from pyqt_editable_list_widget import EditableListWidget
-from qgis.core import QgsMapLayerProxyModel
+from qgis.core import QgsMapLayerProxyModel, QgsProject
 from qgis.gui import QgsCheckableComboBox, QgsMapLayerComboBox, QgsFieldComboBox, QgsQueryBuilder
 
 from hub.enums.datatype import DataType
@@ -89,7 +89,7 @@ class Ui_RaVeN(object):
                                                   System('beast', 80),
                                                   System('rasdaman', 8080)],
                                                  workload
-                                                 , "/home/gereon/git/dima/benchi/controller_config.qgis.yaml",
+                                                 , "/config/controller_config.qgis.yaml",
                                                  parameters)
 
         return runs, iterations, vector_fields
@@ -300,10 +300,16 @@ class Ui_RaVeN(object):
 
         self.mdl_where = QgsQueryBuilder(self.inp_vector.currentLayer(), self.formLayoutWidget)
 
+
+        #
+        # def connect_modal_where():
+        #     if len([layer for layer in QgsProject.instance().mapLayers().values() if isinstance(layer, QgsVectorLayer)]):
+
+
         self.inp_where = QPushButton(self.formLayoutWidget)
         self.inp_where.clicked.connect(self.mdl_where.show)
         self.inp_where.setObjectName(u"inp_where")
-
+        
         def update_where():
             self.inp_where.setText(self.mdl_where.sql())
 

@@ -1,3 +1,4 @@
+from hub.enums.stage import Stage
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
@@ -21,7 +22,7 @@ class Ingestor:
             f"{command} "
             f"-r={self.raster.docker_file_preprocessed} "
             f"-n={self.raster.name} "
-            f"-s={self.benchmark_params.raster_target_crs.to_epsg()} "
+            f"-s={self.benchmark_params.raster_target_crs.to_epsg() if self.benchmark_params.align_crs_at_stage == Stage.PREPROCESS else self.raster.get_crs().to_epsg()} "
             f"-t={self.benchmark_params.raster_tile_size.postgis_str} "
         )
 
@@ -32,5 +33,5 @@ class Ingestor:
             f"{command} "
             f"-v={self.vector.docker_file_preprocessed} "
             f"-n={self.vector.name} "
-            f"-s={self.benchmark_params.vector_target_crs.to_epsg()} "
+            f"-s={self.benchmark_params.vector_target_crs.to_epsg() if self.benchmark_params.align_crs_at_stage == Stage.PREPROCESS else self.vector.get_crs().to_epsg()} "
         )

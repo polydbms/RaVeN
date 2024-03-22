@@ -5,6 +5,7 @@ import requests
 from jinja2 import Template
 from lxml import etree
 
+from hub.enums.stage import Stage
 from hub.configuration import PROJECT_ROOT
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.enums.datatype import DataType
@@ -46,9 +47,9 @@ class Ingestor:
         except FileNotFoundError:
             print(f"{template_path} not found")
 
-        epsg_crs = self.raster_path.get_crs() \
-            if self.benchmark_params.align_to_crs == DataType.RASTER \
-            else self.vector_path.get_crs().to_epsg()
+        epsg_crs = self.benchmark_params.raster_target_crs.to_epsg() \
+            if self.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
+            else self.raster_path.get_crs().to_epsg()
 
         payload = {
                       "coverage_id": str(self.raster_path.name),

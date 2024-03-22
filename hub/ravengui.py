@@ -136,7 +136,7 @@ class Raven:
                 self.iface.messageBar().clearWidgets()
 
                 cleanup_thread = threading.Thread(target=self.benchi.clean, name="Cleanup",
-                                                  args=["/home/gereon/git/dima/benchi/controller_config.qgis.yaml"])
+                                                  args=["/home/gereon/git/dima/benchi/config/controller_config.qgis.yaml"])
                 cleanup_thread.start()
 
             main_thread = threading.Thread(target=run_bg, name="Main Run")
@@ -156,7 +156,7 @@ class RaVeNDialog(QDialog):
     def accept(self):
         runs, iterations, vector_fields = self.ui.get_runs_from_ui()
 
-        host_params = FileIO.get_host_params("/home/gereon/git/dima/benchi/controller_config.qgis.yaml")
+        host_params = FileIO.get_host_params("/config/controller_config.qgis.yaml")
         InitializeDuckDB(host_params.controller_db_connection, runs, "qgis.yaml")
 
         print(f"running {len(runs)} experiments")
