@@ -125,13 +125,15 @@ class FileIO:
 
         if benchmark_params.system.name in capabilities["same_crs"]:
             if benchmark_params.align_to_crs is None:
-                benchmark_params.align_to_crs = DataType.VECTOR
+                benchmark_params.align_to_crs = DataType.VECTOR if benchmark_params.vector_target_format is None \
+                    else benchmark_params.align_to_crs
 
             if benchmark_params.align_crs_at_stage is None:
                 benchmark_params.align_crs_at_stage = Stage.PREPROCESS
         else:
             if benchmark_params.align_crs_at_stage is Stage.PREPROCESS:
-                benchmark_params.align_to_crs = DataType.VECTOR
+                benchmark_params.align_to_crs = DataType.VECTOR if benchmark_params.vector_target_format is None \
+                    else benchmark_params.align_to_crs
 
         if benchmark_params.system.name in capabilities["ingest_raster_tiff_only"]:
             benchmark_params.raster_target_format = RasterFileType.TIFF

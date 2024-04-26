@@ -6,7 +6,7 @@
    version="1.1"
    id="svg59"
    sodipodi:docname="stbenchi_logo.svg"
-   inkscape:version="1.3 (0e150ed6c4, 2023-07-21)"
+   inkscape:version="1.3.2 (091e20ef0f, 2023-11-25)"
    inkscape:export-filename="stbenchi_logo.png"
    inkscape:export-xdpi="600"
    inkscape:export-ydpi="600"
@@ -24,15 +24,15 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="1.7813351"
-     inkscape:cx="-23.577821"
-     inkscape:cy="93.749907"
-     inkscape:window-width="1920"
-     inkscape:window-height="1052"
-     inkscape:window-x="1920"
-     inkscape:window-y="0"
+     inkscape:zoom="1.8948752"
+     inkscape:cx="45.385574"
+     inkscape:cy="24.012135"
+     inkscape:window-width="1884"
+     inkscape:window-height="1135"
+     inkscape:window-x="36"
+     inkscape:window-y="36"
      inkscape:window-maximized="1"
-     inkscape:current-layer="svg59" />
+     inkscape:current-layer="g2" />
   <defs
      id="defs11">
     <g
@@ -106,943 +106,1052 @@
     </g>
   </defs>
   <rect
-     x="-24.2"
-     y="-24.2"
-     width="290.4"
-     height="290.4"
-     fill="rgb(100%, 100%, 100%)"
+     x="-24.200001"
+     y="-24.200001"
+     width="290.39999"
+     height="290.39999"
+     fill="#ffffff"
      fill-opacity="1"
-     id="rect11" />
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 25 10 L 27 10 L 27 12 L 25 12 Z M 25 10 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path12"
-     style="fill:#ffffff" />
+     id="rect11"
+     style="display:none" />
   <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g13">
-    <use
-       xlink:href="#glyph-0-1"
-       x="11.292969"
-       y="27.591363"
-       id="use12" />
-    <use
-       xlink:href="#glyph-0-2"
-       x="21.015191"
-       y="27.591363"
-       id="use13" />
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="raster">
+    <g
+       id="g21"
+       style="display:inline;stroke:#a7a7a7;stroke-width:2;stroke-dasharray:none;stroke-opacity:1">
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 25,10 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path12"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 27,10 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path13"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 29,10 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path15"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 31,10 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path17"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 33,10 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path18"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(51.372552%, 76.078433%, 100%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 35,10 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path20"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 25,12 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path22"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 27,12 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path23"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 29,12 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path25"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 31,12 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path27"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(51.372552%, 76.078433%, 100%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 33,12 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path28"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 35,12 h 2 v 2 h -2 z m 0,0"
+         id="path29"
+         transform="matrix(20,0,0,20,-499,-199)"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 25,14 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path30"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 27,14 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path31"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 29,14 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path33"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 31,14 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path34"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(51.372552%, 76.078433%, 100%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 33,14 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path36"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 35,14 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path37"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 25,16 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path38"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 27,16 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path39"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 29,16 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path40"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 31,16 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path42"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(51.372552%, 76.078433%, 100%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 33,16 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path43"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 35,16 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path44"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 25,18 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path45"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 27,18 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path46"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 29,18 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path47"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 31,18 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path48"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(100%, 100%, 0%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 33,18 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path49"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(51.372552%, 76.078433%, 100%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 35,18 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path51"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 25,20 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path52"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 27,20 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path53"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 29,20 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path55"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 31,20 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path56"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="#ffffff"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 33,20 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path57"
+         style="stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         fill-rule="evenodd"
+         fill="rgb(51.372552%, 76.078433%, 100%)"
+         fill-opacity="1"
+         stroke-width="0.1"
+         stroke-linecap="butt"
+         stroke-linejoin="miter"
+         stroke="rgb(0%, 0%, 0%)"
+         stroke-opacity="1"
+         stroke-miterlimit="10"
+         d="m 35,20 h 2 v 2 h -2 z m 0,0"
+         transform="matrix(20,0,0,20,-499,-199)"
+         id="path58"
+         style="fill:#ffffff;stroke:#a7a7a7;stroke-width:0.1;stroke-dasharray:none;stroke-opacity:1" />
+    </g>
+    <g
+       id="g19"
+       style="fill:#999999">
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g13"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-1"
+           x="11.292969"
+           y="27.591363"
+           id="use12"
+           style="fill:#999999" />
+        <use
+           xlink:href="#glyph-0-2"
+           x="21.015191"
+           y="27.591363"
+           id="use13"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g15"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="51.292969"
+           y="27.591363"
+           id="use14"
+           style="fill:#999999" />
+        <use
+           xlink:href="#glyph-0-3"
+           x="61.015191"
+           y="27.591363"
+           id="use15"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g17"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-1"
+           x="91.292969"
+           y="27.591363"
+           id="use16"
+           style="fill:#999999" />
+        <use
+           xlink:href="#glyph-0-4"
+           x="101.015191"
+           y="27.591363"
+           id="use17"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g18"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="136.15625"
+           y="27.591363"
+           id="use18"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g20"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-5"
+           x="171.292969"
+           y="27.591363"
+           id="use19"
+           style="fill:#999999" />
+        <use
+           xlink:href="#glyph-0-6"
+           x="181.015191"
+           y="27.591363"
+           id="use20"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g22"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-4"
+           x="211.292969"
+           y="27.591363"
+           id="use21"
+           style="fill:#999999" />
+        <use
+           xlink:href="#glyph-0-7"
+           x="221.015191"
+           y="27.591363"
+           id="use22"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g23"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-5"
+           x="16.15625"
+           y="67.591363"
+           id="use23"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g25"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-1"
+           x="51.292969"
+           y="67.591363"
+           id="use24"
+           style="fill:#999999" />
+        <use
+           xlink:href="#glyph-0-8"
+           x="61.015191"
+           y="67.591363"
+           id="use25"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g27"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-1"
+           x="91.292969"
+           y="67.591363"
+           id="use26"
+           style="fill:#999999" />
+        <use
+           xlink:href="#glyph-0-9"
+           x="101.015191"
+           y="67.591363"
+           id="use27"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g28"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-5"
+           x="136.15625"
+           y="67.591363"
+           id="use28"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g29"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-8"
+           x="176.15625"
+           y="67.591363"
+           id="use29"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g30"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="216.15625"
+           y="67.591363"
+           id="use30"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g31"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-10"
+           x="16.15625"
+           y="107.591363"
+           id="use31"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g33"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-1"
+           x="51.292969"
+           y="107.591363"
+           id="use32"
+           style="fill:#999999" />
+        <use
+           xlink:href="#glyph-0-8"
+           x="61.015191"
+           y="107.591363"
+           id="use33"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g34"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="96.15625"
+           y="107.591363"
+           id="use34"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g36"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="131.292969"
+           y="107.591363"
+           id="use35"
+           style="fill:#999999" />
+        <use
+           xlink:href="#glyph-0-8"
+           x="141.015191"
+           y="107.591363"
+           id="use36"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g37"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-6"
+           x="176.15625"
+           y="107.591363"
+           id="use37"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g38"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="216.15625"
+           y="107.591363"
+           id="use38"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g39"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="16.15625"
+           y="147.591363"
+           id="use39"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g40"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-1"
+           x="56.15625"
+           y="147.591363"
+           id="use40"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g42"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-10"
+           x="91.292969"
+           y="147.591363"
+           id="use41"
+           style="fill:#999999" />
+        <use
+           xlink:href="#glyph-0-6"
+           x="101.015191"
+           y="147.591363"
+           id="use42"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g43"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-2"
+           x="136.15625"
+           y="147.591363"
+           id="use43"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g44"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-9"
+           x="176.15625"
+           y="147.591363"
+           id="use44"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g45"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-10"
+           x="216.15625"
+           y="147.591363"
+           id="use45"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g46"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="16.15625"
+           y="187.591363"
+           id="use46"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g47"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-8"
+           x="56.15625"
+           y="187.591363"
+           id="use47"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g48"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-4"
+           x="96.15625"
+           y="187.591363"
+           id="use48"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g49"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="136.15625"
+           y="187.591363"
+           id="use49"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g51"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-2"
+           x="171.292969"
+           y="187.591363"
+           id="use50"
+           style="fill:#999999" />
+        <use
+           xlink:href="#glyph-0-2"
+           x="181.015191"
+           y="187.591363"
+           id="use51"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g52"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="216.15625"
+           y="187.591363"
+           id="use52"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g53"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="16.15625"
+           y="227.591363"
+           id="use53"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g55"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="51.292969"
+           y="227.591363"
+           id="use54"
+           style="fill:#999999" />
+        <use
+           xlink:href="#glyph-0-6"
+           x="61.015191"
+           y="227.591363"
+           id="use55"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g56"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="96.15625"
+           y="227.591363"
+           id="use56"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g57"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-2"
+           x="136.15625"
+           y="227.591363"
+           id="use57"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g58"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="176.15625"
+           y="227.591363"
+           id="use58"
+           style="fill:#999999" />
+      </g>
+      <g
+         fill="rgb(0%, 0%, 0%)"
+         fill-opacity="1"
+         id="g59"
+         style="fill:#999999">
+        <use
+           xlink:href="#glyph-0-3"
+           x="216.15625"
+           y="227.591363"
+           id="use59"
+           style="fill:#999999" />
+      </g>
+    </g>
   </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 27 10 L 29 10 L 29 12 L 27 12 Z M 27 10 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path13"
-     style="fill:#ffffff" />
   <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g15">
-    <use
-       xlink:href="#glyph-0-3"
-       x="51.292969"
-       y="27.591363"
-       id="use14" />
-    <use
-       xlink:href="#glyph-0-3"
-       x="61.015191"
-       y="27.591363"
-       id="use15" />
+     inkscape:groupmode="layer"
+     id="layer1"
+     inkscape:label="ravenvec">
+    <g
+       id="g2"
+       transform="matrix(-0.60641134,0,0,0.60641134,123.83846,-308.77504)"
+       style="display:inline;fill:#b474be;fill-opacity:0.668688;stroke-width:8.56594;stroke-dasharray:none">
+      <path
+         style="fill:#592c5f;fill-opacity:0.668688;stroke:#fd0000;stroke-width:8.56594;stroke-dasharray:none;stroke-opacity:1"
+         d="m 42.455409,680.07098 83.757471,-7.75188 40.70261,-12.84018 -150.4909,-3.28281 65.377936,-20.46105 67.933644,1.74644 18.38093,9.81335 -10.23413,-24.11522 -37.6368,-12.72329 -92.313157,-4.81241 -63.699298,-29.98534 -66.047105,2.51228 -52.54419,21.37594 -33.46349,30.64019 -0.30174,196.98637 c -0.12407,61.72651 -0.0647,-9.87763 -0.0804,69.17119 l 26.55638,-17.18719 44.56264,-49.59977 27.952359,-44.29755 18.685333,-31.74561 25.223446,-26.37146 23.507045,-19.00009 30.3028694,-17.21613 z"
+         id="path14"
+         sodipodi:nodetypes="cccccccccccccccccccccccc" />
+      <path
+         style="fill:#b2b2b2;fill-opacity:0.668688;stroke:#fe00cd;stroke-width:8.5744;stroke-dasharray:none;stroke-opacity:1"
+         d="m -37.610565,596.62311 -18.829746,21.45016 21.568805,15.1379 14.840995,-10.99218 -5.290438,-19.817 z"
+         id="path16" />
+    </g>
   </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 29 10 L 31 10 L 31 12 L 29 12 Z M 29 10 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path15" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g17">
-    <use
-       xlink:href="#glyph-0-1"
-       x="91.292969"
-       y="27.591363"
-       id="use16" />
-    <use
-       xlink:href="#glyph-0-4"
-       x="101.015191"
-       y="27.591363"
-       id="use17" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 31 10 L 33 10 L 33 12 L 31 12 Z M 31 10 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path17" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g18">
-    <use
-       xlink:href="#glyph-0-3"
-       x="136.15625"
-       y="27.591363"
-       id="use18" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 33 10 L 35 10 L 35 12 L 33 12 Z M 33 10 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path18" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g20">
-    <use
-       xlink:href="#glyph-0-5"
-       x="171.292969"
-       y="27.591363"
-       id="use19" />
-    <use
-       xlink:href="#glyph-0-6"
-       x="181.015191"
-       y="27.591363"
-       id="use20" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(51.372552%, 76.078433%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 35 10 L 37 10 L 37 12 L 35 12 Z M 35 10 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path20"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g22">
-    <use
-       xlink:href="#glyph-0-4"
-       x="211.292969"
-       y="27.591363"
-       id="use21" />
-    <use
-       xlink:href="#glyph-0-7"
-       x="221.015191"
-       y="27.591363"
-       id="use22" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 25 12 L 27 12 L 27 14 L 25 14 Z M 25 12 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path22" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g23">
-    <use
-       xlink:href="#glyph-0-5"
-       x="16.15625"
-       y="67.591363"
-       id="use23" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 27 12 L 29 12 L 29 14 L 27 14 Z M 27 12 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path23"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g25">
-    <use
-       xlink:href="#glyph-0-1"
-       x="51.292969"
-       y="67.591363"
-       id="use24" />
-    <use
-       xlink:href="#glyph-0-8"
-       x="61.015191"
-       y="67.591363"
-       id="use25" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 29 12 L 31 12 L 31 14 L 29 14 Z M 29 12 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path25"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g27">
-    <use
-       xlink:href="#glyph-0-1"
-       x="91.292969"
-       y="67.591363"
-       id="use26" />
-    <use
-       xlink:href="#glyph-0-9"
-       x="101.015191"
-       y="67.591363"
-       id="use27" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 31 12 L 33 12 L 33 14 L 31 14 Z M 31 12 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path27"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g28">
-    <use
-       xlink:href="#glyph-0-5"
-       x="136.15625"
-       y="67.591363"
-       id="use28" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(51.372552%, 76.078433%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 33 12 L 35 12 L 35 14 L 33 14 Z M 33 12 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path28"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g29">
-    <use
-       xlink:href="#glyph-0-8"
-       x="176.15625"
-       y="67.591363"
-       id="use29" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 35 12 L 37 12 L 37 14 L 35 14 Z M 35 12 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path29" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g30">
-    <use
-       xlink:href="#glyph-0-3"
-       x="216.15625"
-       y="67.591363"
-       id="use30" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 25 14 L 27 14 L 27 16 L 25 16 Z M 25 14 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path30" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g31">
-    <use
-       xlink:href="#glyph-0-10"
-       x="16.15625"
-       y="107.591363"
-       id="use31" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 27 14 L 29 14 L 29 16 L 27 16 Z M 27 14 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path31"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g33">
-    <use
-       xlink:href="#glyph-0-1"
-       x="51.292969"
-       y="107.591363"
-       id="use32" />
-    <use
-       xlink:href="#glyph-0-8"
-       x="61.015191"
-       y="107.591363"
-       id="use33" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 29 14 L 31 14 L 31 16 L 29 16 Z M 29 14 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path33"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g34">
-    <use
-       xlink:href="#glyph-0-3"
-       x="96.15625"
-       y="107.591363"
-       id="use34" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 31 14 L 33 14 L 33 16 L 31 16 Z M 31 14 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path34"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g36">
-    <use
-       xlink:href="#glyph-0-3"
-       x="131.292969"
-       y="107.591363"
-       id="use35" />
-    <use
-       xlink:href="#glyph-0-8"
-       x="141.015191"
-       y="107.591363"
-       id="use36" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(51.372552%, 76.078433%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 33 14 L 35 14 L 35 16 L 33 16 Z M 33 14 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path36"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g37">
-    <use
-       xlink:href="#glyph-0-6"
-       x="176.15625"
-       y="107.591363"
-       id="use37" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 35 14 L 37 14 L 37 16 L 35 16 Z M 35 14 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path37" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g38">
-    <use
-       xlink:href="#glyph-0-3"
-       x="216.15625"
-       y="107.591363"
-       id="use38" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 25 16 L 27 16 L 27 18 L 25 18 Z M 25 16 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path38" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g39">
-    <use
-       xlink:href="#glyph-0-3"
-       x="16.15625"
-       y="147.591363"
-       id="use39" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 27 16 L 29 16 L 29 18 L 27 18 Z M 27 16 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path39"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g40">
-    <use
-       xlink:href="#glyph-0-1"
-       x="56.15625"
-       y="147.591363"
-       id="use40" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 29 16 L 31 16 L 31 18 L 29 18 Z M 29 16 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path40"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g42">
-    <use
-       xlink:href="#glyph-0-10"
-       x="91.292969"
-       y="147.591363"
-       id="use41" />
-    <use
-       xlink:href="#glyph-0-6"
-       x="101.015191"
-       y="147.591363"
-       id="use42" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 31 16 L 33 16 L 33 18 L 31 18 Z M 31 16 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path42"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g43">
-    <use
-       xlink:href="#glyph-0-2"
-       x="136.15625"
-       y="147.591363"
-       id="use43" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(51.372552%, 76.078433%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 33 16 L 35 16 L 35 18 L 33 18 Z M 33 16 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path43"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g44">
-    <use
-       xlink:href="#glyph-0-9"
-       x="176.15625"
-       y="147.591363"
-       id="use44" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 35 16 L 37 16 L 37 18 L 35 18 Z M 35 16 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path44" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g45">
-    <use
-       xlink:href="#glyph-0-10"
-       x="216.15625"
-       y="147.591363"
-       id="use45" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 25 18 L 27 18 L 27 20 L 25 20 Z M 25 18 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path45" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g46">
-    <use
-       xlink:href="#glyph-0-3"
-       x="16.15625"
-       y="187.591363"
-       id="use46" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 27 18 L 29 18 L 29 20 L 27 20 Z M 27 18 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path46" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g47">
-    <use
-       xlink:href="#glyph-0-8"
-       x="56.15625"
-       y="187.591363"
-       id="use47" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 29 18 L 31 18 L 31 20 L 29 20 Z M 29 18 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path47"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g48">
-    <use
-       xlink:href="#glyph-0-4"
-       x="96.15625"
-       y="187.591363"
-       id="use48" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 31 18 L 33 18 L 33 20 L 31 20 Z M 31 18 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path48"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g49">
-    <use
-       xlink:href="#glyph-0-3"
-       x="136.15625"
-       y="187.591363"
-       id="use49" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 0%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 33 18 L 35 18 L 35 20 L 33 20 Z M 33 18 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path49"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g51">
-    <use
-       xlink:href="#glyph-0-2"
-       x="171.292969"
-       y="187.591363"
-       id="use50" />
-    <use
-       xlink:href="#glyph-0-2"
-       x="181.015191"
-       y="187.591363"
-       id="use51" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(51.372552%, 76.078433%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 35 18 L 37 18 L 37 20 L 35 20 Z M 35 18 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path51"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g52">
-    <use
-       xlink:href="#glyph-0-3"
-       x="216.15625"
-       y="187.591363"
-       id="use52" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 25 20 L 27 20 L 27 22 L 25 22 Z M 25 20 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path52" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g53">
-    <use
-       xlink:href="#glyph-0-3"
-       x="16.15625"
-       y="227.591363"
-       id="use53" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 27 20 L 29 20 L 29 22 L 27 22 Z M 27 20 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path53" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g55">
-    <use
-       xlink:href="#glyph-0-3"
-       x="51.292969"
-       y="227.591363"
-       id="use54" />
-    <use
-       xlink:href="#glyph-0-6"
-       x="61.015191"
-       y="227.591363"
-       id="use55" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 29 20 L 31 20 L 31 22 L 29 22 Z M 29 20 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path55" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g56">
-    <use
-       xlink:href="#glyph-0-3"
-       x="96.15625"
-       y="227.591363"
-       id="use56" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 31 20 L 33 20 L 33 22 L 31 22 Z M 31 20 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path56" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g57">
-    <use
-       xlink:href="#glyph-0-2"
-       x="136.15625"
-       y="227.591363"
-       id="use57" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(100%, 100%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 33 20 L 35 20 L 35 22 L 33 22 Z M 33 20 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path57" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g58">
-    <use
-       xlink:href="#glyph-0-3"
-       x="176.15625"
-       y="227.591363"
-       id="use58" />
-  </g>
-  <path
-     fill-rule="evenodd"
-     fill="rgb(51.372552%, 76.078433%, 100%)"
-     fill-opacity="1"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="rgb(0%, 0%, 0%)"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="M 35 20 L 37 20 L 37 22 L 35 22 Z M 35 20 "
-     transform="matrix(20, 0, 0, 20, -499, -199)"
-     id="path58"
-     style="fill:#ffffff" />
-  <g
-     fill="rgb(0%, 0%, 0%)"
-     fill-opacity="1"
-     id="g59">
-    <use
-       xlink:href="#glyph-0-3"
-       x="216.15625"
-       y="227.591363"
-       id="use59" />
-  </g>
-  <path
-     fill="none"
-     stroke-width="0.1"
-     stroke-linecap="butt"
-     stroke-linejoin="miter"
-     stroke="#ff0000"
-     stroke-opacity="1"
-     stroke-miterlimit="10"
-     d="m 178.60109,99.614909 -7.9268,-70.023936 53.58159,41.122753 -10,40.000004 -20,30 30,40 -52.09303,31.76852 4.05149,-27.95113 4.29859,-37.24458 z"
-     id="path59"
-     style="stroke-width:9.1;stroke-linejoin:bevel;stroke-dasharray:none"
-     sodipodi:nodetypes="cccccccccc" />
-  <path
-     style="fill:none;stroke:#ff0000;stroke-width:9;stroke-linecap:butt;stroke-linejoin:bevel;stroke-opacity:1;stroke-dasharray:none"
-     d="m 144.78612,101.67995 -67.993188,0.71524 37.203678,15.46469 -0.0169,87.35441 v 0"
-     id="path60" />
-  <path
-     style="fill:none;stroke:#ff0000;stroke-width:9;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-dasharray:none"
-     d="m 129.65376,198.6678 25.96874,2.76196"
-     id="path61" />
-  <path
-     style="fill:none;stroke:#ff0000;stroke-width:9;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-dasharray:none"
-     d="m 64.044638,32.583644 -36.502917,34.1828 23.575903,51.991246 -0.02549,41.82705 -35.343432,23.42196"
-     id="path62" />
 </svg>
