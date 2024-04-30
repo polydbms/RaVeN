@@ -1,7 +1,10 @@
 import argparse
 from pathlib import Path
 
+import pandas as pd
+
 from hub.raven import Setup
+import geopandas as gpd
 
 
 class Raven:
@@ -40,17 +43,32 @@ class Raven:
                             help="specify which system should act as the baseline in eval mode. If none is specified, the lexicographically first string is chosen.")
         parser.add_argument("--evalfolder",
                             help="specify the name of the output eval folder.")
+        parser.add_argument("--output_format",
+                            help="specify the output format for the evaluation. Default is csv",
+                            default="csv")
 
         args = parser.parse_args()
         print(args)
         setup = Setup()
         if args.command == "start":
             for experiment_file_name in args.experiment:
-                result_files = setup.benchmark(experiment_file_name, args.config, args.system, args.postcleanup,
-                                               args.singlerun)
+                result_files, vector_file_location, join_attrs = setup.benchmark(experiment_file_name, args.config, args.system,
+                                                                     args.postcleanup,
+                                                                     args.singlerun)
 
-                if len(result_files) > 1 and args.eval:
-                    setup.evaluate(args.config, result_files, args.evalbase)
+                if len(result_files) >= 1:
+                    match args.output_format:
+                        case "gpkg":
+                            for f in result_files:
+                                try:
+                                    result = pd.read_csv(f)
+                                    base_vector = gpd.read_file(vector_file_location)
+                                    base_vector.merge(result, how="right", on=join_attrs).to_file(f.with_suffix(".gpkg"), driver="GPKG")
+                                except Exception as e:
+                                    print(f"maybe the resultset was empty?: {e}")
+
+                    if args.eval and len(result_files) >= 2:
+                        setup.evaluate(args.config, result_files, args.evalbase)
         if args.command == "clean":
             setup.clean(args.config)
         if args.command == "eval":

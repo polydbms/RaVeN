@@ -217,7 +217,7 @@ class Setup:
         return list(map(lambda resfile: resfile[0], result_files_not_empty))
 
     def benchmark(self, experiment_file_name: str, config_file: str, system=None, post_cleanup=True,
-                  single_run=True) -> list[Path]:
+                  single_run=True) -> tuple[list[Path], Path, list[str]]:
         """
         anchor function that starts a benchmark set
         :param experiment_file_name: the path to the experiment definintion
@@ -252,7 +252,7 @@ class Setup:
                 result_files.extend(self.run_tasks(run))
                 self.clean(config_file)
 
-        return result_files
+        return result_files, runs[0].vector.controller_file, runs[0].workload.get("get", {}).get("vector", [])
 
     def evaluate(self, config_filename: str, result_files: list[Path], base_run_str="", evalfolder=""):
         """
