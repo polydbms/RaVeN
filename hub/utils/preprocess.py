@@ -383,7 +383,7 @@ class CRSFilterPreprocessor(Preprocessor):
             width, height = json.loads(
                 subprocess.check_output(f'gdalinfo -json {self.config.raster_file_path}', shell=True)
                 .decode('utf-8'))["size"]
-            cmd_string += f"-ts {int(width / self.config.raster_resolution)} {int(height / self.config.raster_resolution)}"
+            cmd_string += f"-ts {int(width / self.config.raster_resolution)} {int(height / self.config.raster_resolution)} "
 
         cmd_string += f"{self.config.raster_file_path} " \
                       f"{output_file}"
