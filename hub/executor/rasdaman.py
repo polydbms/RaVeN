@@ -247,6 +247,7 @@ class Executor:
             )
         ]
         for o in order[0]:
+            """sort vecctor_features based on order[0], the key may contain strings or numbers"""
             vector_features.sort(key=lambda x: x["properties"][o])
 
         result_path = self.network_manager.host_params.controller_result_folder.joinpath(

@@ -51,6 +51,20 @@ class Ui_RaVeN(object):
 
         return label
 
+    def get_interactions(self) -> list[str]:
+        interactions = {
+            "system": len(self.inp_system.checkedItems()),
+            "vector_filter_at_stage": len(self.inp_vector_filter_stage.checkedItems()),
+            "raster_clip": len(self.inp_raster_clip.checkedItems()),
+            "align_crs_at_stage": len(self.inp_align_crs_at.checkedItems()),
+            "align_to_crs": len(self.inp_align_to_crs.checkedItems()),
+            "raster_tile_size": len(self.mdl_raster_tile_size.all_data())
+        }
+
+        relevant_items = [k for k, v in interactions.items() if v > 1]
+
+        return relevant_items if len(relevant_items) > 0 else ["system"]
+
     def get_runs_from_ui(self):
         if self.inp_vector.currentLayer().storageType() == "ESRI Shapefile":
             pattern = re.compile(r'(.+?)\|layername=([^|]+)')
@@ -66,17 +80,19 @@ class Ui_RaVeN(object):
         parameters = {"vector_filter_at_stage": self.inp_vector_filter_stage.checkedItems(),
                       "raster_clip": list(map(lambda b: b == "Yes", self.inp_raster_clip.checkedItems())),
                       "align_crs_at_stage": self.inp_align_crs_at.checkedItems(),
-                      "align_to_crs": self.inp_align_to_crs.checkedItems()}
+                      "align_to_crs": self.inp_align_to_crs.checkedItems(),
+                      # "raster_tile_size": [f"{t[0]}x{t[1]}" for t in self.mdl_raster_tile_size.all_data()],
+                      }
 
         workload = {'get': {'vector': vector_fields, 'raster': [
-                                                     {'sval': {
-                                                         'aggregations': self.inp_raster_agg.checkedItems()}}]},
-                                                  'join': {'table1': 'vector',
-                                                           'table2': 'raster',
-                                                           'condition': 'intersect(raster, vector)'},
-                                                  'group': {'vector': vector_fields},
-                                                  'order': {'vector': vector_fields},
-                                                  }
+            {'sval': {
+                'aggregations': self.inp_raster_agg.checkedItems()}}]},
+                    'join': {'table1': 'vector',
+                             'table2': 'raster',
+                             'condition': 'intersect(raster, vector)'},
+                    'group': {'vector': vector_fields},
+                    'order': {'vector': vector_fields},
+                    }
 
         if self.mdl_where.sql() != "":
             workload["condition"] = {'vector': [self.mdl_where.sql()]}
@@ -89,7 +105,7 @@ class Ui_RaVeN(object):
                                                   System('beast', 80),
                                                   System('rasdaman', 8080)],
                                                  workload
-                                                 , "/config/controller_config.qgis.yaml",
+                                                 , "/home/gereon/git/dima/benchi/config/controller_config.qgis.yaml",
                                                  parameters)
 
         return runs, iterations, vector_fields
@@ -145,39 +161,49 @@ class Ui_RaVeN(object):
                 preprocess_color = "1"
                 import_color = "2"
                 execute_color = "3"
-                colorscheme = "pastel13"
+                colorscheme = "pastel19"
+                fontname = "Open Sans Regular:Demi Bold"
 
                 order = DAGNode(f"ORDER BY {w['order']['vector'][0]}",
-                                style={"colorscheme": colorscheme, "fillcolor": execute_color, "style": "filled"})
+                                style={"colorscheme": colorscheme, "fillcolor": execute_color, "style": "filled",
+                                       "fontname": fontname})
                 agg = DAGNode(f"AGGREGATE {', '.join(aggs)}",
-                              style={"colorscheme": colorscheme, "fillcolor": execute_color, "style": "filled"})
+                              style={"colorscheme": colorscheme, "fillcolor": execute_color, "style": "filled",
+                                     "fontname": fontname})
                 group = DAGNode(f"GROUP BY {w['group']['vector'][0]}",
-                                style={"colorscheme": colorscheme, "fillcolor": execute_color, "style": "filled"})
+                                style={"colorscheme": colorscheme, "fillcolor": execute_color, "style": "filled",
+                                       "fontname": fontname})
                 join = DAGNode(f"JOIN ON {w['join']['condition']}",
-                               style={"colorscheme": colorscheme, "fillcolor": execute_color, "style": "filled"})
+                               style={"colorscheme": colorscheme, "fillcolor": execute_color, "style": "filled",
+                                      "fontname": fontname})
                 condition = DAGNode(f"WHERE {', '.join(cond_list)}", style={"colorscheme": colorscheme,
                                                                             "fillcolor": execute_color if p.vector_filter_at_stage == Stage.EXECUTION else preprocess_color,
-                                                                            "style": "filled"})
+                                                                            "style": "filled", "fontname": fontname})
                 ras_import = DAGNode(f"IMPORT RASTER",
                                      style={"colorscheme": colorscheme,
                                             "fillcolor": execute_color if import_is_system else import_color,
-                                            "style": "filled"})
+                                            "style": "filled", "fontname": fontname})
                 vec_import = DAGNode(f"IMPORT VECTOR",
                                      style={"colorscheme": colorscheme,
                                             "fillcolor": execute_color if import_is_system else import_color,
-                                            "style": "filled"})
+                                            "style": "filled", "fontname": fontname})
                 ras_reproject = DAGNode(f"ST_TRANSFORM(raster, {ras_crs}, {vec_crs})",
-                                        style={"colorscheme": colorscheme, "fillcolor": execute_color if p.align_crs_at_stage == Stage.EXECUTION else preprocess_color,
-                                               "style": "filled"})
+                                        style={"colorscheme": colorscheme,
+                                               "fillcolor": execute_color if p.align_crs_at_stage == Stage.EXECUTION else preprocess_color,
+                                               "style": "filled", "fontname": fontname})
                 vec_reproject = DAGNode(f"ST_TRANSFORM(raster, {vec_crs}, {ras_crs})",
-                                        style={"colorscheme": colorscheme, "fillcolor": execute_color if p.align_crs_at_stage == Stage.EXECUTION else preprocess_color,
-                                               "style": "filled"})
+                                        style={"colorscheme": colorscheme,
+                                               "fillcolor": execute_color if p.align_crs_at_stage == Stage.EXECUTION else preprocess_color,
+                                               "style": "filled", "fontname": fontname})
                 ras_clip = DAGNode(f"ST_CLIP(raster, ST_ENVELOPE(vector))",
-                                   style={"colorscheme": colorscheme, "fillcolor": preprocess_color, "style": "filled"})
+                                   style={"colorscheme": colorscheme, "fillcolor": preprocess_color, "style": "filled",
+                                          "fontname": fontname})
                 ras_ds = DAGNode(f"{ras_name}",
-                                 style={"colorscheme": colorscheme, "fillcolor": preprocess_color, "style": "filled"})
+                                 style={"colorscheme": colorscheme, "fillcolor": "9", "style": "filled", "shape": "box",
+                                        "fontname": fontname})
                 vec_ds = DAGNode(f"{vec_name}",
-                                 style={"colorscheme": colorscheme, "fillcolor": preprocess_color, "style": "filled"})
+                                 style={"colorscheme": colorscheme, "fillcolor": "9", "style": "filled", "shape": "box",
+                                        "fontname": fontname})
 
                 # TODO take into account movement of CS align to exec. probably split the if-elifs into two, dividing them at the import
                 if len(cond_list) == 0:
@@ -298,24 +324,24 @@ class Ui_RaVeN(object):
         self.lbl_where = QLabel(self.formLayoutWidget)
         self.lbl_where.setObjectName(u"lbl_where")
 
-        self.mdl_where = QgsQueryBuilder(self.inp_vector.currentLayer(), self.formLayoutWidget)
+        if self.inp_vector.currentLayer():
+            self.mdl_where = QgsQueryBuilder(self.inp_vector.currentLayer(), self.formLayoutWidget)
 
+            self.inp_where = QPushButton(self.formLayoutWidget)
+            self.inp_where.clicked.connect(self.mdl_where.show)
+            self.inp_where.setObjectName(u"inp_where")
 
-        #
-        # def connect_modal_where():
-        #     if len([layer for layer in QgsProject.instance().mapLayers().values() if isinstance(layer, QgsVectorLayer)]):
+            def update_where():
+                self.inp_where.setText(self.mdl_where.sql())
 
+            update_where()
 
-        self.inp_where = QPushButton(self.formLayoutWidget)
-        self.inp_where.clicked.connect(self.mdl_where.show)
-        self.inp_where.setObjectName(u"inp_where")
-        
-        def update_where():
-            self.inp_where.setText(self.mdl_where.sql())
-
-        update_where()
-
-        self.mdl_where.accepted.connect(update_where)
+            self.mdl_where.accepted.connect(update_where)
+        else:
+            self.inp_where = QPushButton(self.formLayoutWidget)
+            self.inp_where.setObjectName(u"inp_where")
+            self.inp_where.setText("No vector layer selected")
+            self.inp_where.setDisabled(True)
 
         self.formLayout.setWidget(3, QFormLayout.LabelRole, self.lbl_where)
         self.formLayout.setWidget(3, QFormLayout.FieldRole, self.inp_where)

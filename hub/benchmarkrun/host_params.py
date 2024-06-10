@@ -43,6 +43,10 @@ class HostParameters:
         self._controller_db_connection = DuckDBConnector(db_filename=self._controller_result_db)
 
     @property
+    def db_path(self) -> Path:
+        return Path(self._controller_result_db)
+
+    @property
     def ssh_config_path(self):
         return self._ssh_config_path
 
@@ -77,6 +81,10 @@ class HostParameters:
         :return: the run-specific output folder
         """
         return self._run_folder
+
+    def close_db(self):
+        if self._controller_db_connection is not None:
+            self._controller_db_connection.close_connection()
 
     @property
     def controller_db_connection(self):

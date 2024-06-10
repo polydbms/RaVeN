@@ -28,6 +28,8 @@ class DuckDBConnector:
         self._benchmark_set_id = -1
         self._is_initialized = False
 
+        print(f"connected to database: {db_filename}")
+
     def get_cursor(self) -> DuckDBPyConnection:
         """
         returns a cursor of the database
@@ -50,11 +52,11 @@ class DuckDBConnector:
 
             return int(param_db_row.head(1).index[0])
 
-    def initialize_benchmark_set(self, experiment: str):
+    def initialize_benchmark_set(self, experiment: str) -> int:
         """
         initializes a new benchmark set consisting of one or many benchmark runs
         :param experiment: the experiment name
-        :return:
+        :return: the benchmark set id
         """
         if not self._is_initialized:
             with self.get_cursor() as conn:
@@ -65,6 +67,8 @@ class DuckDBConnector:
                 self._benchmark_set_id = bench_set[0]
 
             self._is_initialized = True
+
+            return self._benchmark_set_id
 
     def initialize_benchmark_run(self, params: BenchmarkParameters, iteration: int):
         """
@@ -84,8 +88,15 @@ class DuckDBConnector:
             print(f"created benchmark run: {run}")
             return DuckDBRunCursor(self._connection, run[0])
 
-    # def __del__(self):
-    #     self._connection.close()
+    def close_connection(self):
+        """
+        closes the connection
+        :return:
+        """
+        self._connection.close()
+
+    def __del__(self):
+        self._connection.close()
 
 
 class DuckDBRunCursor:

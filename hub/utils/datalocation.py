@@ -289,9 +289,11 @@ class DataLocation:
                     .decode('utf-8'))["layers"][0]["geometryFields"][0]["coordinateSystem"]["projjson"]["id"]["code"]
                 return pyproj.CRS.from_epsg(crs)
             case DataType.RASTER:
-                rio_epsg = rioxarray.open_rasterio(str(self.controller_file), masked=True).squeeze().rio.crs.to_epsg()
+                crs = json.loads(
+                    subprocess.check_output(f'gdalinfo -json {self.controller_file}', shell=True)
+                    .decode('utf-8'))["stac"]["proj:epsg"]
 
-                return CRS.from_epsg(rio_epsg)
+                return pyproj.CRS.from_epsg(crs)
 
     def get_vector_types(self):
         return

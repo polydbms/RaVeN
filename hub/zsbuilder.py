@@ -64,7 +64,7 @@ class ZSGen:
     def filter(self, predicate: list[str] | str):
         filter_list = [predicate] if isinstance(predicate, str) else predicate
         self._raster_filter = list(filter(lambda f: "sval" in f.lower(), filter_list))
-        self._vector_filter = list(filter(lambda f: "sval" in f.lower(), filter_list))
+        self._vector_filter = list(filter(lambda f: "sval" not in f.lower(), filter_list))
         return self
 
     def join_condition(self, join_condition: ZSJoin):
@@ -99,7 +99,7 @@ class ZSGen:
         self._raster_clip = [clip] if isinstance(clip, bool) else clip
         return self
 
-    def vector_filter_at_stage(self, stage: list[Stage] | Stage):
+    def vector_filter_at(self, stage: list[Stage] | Stage):
         self._vector_filter_at_stage = [stage] if isinstance(stage, Stage) else stage
         return self
 
@@ -114,3 +114,39 @@ class ZSGen:
     def timeout(self, timeout: int):
         self._timeout = timeout
         return self
+
+    def build(self):
+        vector_fields = self._vector
+
+        parameters = {
+            "align_crs_at_stage": self._align_crs_at_stage,
+            "align_to_crs": self._align_to_crs,
+            "raster_clip": self._raster_clip,
+            "raster_resolution": self._raster_resolution,
+            "raster_tile_size": self._raster_tile_size,
+            "vector_filter_at_stage": self._vector_filter_at_stage,
+            "vector_resolution": self._vector_resolution,
+            "vectorize_type": self._vectorize_type,
+        }
+
+        workload = {'get': {'vector': vector_fields, 'raster': [
+            {'sval': {
+                'aggregations': self._raster_aggs}}]},
+                    'join': {'table1': 'vector',
+                             'table2': 'raster',
+                             'condition': 'intersect(raster, vector)'},
+                    'group': {'vector': vector_fields},
+                    'order': {'vector': vector_fields},
+                    'condition': {'vector': self._vector_filter}
+                    }
+
+        runs, iterations = FileIO.create_configs({"raster": self._raster, "vector": self._vector},
+                                                 {}, "qgis.yaml", self._systems,
+                                                 [System('postgis', 25432),
+                                                  System('omnisci', 6274),
+                                                  System('sedona', 80),
+                                                  System('beast', 80),
+                                                  System('rasdaman', 8080)],
+                                                 workload
+                                                 , "/home/gereon/git/dima/benchi/config/controller_config.qgis.yaml",
+                                                 parameters)

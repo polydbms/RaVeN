@@ -57,3 +57,6 @@ class EditTileTableModel(QAbstractTableModel):
         self.data.append(TileSize(self.default_width, self.default_height))
         self.endInsertRows()
         return True
+
+    def all_data(self):
+        return self.data

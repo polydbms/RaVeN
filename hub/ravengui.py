@@ -1,6 +1,11 @@
 import logging
 import re
+import shutil
+import subprocess
+import sys
 import threading
+import time
+from pathlib import Path
 
 import pandas as pd
 import processing
@@ -11,6 +16,7 @@ from qgis.core import QgsFeatureRequest, QgsProject, QgsVectorLayer, QgsGraduate
     QgsLayerTreeLayer, \
     QgsStyle
 
+from hub.configuration import PROJECT_ROOT
 from hub.zsresultsdb.init_duckdb import InitializeDuckDB
 from hub.gui.main_ui import Ui_RaVeN
 from hub.gui.webdialog import WebDialog
@@ -26,6 +32,7 @@ class Raven:
     def __init__(self, iface):
         self.iface = iface
         self.benchi = Setup(self.increase_progress_bar)
+        self.dialog_web = None
 
     def show_progress_toast(self):
         progressMessageBar = self.iface.messageBar().createMessage("Running RaVeN …")
@@ -62,26 +69,33 @@ class Raven:
         self.dialog_raven.show()
 
     def run_results(self):
-        self.dialog_web = WebDialog(iface=self.iface, window_name="RaVeN Results")
-        self.dialog_web.ui.add_tab("End-to-End Runtime Overview",
-                                   "/home/gereon/git/dima/tpctc-graphs/plots/demo-e2e.png")
-        self.dialog_web.ui.add_tab("Phase Breakdown", "/home/gereon/git/dima/vldb-benchi/figures/breakdown_amtrak.png")
+        if self.dialog_web is None:
+            self.dialog_web = WebDialog(iface=self.iface, window_name="RaVeN Results")
+            self.dialog_web.ui.add_tab("End-to-End Runtime Overview",
+                                       "/home/gereon/git/dima/tpctc-graphs/plots/demo-e2e.png")
+            self.dialog_web.ui.add_tab("Phase Breakdown",
+                                       "/home/gereon/git/dima/vldb-benchi/figures/breakdown_amtrak.png")
+            self.dialog_web.ui.add_tab("Phase Breakdown",
+                                       "/tmp/stagegraph.png")
         self.dialog_web.show()
 
-    def execute_tasks(self, runs, inp_vector, vector_fields, inp_raster, inp_raster_agg, iterations, warm_starts):
+    def execute_tasks(self, runs, inp_vector, vector_fields, inp_raster, inp_raster_agg, iterations, warm_starts,
+                      interaction_params):
         if len(runs) > 0:
-            self.benchi.init_progress(1, iterations.value(), warm_starts.value())
+            self.benchi.init_progress(len(runs), iterations.value(), warm_starts.value())
             self.show_progress_toast()
 
-            runs[0].host_params.controller_db_connection.initialize_benchmark_set("qgis.yaml")
+            set_id = runs[0].host_params.controller_db_connection.initialize_benchmark_set("qgis.yaml")
 
             result_files = []
-            run = runs[0]
             # run = next(iter(runs))
-            print(str(run))
+            print(f"running {len(runs)} runs: {','.join(str(runs))}")
 
             def run_bg():
-                result_files.extend(self.benchi.run_tasks(run))
+                for run in runs:
+                    result_files.extend(self.benchi.run_tasks(run))
+
+                runs[0].host_params.controller_db_connection.close_connection()
 
                 raven_result_layer = inp_vector.currentLayer().materialize(
                     QgsFeatureRequest().setFilterFids(inp_vector.currentLayer().allFeatureIds()))
@@ -126,7 +140,8 @@ class Raven:
 
                 renderer = QgsGraduatedSymbolRenderer.createRenderer(raven_layer, first_agg_name, 10,
                                                                      QgsGraduatedSymbolRenderer.Mode.EqualInterval,
-                                                                     QgsSymbol.defaultSymbol(raven_layer.geometryType()),
+                                                                     QgsSymbol.defaultSymbol(
+                                                                         raven_layer.geometryType()),
                                                                      QgsStyle().defaultStyle().colorRamp('Blues'))
 
                 # Apply the renderer to the layer
@@ -135,8 +150,28 @@ class Raven:
                 raven_layer.triggerRepaint()
                 self.iface.messageBar().clearWidgets()
 
+                if True:
+                    db_path: Path = runs[0].host_params.db_path
+                    db_path_tmp = Path("/tmp/results.tmp.db")
+                    shutil.copy(str(db_path), str(db_path_tmp))
+
+                    graph_cmd = ["Rscript", "--vanilla", str(PROJECT_ROOT.joinpath("graphs/stagegraph.R")),
+                                 "-o", "/tmp/stagegraph.png",
+                                 "-s", str(set_id),
+                                 "-i", ",".join(interaction_params)]
+                    print(f"plotting graph with: {' '.join(graph_cmd)}")
+
+                    with open("/tmp/stagegraph.log", "w") as f:
+                        subprocess.call(graph_cmd, stderr=f, stdout=f)
+
+                    self.dialog_web = WebDialog(iface=self.iface, window_name="RaVeN Results")
+                    self.dialog_web.ui.add_tab("Phase Breakdown",
+                                               "/tmp/stagegraph.png")
+                    self.dialog_web.show()
+
                 cleanup_thread = threading.Thread(target=self.benchi.clean, name="Cleanup",
-                                                  args=["/home/gereon/git/dima/benchi/config/controller_config.qgis.yaml"])
+                                                  args=[
+                                                      "/home/gereon/git/dima/benchi/config/controller_config.qgis.yaml"])
                 cleanup_thread.start()
 
             main_thread = threading.Thread(target=run_bg, name="Main Run")
@@ -156,7 +191,7 @@ class RaVeNDialog(QDialog):
     def accept(self):
         runs, iterations, vector_fields = self.ui.get_runs_from_ui()
 
-        host_params = FileIO.get_host_params("/config/controller_config.qgis.yaml")
+        host_params = FileIO.get_host_params("/home/gereon/git/dima/benchi/config/controller_config.qgis.yaml")
         InitializeDuckDB(host_params.controller_db_connection, runs, "qgis.yaml")
 
         print(f"running {len(runs)} experiments")
@@ -164,4 +199,4 @@ class RaVeNDialog(QDialog):
         self.hide()
 
         self.execute_benchmarks(runs, self.ui.inp_vector, vector_fields, self.ui.inp_raster, self.ui.inp_raster_agg,
-                                self.ui.inp_iterations, self.ui.inp_warm_starts)
+                                self.ui.inp_iterations, self.ui.inp_warm_starts, self.ui.get_interactions())
