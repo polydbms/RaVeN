@@ -4,6 +4,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import jinja2
+
 from hub.configuration import PROJECT_ROOT
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.enums.vectorfiletype import VectorFileType
@@ -103,7 +105,7 @@ class Ingestor(IngestionInterface):
 
         def __parse_vector_cond(condition):
             field = re.search("([^<>!=]*)", condition).group(1).strip()
-            datatype = self.__dtype_to_scala(field)
+            datatype = self.__dtype_to_scala_vector(field)
             cond = self.__parse_condition_scala(condition, datatype)
 
             return {
@@ -114,11 +116,7 @@ class Ingestor(IngestionInterface):
 
         vector_conditions = list(map(__parse_vector_cond, self.workload.get("condition", {}).get("vector", [])))
 
-        raster_type_raw = subprocess.run(f'gdalinfo {self.raster.controller_file} | grep -Po "(?<=Type=)(\w+)"',
-                                         shell=True, capture_output=True).stdout.decode("utf-8").strip()
-        raster_type = ("Float" if "64" in raster_type_raw else "Float") \
-            if "Float" in raster_type_raw else \
-            ("Int" if "64" in raster_type_raw else "Int")  # FIXME Double and Long seem to not be supported
+        raster_type = self.__dtype_to_scala_raster()
         # raster_field = re.search("([^<>!=]*)",
         #                          list(
         #                              next(
@@ -137,7 +135,7 @@ class Ingestor(IngestionInterface):
             "raster_conditions": raster_conditions,
             "get": {
                 "field": self.workload["get"]["vector"][0],
-                "datatype": self.__dtype_to_scala(self.workload["get"]["vector"][0])
+                "datatype": self.__dtype_to_scala_vector(self.workload["get"]["vector"][0])
             },
             "raster": {
                 "field": raster_field,
@@ -145,8 +143,13 @@ class Ingestor(IngestionInterface):
             },
             "sql_query": sql_query
         }
+
+        print(f"Payload: {payload}")
+
         rendered = template.render(**payload)
         return rendered
+
+
 
     def __save_template(self, template):
         template_path = self.raptor_scala_path
@@ -166,7 +169,7 @@ class Ingestor(IngestionInterface):
             target = m.group(3).strip()
         return f"{op} {target}"
 
-    def __dtype_to_scala(self, name):
+    def __dtype_to_scala_vector(self, name):
         vectortypes = json.loads(
             subprocess.check_output(f"ogrinfo -nocount -json -nomd {self.vector.controller_file}", shell=True).decode(
                 "utf-8"))["layers"][0]["fields"]
@@ -185,3 +188,21 @@ class Ingestor(IngestionInterface):
                 return "Boolean"
             case _:
                 raise Exception(f"type {fieldtype} has not been implemented yet")
+
+
+    def __dtype_to_scala_raster(self):
+        rastertypes = json.loads(subprocess.check_output(f'gdalinfo -json -nomd -norat -noct -nogcp {self.raster.controller_file}',
+                                         shell=True).decode("utf-8"))["bands"][0]["type"]
+
+        match rastertypes:
+            case "Byte" | "Int8" | "UInt16" | "Int16" | "Int32":
+                return "Int"
+            case "UInt32" | "UInt64" | "Int64":
+                return "Long"
+            case "Float64":
+                return "Double"
+            case "Float32":
+                return "Float"
+            case _:
+                raise Exception(f"type {rastertypes} has not been implemented yet")
+

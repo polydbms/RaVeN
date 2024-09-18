@@ -1,8 +1,12 @@
 import base64
 import importlib
+import logging
 from datetime import datetime
 from pathlib import Path
 from time import sleep
+
+import jinja2
+import yaml
 
 from hub.configuration import PROJECT_ROOT
 from hub.benchmarkrun.benchmark_run import BenchmarkRun
@@ -79,11 +83,27 @@ class Setup:
         self.increase_progress()
 
         """
+        resolve compose Template and set resource limitations
+        """
+
+        template_loader = jinja2.FileSystemLoader(searchpath=PROJECT_ROOT.joinpath(f"deployment/files/{system.name}/"))
+        template_env = jinja2.Environment(loader=template_loader)
+        template_file = "docker-compose.yml.j2"
+        template = template_env.get_template(template_file)
+        rendered = template.render()
+
+        rendered_yaml = yaml.safe_load(rendered)
+
+        rendered_yaml["services"][system.name] = rendered_yaml["services"][system.name] | run.resource_limits
+
+        PROJECT_ROOT.joinpath(f"deployment/files/{system.name}/docker-compose.yml").write_text(yaml.dump(rendered_yaml))
+
+        """
         transfer configs and datasets to the host
         """
 
         transporter.send_configs(log_time=self.logger)
-        print(run.vector)
+        # print(run.vector)
         transporter.send_data(run.vector, log_time=self.logger)
 
         print(run.raster)
@@ -232,7 +252,7 @@ class Setup:
         print(f"running {len(runs)} experiments")
         print([str(r.benchmark_params) for r in runs])
 
-        runs[0].host_params.controller_db_connection.initialize_benchmark_set(Path(experiment_file_name).parts[-1])
+        runs[0].host_params.controller_db_connection.initialize_benchmark_set(Path(experiment_file_name).parts[-1], runs[0].resource_limits)
 
         result_files = []
         if system:

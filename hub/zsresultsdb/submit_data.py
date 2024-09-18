@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from duckdb import DuckDBPyConnection, connect
+from jupyter_lsp.serverextension import initialize
 from pandas import DataFrame
 
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
@@ -52,7 +53,28 @@ class DuckDBConnector:
 
             return int(param_db_row.head(1).index[0])
 
-    def initialize_benchmark_set(self, experiment: str) -> int:
+    def initialize_resource_limits(self, resource_limits: dict) -> tuple[int, dict]:
+        """
+        inserts the resource limits into the database
+        :param resource_limits: the resource limits
+        :return:
+        """
+
+        resource_limits = dict(sorted(resource_limits.items(), key=lambda item: item[0]))
+
+        limit_id = self._connection.execute("select * from resource_limit rl where rl.limits = ?", [resource_limits]).fetchone()
+
+        if limit_id:
+            print(f"resource limits already exist with id {limit_id}")
+            return limit_id[0], resource_limits
+
+        limit_id, limits = self._connection.execute("insert into resource_limit (limits) values (?) returning *",
+                                                    [resource_limits]).fetchone()
+
+        print(f"initialized resource limits")
+        return limit_id, limits
+
+    def initialize_benchmark_set(self, experiment: str, resource_limits: dict) -> int:
         """
         initializes a new benchmark set consisting of one or many benchmark runs
         :param experiment: the experiment name
@@ -60,8 +82,10 @@ class DuckDBConnector:
         """
         if not self._is_initialized:
             with self.get_cursor() as conn:
-                bench_set = conn.execute("insert into benchmark_set (experiment, exec_start) values (?, ?) returning *",
-                                         [experiment, datetime.now()]).fetchall()[0]
+                resource_limits_id, resource_limits = self.initialize_resource_limits(resource_limits)
+
+                bench_set = conn.execute("insert into benchmark_set (experiment, resource_limits, exec_start) values (?, ?, ?) returning *",
+                                         [experiment, resource_limits_id,datetime.now()]).fetchall()[0]
 
                 print(f"created benchmark set: {bench_set}")
                 self._benchmark_set_id = bench_set[0]

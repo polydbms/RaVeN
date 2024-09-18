@@ -68,6 +68,7 @@ class FileIO:
         iterations = int(experiments.get("iterations", 1))
         warm_starts = int(experiments.get("warm_starts", 0))
         timeout = int(experiments.get("timeout", 60 * 60 * 3))
+        resource_limits = experiments.get("resource_limits", {})
 
         runs = []
         brf = BenchmarkRunFactory(capabilities)
@@ -92,7 +93,8 @@ class FileIO:
                 benchmark_params,
                 Path(experiments_filename).parts[-1],
                 warm_starts,
-                timeout
+                timeout,
+                resource_limits
             ))
 
         runs_no_dupes = list(set(runs))
@@ -130,6 +132,9 @@ class FileIO:
 
             if benchmark_params.align_crs_at_stage is None:
                 benchmark_params.align_crs_at_stage = Stage.PREPROCESS
+
+            if benchmark_params.align_to_crs is None:
+                benchmark_params.align_to_crs = DataType.RASTER
         else:
             if benchmark_params.align_crs_at_stage is Stage.PREPROCESS:
                 benchmark_params.align_to_crs = DataType.VECTOR if benchmark_params.vector_target_format is None \
@@ -181,7 +186,7 @@ class FileIO:
         with open(PROJECT_ROOT.joinpath(filename), mode="r") as c:
             try:
                 yamlfile = yaml.safe_load(c)
-                return [System(s["name"], int(s.get("port", 80))) for s in yamlfile["experiments"]["systems"]]
+                return [System(s["name"]) for s in yamlfile["experiments"]["systems"]]
             except yaml.YAMLError as exc:
                 print(exc)
                 return []

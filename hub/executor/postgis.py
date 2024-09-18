@@ -145,14 +145,33 @@ class Executor:
         #     workload_mod["order"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
 
         query = self.__translate(workload_mod)
-        query = query.replace("{self.table_vec}", self.table_vector)
-        query = query.replace("{self.table_ras}", self.table_raster)
+        query = query.replace("{self.table_vec}", f'"{self.table_vector.lower()}"')
+        query = query.replace("{self.table_ras}", f'"{self.table_raster.lower()}"')
         print(f"query to run: {query}")
+
+        if warm_start_no == 0:
+            relative_explain_file = Path(
+                f"data/results/{self.network_manager.measurements_loc.file_prepend}.queryplan.txt")
+            explain_path_host = self.host_base_path.joinpath(relative_explain_file)
+            query_ea = f"""EXPLAIN {query};"""
+            with open("query_ea.sql", "w") as f:
+                f.write(query_ea)
+            self.transporter.send_file(Path("query_ea.sql"), self.host_base_path.joinpath("data/query_ea.sql"), **kwargs)
+            self.network_manager.run_query_ssh(f'{self.host_base_path.joinpath("config/postgis/execute-analyze.sh")} {Path("/").joinpath(relative_explain_file)}', **kwargs)
+            Path("query_ea.sql").unlink()
+
+            explain_path = self.network_manager.host_params.controller_result_folder.joinpath(
+                f"results_{self.network_manager.measurements_loc.file_prepend}.queryplan.txt")
+            self.transporter.get_file(
+                explain_path_host,
+                explain_path,
+                **kwargs,
+            )
 
         relative_results_file = Path(
             f"data/results/{self.network_manager.measurements_loc.file_prepend}.{'cold' if warm_start_no == 0 else f'warm-{warm_start_no}'}.csv")
         results_path_host = self.host_base_path.joinpath(relative_results_file)
-        query = f"""\copy ({query}) To '{Path("/").joinpath(relative_results_file)}' CSV HEADER;"""
+        query = f"""\copy ({query}) To '{Path("/").joinpath(relative_results_file)}';"""
         with open("query.sql", "w") as f:
             f.write(query)
         self.transporter.send_file(Path("query.sql"), self.host_base_path.joinpath("data/query.sql"), **kwargs)

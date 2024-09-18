@@ -44,7 +44,7 @@ class BenchmarkRunFactory:
                     if param.system.name not in self.capabilities["vectorize"]:
                         for f in params_dict["raster_format"]:
                             p = copy.deepcopy(param)
-                            p.raster_target_format = RasterFileType.get_by_value(str(f).lower())
+                            p.raster_target_format = RasterFileType.get_by_value(str(f).lower()) if isinstance(f, str) else f
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
@@ -53,7 +53,7 @@ class BenchmarkRunFactory:
                     if param.system.name in self.capabilities["rasterize"]:
                         for f in params_dict["rasterize_format"]:
                             p = copy.deepcopy(param)
-                            p.vector_target_format = RasterFileType.get_by_value(str(f).lower())
+                            p.vector_target_format = RasterFileType.get_by_value(str(f).lower()) if isinstance(f, str) else f
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
@@ -99,7 +99,7 @@ class BenchmarkRunFactory:
                     if param.system.name in self.capabilities["vectorize"]:
                         for f in params_dict["vectorize_type"]:
                             p = copy.deepcopy(param)
-                            p.vectorize_type = VectorizationType.get_by_value(str(f).lower())
+                            p.vectorize_type = VectorizationType.get_by_value(str(f).lower()) if isinstance(f, str) else f
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
@@ -108,7 +108,7 @@ class BenchmarkRunFactory:
                     if param.system.name not in self.capabilities["rasterize"]:
                         for f in params_dict["vector_format"]:
                             p = copy.deepcopy(param)
-                            p.vector_target_format = VectorFileType.get_by_value(str(f).lower())
+                            p.vector_target_format = VectorFileType.get_by_value(str(f).lower()) if isinstance(f, str) else f
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
@@ -117,7 +117,7 @@ class BenchmarkRunFactory:
                     if param.system.name in self.capabilities["vectorize"]:
                         for f in params_dict["vectorize_format"]:
                             p = copy.deepcopy(param)
-                            p.raster_target_format = VectorFileType.get_by_value(str(f).lower())
+                            p.raster_target_format = VectorFileType.get_by_value(str(f).lower()) if isinstance(f, str) else f
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
@@ -142,7 +142,7 @@ class BenchmarkRunFactory:
                     if isinstance(params_dict["align_to_crs"], list):
                         for s in params_dict["align_to_crs"]:
                             p = copy.deepcopy(param)
-                            p.align_to_crs = DataType.get_by_value(s)
+                            p.align_to_crs = DataType.get_by_value(s) if isinstance(s, str) else s
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
@@ -169,7 +169,7 @@ class BenchmarkRunFactory:
                     else:
                         for s in params_dict["align_crs_at_stage"]:
                             p = copy.deepcopy(param)
-                            p.align_crs_at_stage = Stage.get_by_value(s)
+                            p.align_crs_at_stage = Stage.get_by_value(s) if isinstance(s, str) else s
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
@@ -180,7 +180,7 @@ class BenchmarkRunFactory:
                     # else: TODO maybe enable to use systems that do not support filtering
                         for s in params_dict["vector_filter_at_stage"]:
                             p = copy.deepcopy(param)
-                            p.vector_filter_at_stage = Stage.get_by_value(s)
+                            p.vector_filter_at_stage = Stage.get_by_value(s) if isinstance(s, str) else s
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)

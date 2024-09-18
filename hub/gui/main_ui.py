@@ -84,6 +84,8 @@ class Ui_RaVeN(object):
                       # "raster_tile_size": [f"{t[0]}x{t[1]}" for t in self.mdl_raster_tile_size.all_data()],
                       }
 
+        parameters = {k: v for k, v in parameters.items() if len(v) > 0}
+
         workload = {'get': {'vector': vector_fields, 'raster': [
             {'sval': {
                 'aggregations': self.inp_raster_agg.checkedItems()}}]},
@@ -99,11 +101,11 @@ class Ui_RaVeN(object):
 
         runs, iterations = FileIO.create_configs({"raster": raster_file, "vector": vector_file},
                                                  {}, "qgis.yaml", self.inp_system.checkedItems(),
-                                                 [System('postgis', 25432),
-                                                  System('omnisci', 6274),
-                                                  System('sedona', 80),
-                                                  System('beast', 80),
-                                                  System('rasdaman', 8080)],
+                                                 [System('postgis'),
+                                                  System('omnisci'),
+                                                  System('sedona'),
+                                                  System('beast'),
+                                                  System('rasdaman')],
                                                  workload
                                                  , "/home/gereon/git/dima/benchi/config/controller_config.qgis.yaml",
                                                  parameters)

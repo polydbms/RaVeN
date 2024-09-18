@@ -351,6 +351,7 @@ class CRSFilterPreprocessor(Preprocessor):
         #     out.rio.write_nodata(0, inplace=True)
         #     out.rio.to_raster(str(output_file))
 
+
         cmd_string = f"gdalwarp " \
                      f"-t_srs {self.config.raster_target_crs} "
 
@@ -504,12 +505,13 @@ class FileTypeProcessor(Preprocessor):  # TODO merge with FileConverterProcessor
         print(f"converting file {self.config.vector_file} from shp to wkt")
 
         vector = self.get_vector()
+        vector = vector[~vector.geometry.is_empty]
         # invert lat with long
         wkt = [
             re.sub("([-]?[\d.]+) ([-]?[\d.]+)",
                    r"\1 \2" if self.config.vector_target_crs.axis_info[0].direction in ["east", "west"] else r"\2 \1",
                    geom.wkt)
-            for geom in vector.geometry
+            for geom in vector.geometry if geom is not None
         ]  # FIXME some don't need to be inverted
         vector["wkt"] = wkt
         # del vector["geometry"]
@@ -682,8 +684,12 @@ def main():
     # todo if CRS already correct
 
     crs_preprocessor = CRSFilterPreprocessor(preprocess_config)
-    crs_preprocessor.filter_reproject_simplify_vector(log_time=crs_preprocessor.logger)
-    crs_preprocessor.clip_reproject_resolution_raster(log_time=crs_preprocessor.logger)
+
+    if preprocess_config.vector_target_crs != crs_preprocessor.get_vector_crs() or preprocess_config.vector_filter != [] or preprocess_config.vector_simplify != 0.0:
+        crs_preprocessor.filter_reproject_simplify_vector(log_time=crs_preprocessor.logger)
+
+    if preprocess_config.raster_target_crs != crs_preprocessor.get_raster_crs() or preprocess_config.raster_clip or preprocess_config.raster_resolution != 1.0:
+        crs_preprocessor.clip_reproject_resolution_raster(log_time=crs_preprocessor.logger)
 
     # TODO if raster -> raster needs to be converted
 

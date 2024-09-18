@@ -34,6 +34,8 @@ class BenchmarkParameters:
     vector_filter_at_stage: Stage
     raster_clip: bool
 
+    resource_limits: dict
+
     def __init__(self,
                  system: System,
                  raster_target_format=None,
@@ -48,7 +50,8 @@ class BenchmarkParameters:
                  align_to_crs=None,
                  align_crs_at_stage=Stage.PREPROCESS,
                  vector_filter_at_stage=Stage.PREPROCESS,
-                 raster_clip=True) -> None:
+                 raster_clip=True
+                 ) -> None:
         self.system = system
 
         self.raster_target_format = raster_target_format

@@ -34,7 +34,7 @@ class Executor:
         )
         self.base_url = f"http://0.0.0.0:48080/rasdaman"
         self.url = f"{self.base_url}/ows"
-        self.coverage = self.raster_path.name
+        self.coverage = "r_" + self.raster_path.name
         wkt = self.vector_path.controller_wkt.read_bytes()
         self.vector_data = json.loads(wkt)
         self.aggregations = {

@@ -1,11 +1,17 @@
 from enum import Enum
 from pathlib import Path
 
-from enums.datatype import DataType
+from hub.enums.datatype import DataType
 from hub.enums.stage import Stage
 from hub.enums.vectorizationtype import VectorizationType
 from hub.benchmarkrun.tilesize import TileSize
 from hub.utils.system import System
+from hub.utils.fileio import FileIO
+from hub.raven import Setup
+
+import pandas as pd
+
+from hub.zsresultsdb.init_duckdb import InitializeDuckDB
 
 
 class ZSAgg(Enum):
@@ -23,6 +29,33 @@ class ZSJoin(Enum):
 
 
 class ZSGen:
+    _raster: Path
+    _vector: Path
+
+    _raster_aggs: dict[str, ZSAgg]
+    _group_attr: list[str]
+    _vector_filter: list[str]
+    _raster_filter: list[str]
+    _systems: list[System]
+    _join_condition: ZSJoin
+
+    _raster_tile_size: list[TileSize]
+    _raster_resolution: list[float]
+
+    _vectorize_type: list[VectorizationType]
+    _vector_resolution: list[float]
+
+    _align_to_crs: list[DataType]
+    _align_crs_at_stage: list[Stage]
+    _raster_clip: list[bool]
+    _vector_filter_at_stage: list[Stage]
+
+    _iterations: int
+    _warm_starts: int
+    _timeout: int
+
+    benchi: Setup
+
     def __init__(self, raster: Path | str, vector: Path | str):
         self._raster: Path = raster if isinstance(raster, Path) else Path(raster)
         self._vector: Path = vector if isinstance(vector, Path) else Path(vector)
@@ -48,6 +81,8 @@ class ZSGen:
         self._iterations = 1
         self._warm_starts = 0
         self._timeout = 10000
+
+        self.benchi = Setup()
 
     def group(self, group: list[str] | str):
         self._group_attr = [group] if isinstance(group, str) else group
@@ -116,8 +151,6 @@ class ZSGen:
         return self
 
     def build(self):
-        vector_fields = self._vector
-
         parameters = {
             "align_crs_at_stage": self._align_crs_at_stage,
             "align_to_crs": self._align_to_crs,
@@ -129,24 +162,39 @@ class ZSGen:
             "vectorize_type": self._vectorize_type,
         }
 
-        workload = {'get': {'vector': vector_fields, 'raster': [
+        parameters = {k: v for k, v in parameters.items() if len(v) > 0}
+
+        workload = {'get': {'vector': self._group_attr, 'raster': [
             {'sval': {
-                'aggregations': self._raster_aggs}}]},
+                'aggregations': list(map(lambda a: a[1].value, self._raster_aggs.items()))}}]},
                     'join': {'table1': 'vector',
                              'table2': 'raster',
                              'condition': 'intersect(raster, vector)'},
-                    'group': {'vector': vector_fields},
-                    'order': {'vector': vector_fields},
+                    'group': {'vector': self._group_attr},
+                    'order': {'vector': self._group_attr},
                     'condition': {'vector': self._vector_filter}
                     }
 
-        runs, iterations = FileIO.create_configs({"raster": self._raster, "vector": self._vector},
-                                                 {}, "qgis.yaml", self._systems,
-                                                 [System('postgis', 25432),
-                                                  System('omnisci', 6274),
-                                                  System('sedona', 80),
-                                                  System('beast', 80),
-                                                  System('rasdaman', 8080)],
-                                                 workload
-                                                 , "/home/gereon/git/dima/benchi/config/controller_config.qgis.yaml",
-                                                 parameters)
+        runs, _ = FileIO.create_configs({"raster": str(self._raster), "vector": str(self._vector)},
+                                        {}, "zsbuilder.yaml", list(map(lambda s: s.value, self._systems)),
+                                        [System('postgis'),
+                                         System('omnisci'),
+                                         System('sedona'),
+                                         System('beast'),
+                                         System('rasdaman')],
+                                        workload
+                                        , "/home/gereon/git/dima/benchi/config/controller_config.qgis.yaml",
+                                        parameters)
+
+        host_params = FileIO.get_host_params("/home/gereon/git/dima/benchi/config/controller_config.qgis.yaml")
+        InitializeDuckDB(host_params.controller_db_connection, runs, "qgis.yaml")
+
+        set_id = runs[0].host_params.controller_db_connection.initialize_benchmark_set("qgis.yaml", {})
+
+        def do_run(run):
+            results = self.benchi.run_tasks(run)
+
+            return {"all_results": results, "results": pd.read_csv(results[0]), "parameters": run.benchmark_params,
+                    "set_id": set_id}
+
+        return [do_run(run) for run in runs]

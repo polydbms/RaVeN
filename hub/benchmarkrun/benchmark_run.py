@@ -17,9 +17,16 @@ class BenchmarkRun:
     warm_starts: int
     measurements_loc: MeasurementsLocation
 
-    def __init__(self, raster: DataLocation, vector: DataLocation, workload: dict,
-                 host_params: HostParameters, benchmark_params: BenchmarkParameters, experiment_name_file: str,
-                 warm_starts: int, query_timeout: int):
+    def __init__(self,
+                 raster: DataLocation,
+                 vector: DataLocation,
+                 workload: dict,
+                 host_params: HostParameters,
+                 benchmark_params: BenchmarkParameters,
+                 experiment_name_file: str,
+                 warm_starts: int,
+                 query_timeout: int,
+                 resource_limits: dict):
         """
         the Init function
         :param raster: all information on the raster data
@@ -39,6 +46,7 @@ class BenchmarkRun:
         self.experiment_name_file = experiment_name_file
         self.warm_starts = warm_starts
         self.query_timeout = query_timeout
+        self.resource_limits = resource_limits
 
         self.measurements_loc = MeasurementsLocation(self.host_params, self.benchmark_params)
 
@@ -50,4 +58,5 @@ class BenchmarkRun:
                                              str(self.benchmark_params),
                                              str(self.warm_starts),
                                              str(self.query_timeout),
+                                             str(self.resource_limits),
                                              str(self.measurements_loc)]])

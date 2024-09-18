@@ -52,7 +52,7 @@ class Ingestor:
             else self.raster_path.get_crs().to_epsg()
 
         payload = {
-                      "coverage_id": str(self.raster_path.name),
+                      "coverage_id": "r_" + str(self.raster_path.name),
                       "paths": [str(self.raster_path.docker_file)],
                       "epsg_crs": str(epsg_crs)
                   } | self.get_axes_infos(str(epsg_crs))

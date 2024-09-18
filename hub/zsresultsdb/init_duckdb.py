@@ -10,6 +10,7 @@ class InitializeDuckDB:
     """
     initialize a newly created duckdb instance
     """
+
     def __init__(self, connection: DuckDBConnector, runs, filename):
         self._connection = connection.get_cursor()
 
@@ -66,15 +67,28 @@ class InitializeDuckDB:
         """)  # systems_table
 
         self._connection.execute("""
+        CREATE SEQUENCE IF NOT EXISTS seq_resourceid START 1;
+        """)
+
+        self._connection.execute("""
+        create table if not exists resource_limit (
+            id int primary key default nextval('seq_resourceid'),
+            limits JSON
+        )
+        """)  # resource_limits_table
+
+        self._connection.execute("""
         CREATE SEQUENCE IF NOT EXISTS seq_benchsetid START 1;
         """)
 
         self._connection.execute("""
         create table if not exists benchmark_set (
             id int primary key default nextval('seq_benchsetid'),
-            experiment varchar ,
+            experiment varchar,
+            resource_limits int,
             exec_start timestamp,
-            foreign key (experiment) references experiments(filename)
+            foreign key (experiment) references experiments(filename),
+            foreign key (resource_limits) references resource_limit(id)
         )
         """)  # benchmark_run_table
 

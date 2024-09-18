@@ -85,7 +85,7 @@ class Raven:
             self.benchi.init_progress(len(runs), iterations.value(), warm_starts.value())
             self.show_progress_toast()
 
-            set_id = runs[0].host_params.controller_db_connection.initialize_benchmark_set("qgis.yaml")
+            set_id = runs[0].host_params.controller_db_connection.initialize_benchmark_set("qgis.yaml", {})
 
             result_files = []
             # run = next(iter(runs))
