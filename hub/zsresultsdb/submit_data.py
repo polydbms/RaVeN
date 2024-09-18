@@ -8,7 +8,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from duckdb import DuckDBPyConnection, connect
-from jupyter_lsp.serverextension import initialize
 from pandas import DataFrame
 
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
