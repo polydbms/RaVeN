@@ -37,8 +37,9 @@ experiments:
 
   systems:
     - name: postgis
-      port: 25432
     - name: beast
     - name: sedona
     - name: omnisci
-      port: 6274
+    - name: rasdaman
+    - name: sedona-vec
+    - name: postgis-vec

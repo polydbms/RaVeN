@@ -1,4 +1,4 @@
-FROM kartoza/postgis:15-3.3
+FROM kartoza/postgis:16-3.4
 
 # Install the required packages
 RUN apt-get update && apt-get install -y \

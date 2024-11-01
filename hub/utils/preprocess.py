@@ -1,4 +1,5 @@
 import argparse
+import base64
 import json
 import math
 import random
@@ -19,10 +20,12 @@ import rioxarray as rxr
 import rasterio.crs
 import shapely.geometry
 import shapely
+from myst_parser.inventory import filter_string
 from osgeo_utils import gdal_polygonize
 from pyproj import CRS
 from shapely import lib
 
+from hub.executor._sqlbased import SQLBased
 from hub.enums.rasterfiletype import RasterFileType
 from hub.enums.vectorfiletype import VectorFileType
 from hub.enums.vectorizationtype import VectorizationType
@@ -73,7 +76,7 @@ class PreprocessConfig:
     raster_target_crs: CRS
     raster_resolution: float
 
-    vector_filter: list[str]
+    vector_filter: dict | str
     raster_filter: list[str]
     # vector_clip: bool
     raster_clip: bool
@@ -107,7 +110,7 @@ class PreprocessConfig:
         self.raster_target_crs = CRS.from_epsg(args.raster_target_crs)
         self.raster_resolution = args.raster_resolution
 
-        self.vector_filter = args.vector_filter
+        self.vector_filter = json.loads(base64.b64decode(args.vector_filter).decode("utf-8")) if args.vector_filter else {}
         # self.raster_filter = []
         # self.vector_clip = False
         self.raster_clip = args.raster_clip
@@ -237,7 +240,7 @@ class PreprocessConfig:
             str(self.raster_target_crs),
             str(self.raster_resolution),
             str(self.raster_clip),
-            str(" AND ".join(self.vector_filter))
+            str(self.vector_filter)
         ])
 
 
@@ -415,10 +418,12 @@ class CRSFilterPreprocessor(Preprocessor):
         # out = vector.to_crs(self.config.vector_target_crs)
         # out.to_file(self._vector_tmp_out_folder.joinpath(self.config.vector_file), encoding="UTF-8")
 
+        filter_string = SQLBased.build_condition(self.config.vector_filter, "", "and") if self.config.vector_filter else ""
+
         output_file = self._vector_tmp_out_folder.joinpath(self.config.vector_file)
         cmd_string = f"ogr2ogr " \
                      f"-t_srs {self.config.vector_target_crs} " \
-                     f"""{'-where "' if self.config.vector_filter else ''} {' AND '.join(self.config.vector_filter)} {'"' if self.config.vector_filter else ''} """ \
+                     f"""{'-where "' if self.config.vector_filter else ''} {filter_string} {'"' if self.config.vector_filter else ''} """ \
                      f"-simplify {self.config.vector_simplify} " \
                      f"{output_file} " \
                      f"{self.config.vector_file_path} " \
@@ -673,8 +678,7 @@ def main():
     parser.add_argument("--raster_resolution", help="target resolution for the raster file", required=False,
                         default=1.0, type=float)
     parser.add_argument("--system", help="Specify which system should be benchmarked")
-    parser.add_argument("--vector_filter", help="Filters to be applied on the vector feature fields", required=False,
-                        action="append", default=[])
+    parser.add_argument("--vector_filter", help="Filters to be applied on the vector feature fields", required=False, default="")
     # parser.add_argument("--raster-filter", help="Filters to be applied on the raster pixels", required=False, action="append", default=[])
     parser.add_argument("--raster_clip", help="Whether to clip the Raster on the vector extent", required=True,
                         action=argparse.BooleanOptionalAction)

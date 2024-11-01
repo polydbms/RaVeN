@@ -8,6 +8,7 @@ class System(Enum):
     BEAST = "beast"
     RASDAMAN = "rasdaman"
     HEAVYAI = "omnisci"
+    POSTGIS_VEC = "postgis-vec"
 
     @property
     def name(self):

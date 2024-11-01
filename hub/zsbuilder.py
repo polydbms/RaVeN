@@ -57,6 +57,14 @@ class ZSGen:
     benchi: Setup
 
     def __init__(self, raster: Path | str, vector: Path | str):
+        self._transporter = None
+        self._run_cursor = None
+        self._network_manager = None
+        self._selected_system = None
+        self._selected_run = None
+        self._runs = None
+        self._set_id = None
+
         self._raster: Path = raster if isinstance(raster, Path) else Path(raster)
         self._vector: Path = vector if isinstance(vector, Path) else Path(vector)
 
@@ -189,12 +197,38 @@ class ZSGen:
         host_params = FileIO.get_host_params("/home/gereon/git/dima/benchi/config/controller_config.qgis.yaml")
         InitializeDuckDB(host_params.controller_db_connection, runs, "qgis.yaml")
 
-        set_id = runs[0].host_params.controller_db_connection.initialize_benchmark_set("qgis.yaml", {})
+        self._set_id = runs[0].host_params.controller_db_connection.initialize_benchmark_set("qgis.yaml", {})
 
-        def do_run(run):
+        self._runs = runs
+
+
+    def prepare(self):
+        self._selected_run = self._runs[0]
+
+        self._selected_system = self._selected_run.benchmark_params.system
+        print(self._selected_system)
+
+        self._network_manager, self._run_cursor, self._transporter = self.benchi.setup_host(0, self._selected_run, self._selected_run.benchmark_params.system)
+
+    def do_preprocess(self):
+        self.benchi.do_preprocess(self._network_manager, self._selected_run, self._selected_system)
+
+    def do_ingestion(self):
+        self.benchi.do_ingestion(self._network_manager, self._selected_run, self._selected_system)
+
+    def do_execution(self):
+        self.benchi.do_execution(self._network_manager, self._selected_run, self._selected_system)
+
+    def do_teardown(self):
+        self.benchi.do_teardown(self._network_manager, self._selected_run, self._selected_system)
+
+
+
+    def do_benchmark(self):
+        result = []
+        for run in self._runs:
             results = self.benchi.run_tasks(run)
 
-            return {"all_results": results, "results": pd.read_csv(results[0]), "parameters": run.benchmark_params,
-                    "set_id": set_id}
+            result.append({"all_results": results, "results": pd.read_csv(results[0]), "parameters": run.benchmark_params,
+                    "set_id": self._set_id})
 
-        return [do_run(run) for run in runs]

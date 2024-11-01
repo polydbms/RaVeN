@@ -17,6 +17,6 @@ cd $(dirname $0) && docker-compose up -d
 export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}' | grep postgis)
 
 echo "Config"
-docker exec -u root $DOCKER_CONTAINER bash -c "chmod -R 777 /var/lib/apt/lists/partial"
-docker exec -u root $DOCKER_CONTAINER bash -c "apt-get update"
-docker exec -u root $DOCKER_CONTAINER bash -c "apt-get install postgis -y"
+docker exec -u root $DOCKER_CONTAINER chmod -R 777 /var/lib/apt/lists/partial
+docker exec -u root $DOCKER_CONTAINER apt-get update
+docker exec -u root $DOCKER_CONTAINER apt-get install postgis -y

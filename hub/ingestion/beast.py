@@ -114,7 +114,29 @@ class Ingestor(IngestionInterface):
                 "condition": cond
             }
 
-        vector_conditions = list(map(__parse_vector_cond, self.workload.get("condition", {}).get("vector", [])))
+        def __build_condition(condition, operator):
+            if isinstance(condition, str):
+                c = __parse_vector_cond(condition)
+                return f'''f.getAs[{c['datatype']}]("{c['field']}") {c['condition']}'''
+            if isinstance(condition, list):
+                result = ""
+                for idx, c in enumerate(condition):
+                    match operator:
+                        case "and":
+                            beast_op = "&&"
+                        case "or":
+                            beast_op = "||"
+                        case _:
+                            raise ValueError(f"Operator {operator} is not supported")
+                    result += f"{__build_condition(c, beast_op)} {beast_op if idx + 1 < len(condition) else ''} "
+                return f"{result}"
+            if isinstance(condition, dict):
+                if len(condition) > 1:
+                    raise ValueError("Only one condition is allowed")
+                for o, c in condition.items():
+                    return f"({__build_condition(c, o)})"
+
+        vector_condition = __build_condition(self.workload.get("condition", {}).get("vector", []), "and")
 
         raster_type = self.__dtype_to_scala_raster()
         # raster_field = re.search("([^<>!=]*)",
@@ -131,7 +153,7 @@ class Ingestor(IngestionInterface):
         payload = {
             "vector_path": self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed,
             "raster_geotiff_path": self.raster.docker_file_preprocessed.with_suffix(".geotiff"),
-            "vector_conditions": vector_conditions,
+            "vector_conditions": vector_condition,
             "raster_conditions": raster_conditions,
             "get": {
                 "field": self.workload["get"]["vector"][0],
@@ -148,8 +170,6 @@ class Ingestor(IngestionInterface):
 
         rendered = template.render(**payload)
         return rendered
-
-
 
     def __save_template(self, template):
         template_path = self.raptor_scala_path
@@ -189,10 +209,10 @@ class Ingestor(IngestionInterface):
             case _:
                 raise Exception(f"type {fieldtype} has not been implemented yet")
 
-
     def __dtype_to_scala_raster(self):
-        rastertypes = json.loads(subprocess.check_output(f'gdalinfo -json -nomd -norat -noct -nogcp {self.raster.controller_file}',
-                                         shell=True).decode("utf-8"))["bands"][0]["type"]
+        rastertypes = \
+        json.loads(subprocess.check_output(f'gdalinfo -json -nomd -norat -noct -nogcp {self.raster.controller_file}',
+                                           shell=True).decode("utf-8"))["bands"][0]["type"]
 
         match rastertypes:
             case "Byte" | "Int8" | "UInt16" | "Int16" | "Int32":
@@ -205,4 +225,3 @@ class Ingestor(IngestionInterface):
                 return "Float"
             case _:
                 raise Exception(f"type {rastertypes} has not been implemented yet")
-

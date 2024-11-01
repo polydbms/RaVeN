@@ -10,41 +10,21 @@ from hub.utils.datalocation import DataLocation
 from hub.enums.datatype import DataType
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.network import NetworkManager
+from hub.executor.postgis import Executor as PostgisExecutor
 
 
-class Executor:
+class Executor(PostgisExecutor):
     def __init__(self, vector_path: DataLocation,
                  raster_path: DataLocation,
                  network_manager: NetworkManager,
                  benchmark_params: BenchmarkParameters) -> None:
-        self.logger = {}
-        self.network_manager = network_manager
-        self.transporter = FileTransporter(network_manager)
-        self.table_vector = vector_path.name
-        self.table_raster = raster_path.name
-        self.host_base_path = network_manager.host_params.host_base_path
-        self.benchmark_params = benchmark_params
+        super().__init__(vector_path, raster_path, network_manager, benchmark_params)
 
     def __oid_fix(self, feature):
         return "__oid" if feature.lower() == "oid" else feature
 
     def __handle_aggregations(self, type, features):
-        aggregates = []
-
-        for feature in features:
-            for aggregation in features[feature]["aggregations"]:
-
-                match aggregation:
-                    case "count":
-                        aggregates.append(f"sum(pvc.count) as {feature}_{aggregation}")
-                    case "sum":
-                        aggregates.append(f"sum(pvc.count * pvc.value) as {feature}_{aggregation}")
-                    case "avg":
-                        aggregates.append(f"sum(pvc.count * pvc.value) / sum(pvc.count) as {feature}_{aggregation}")
-                    case _:
-                        aggregates.append(f"{aggregation}({type}.{feature}) as {feature}_{aggregation}")
-
-        return ", ".join(aggregates)
+        return SQLBased.handle_aggregations(type, features)
 
     def __parse_get(self, get):
         vector = []
@@ -95,7 +75,7 @@ class Executor:
         limit = f'limit {workload["limit"]}' if "limit" in workload else ""
         query = f"{selection} {join} {condition} {group} {order} {limit}"
 
-        raster_geom = "raster.rast"
+        raster_geom = "raster.geom"
         vector_geom = "vector.geom"
         if self.benchmark_params.align_crs_at_stage == Stage.EXECUTION:
             match self.benchmark_params.align_to_crs:
@@ -105,66 +85,48 @@ class Executor:
                     raster_geom = f"ST_Transform({raster_geom}, {self.benchmark_params.raster_target_crs.to_epsg()})"
 
         if "bestrasvecjoin" in query:
-            query = re.sub("bestrasvecjoin\(",
-                           "intersect(",
-                           query)
-
+            query = re.sub(
+                "(bestrasvecjoin\(\w*, \w*\))",
+                f"ST_Within({raster_geom}, {vector_geom}) "
+                f"OR ST_Contains({raster_geom}, {vector_geom}) "
+                f"OR ST_Crosses({raster_geom}, {vector_geom}) "
+                f"OR ST_Overlaps({raster_geom}, {vector_geom})",
+                query,
+            )
         if "intersect" in query:
             query = re.sub(
                 "(intersect\(\w*, \w*\))",
-                f"ST_Intersects({raster_geom}, {vector_geom}), ST_ValueCount(st_clip({raster_geom}, {vector_geom}), 1) as pvc",
-                query,
-            )
-            query = re.sub(
-                "(raster.sval)",
-                "pvc.value",
+                f"ST_Intersects({raster_geom}, {vector_geom})",
                 query,
             )
         if "contains" in query:
             query = re.sub(
                 "(contains\(\w*, \w*\))",
-                f"ST_Intersects({raster_geom}, {vector_geom})",
+                f"ST_Contains({raster_geom}, {vector_geom})",
                 query,
             )
-            query = re.sub(
-                "(raster.sval)",
-                f"ST_Value({raster_geom}, {vector_geom}, true)",
-                query,
-            )
-        return (query)
 
-    @staticmethod
-    def fix_condition_oid(condition):
-        if isinstance(condition, dict):
-            for o, c in condition.items():
-                if isinstance(c, str):
-                    condition[o] = re.sub("(^|\W)OID($|\W)", "__oid", c)
-                    return
-                else:
-                    Executor.fix_condition_oid(c)
-        if isinstance(condition, list):
-            for idx, c in enumerate(condition):
-                if isinstance(c, str):
-                    condition[idx] = re.sub("(^|\W)OID($|\W)", "__oid", c)
-                    return
-                else:
-                    Executor.fix_condition_oid(c)
+        query = re.sub(
+            "(raster.sval)",
+            "raster.values",
+            query,
+        )
+        return query
 
     @measure_time
     def run_query(self, workload, warm_start_no: int, **kwargs) -> Path:
         workload_mod = copy.deepcopy(workload)
 
         if workload_mod.get("get", {}).get("vector", {}):
-            workload_mod["get"]["vector"] = list(
-                map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+            workload_mod["get"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
         if workload_mod.get("condition", {}).get("vector", {}):
-            Executor.fix_condition_oid(workload_mod["condition"]["vector"])
+            PostgisExecutor.fix_condition_oid(workload_mod["condition"]["vector"])
         if workload_mod.get("group", {}).get("vector", {}):
-            workload_mod["group"]["vector"] = list(
-                map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+            workload_mod["group"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
         if workload_mod.get("order", {}).get("vector", {}):
-            workload_mod["order"]["vector"] = list(
-                map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+            workload_mod["order"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+
+
 
         query = self.__translate(workload_mod)
         query = query.replace("{self.table_vec}", f'"{self.table_vector.lower()}"')
@@ -178,11 +140,8 @@ class Executor:
             query_ea = f"""EXPLAIN {query};"""
             with open("query_ea.sql", "w") as f:
                 f.write(query_ea)
-            self.transporter.send_file(Path("query_ea.sql"), self.host_base_path.joinpath("data/query_ea.sql"),
-                                       **kwargs)
-            self.network_manager.run_query_ssh(
-                f'{self.host_base_path.joinpath("config/postgis/execute-analyze.sh")} {Path("/").joinpath(relative_explain_file)}',
-                **kwargs)
+            self.transporter.send_file(Path("query_ea.sql"), self.host_base_path.joinpath("data/query_ea.sql"), **kwargs)
+            self.network_manager.run_query_ssh(f'{self.host_base_path.joinpath("config/postgis-vec/execute-analyze.sh")} {Path("/").joinpath(relative_explain_file)}', **kwargs)
             Path("query_ea.sql").unlink()
 
             explain_path = self.network_manager.host_params.controller_result_folder.joinpath(
@@ -200,7 +159,7 @@ class Executor:
         with open("query.sql", "w") as f:
             f.write(query)
         self.transporter.send_file(Path("query.sql"), self.host_base_path.joinpath("data/query.sql"), **kwargs)
-        self.network_manager.run_query_ssh(self.host_base_path.joinpath("config/postgis/execute.sh"), **kwargs)
+        self.network_manager.run_query_ssh(self.host_base_path.joinpath("config/postgis-vec/execute.sh"), **kwargs)
         Path("query.sql").unlink()
 
         result_path = self.network_manager.host_params.controller_result_folder.joinpath(
@@ -216,4 +175,4 @@ class Executor:
         return result_path
 
     def post_run_cleanup(self):
-        pass
+        super().post_run_cleanup()

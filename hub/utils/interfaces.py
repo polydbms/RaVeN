@@ -66,3 +66,11 @@ class ExecutorInterface(ABC):
         :return:
         """
         pass
+
+    @abstractmethod
+    def post_run_cleanup(self):
+        """
+        clean up after the query run
+        :return:
+        """
+        pass

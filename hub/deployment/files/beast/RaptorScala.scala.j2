@@ -27,9 +27,9 @@ object RaptorScala {
 
       // 1- Load raster and vector data
       val vector: RDD[IFeature] = sc.spatialFile("{{vector_path}}")
-      {% for c in vector_conditions %}
-        .filter(f => f.getAs[{{c.datatype}}]("{{c.field}}") {{c.condition}})
-      {% endfor %}
+      {%  if vector_conditions %}
+        .filter(f => {{ vector_conditions }})
+      {% endif %}
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,end,execution,beast,vector,inner")
 
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,start,execution,beast,raster,inner")

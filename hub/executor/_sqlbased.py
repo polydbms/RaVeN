@@ -43,16 +43,8 @@ class SQLBased:
 
     @staticmethod
     def parse_condition(condition, vector_table_name="vector", raster_table_name="raster"):
-        vector = (
-            "and ".join([f"{vector_table_name}." + feature for feature in condition["vector"]])
-            if "vector" in condition
-            else ""
-        )
-        raster = (
-            "and ".join([f"{raster_table_name}." + feature for feature in condition["raster"]])
-            if "raster" in condition
-            else ""
-        )
+        vector = SQLBased.build_condition(condition["vector"], vector_table_name, "and") if condition.get("vector") else ""
+        raster = SQLBased.build_condition(condition["raster"], raster_table_name, "and") if condition.get("raster") else ""
 
         if vector and raster:
             return f"where {vector} and {raster}"
@@ -62,6 +54,22 @@ class SQLBased:
             return f"where {raster}"
         elif not vector and not raster:
             return f""
+
+    @staticmethod
+    def build_condition(condition, table_name, operator):
+        if isinstance(condition, str):
+            return f"{table_name + '.' if table_name else ''}{condition}"
+        if isinstance(condition, list):
+            result = ""
+            for idx, c in enumerate(condition):
+                 result += f"{SQLBased.build_condition(c, table_name, operator)} {operator if idx + 1 < len(condition) else ''} "
+            return f"{result}"
+        if isinstance(condition, dict):
+            if len(condition) > 1:
+                raise ValueError("Only one condition is allowed")
+            for o, c in condition.items():
+                return f"({SQLBased.build_condition(c, table_name, o)})"
+
 
     @staticmethod
     def parse_group(group, vector_table_name="vector", raster_table_name="raster"):

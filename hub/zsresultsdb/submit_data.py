@@ -93,7 +93,7 @@ class DuckDBConnector:
 
             return self._benchmark_set_id
 
-    def initialize_benchmark_run(self, params: BenchmarkParameters, iteration: int):
+    def initialize_benchmark_run(self, params: BenchmarkParameters, iteration: int) -> DuckDBRunCursor:
         """
         initializes a benchmark run in the database
         :param params: the benchmark parameters object

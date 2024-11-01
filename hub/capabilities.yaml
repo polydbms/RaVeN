@@ -4,8 +4,10 @@ systems:
   vectorize:
     - omnisci
     - sedona-vec
+    - postgis-vec
   same_crs:
     - postgis
+    - postgis-vec
     - sedona-vec
   no_st_transform:
     - omnisci
