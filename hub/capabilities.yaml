@@ -1,6 +1,8 @@
 systems:
   rasterize:
     - rasdaman
+  wkt_csv:
+    - rasdaman
   vectorize:
     - omnisci
     - sedona-vec
@@ -26,6 +28,8 @@ systems:
   import_at_exec:
     - sedona
     - sedona-vec
+    - beast
+  requires_singleparts:
     - beast
 
 #  align_crs_at:

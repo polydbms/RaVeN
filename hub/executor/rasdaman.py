@@ -1,12 +1,11 @@
 import concurrent
 import csv
-import json
 import operator
 import re
-import threading
 import urllib.parse as parser
 from concurrent.futures import ThreadPoolExecutor
 
+import pandas as pd
 import requests
 
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
@@ -35,8 +34,9 @@ class Executor:
         self.base_url = f"http://0.0.0.0:48080/rasdaman"
         self.url = f"{self.base_url}/ows"
         self.coverage = "r_" + self.raster_path.name
-        wkt = self.vector_path.controller_wkt.read_bytes()
-        self.vector_data = json.loads(wkt)
+
+        self.vector_data = pd.read_csv(self.vector_path.controller_wkt).to_dict(orient="records")
+
         self.aggregations = {
             "avg": self.__get_avg,
             "sum": self.__get_sum,
@@ -45,7 +45,7 @@ class Executor:
             "count": self.__get_count,
         }
         self.headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        self.crs = self.vector_path.get_crs().to_epsg()
+        self.crs = self.vector_path.get_crs().to_epsg()f
         self.crs_url = f"{self.base_url}/def/crs/EPSG/0/{self.crs}"
 
     def __get_avg(self, geometry):
@@ -86,7 +86,7 @@ class Executor:
     def __get_point_value(self, properties, **kwargs):
         if "selection" in kwargs:
             selection = kwargs["selection"]
-        geometry = properties["wkt"]
+        geometry = properties["WKT"]
         vector_feature = [properties[feature] for feature in selection[0]]
         search = re.search("\((\W*\d*\W*\d*) (\W*\d*\W*\d*)\)", geometry)
         result = vector_feature
@@ -109,12 +109,12 @@ class Executor:
         else:
             result.append("No poit")
             print("Geometry contains no points")
-        yield result
+        return result
 
     def __do_aggregation(self, properties, **kwargs):
         if "selection" in kwargs:
             selection = kwargs["selection"]
-        geometry = properties["wkt"]
+        geometry = properties["WKT"]
         vector_feature = [properties[feature] for feature in selection[0]]
         aggregations = [
             ras_feature
@@ -133,7 +133,7 @@ class Executor:
             # print(response.request.url, response.request.headers, parsed_payload, sep=";")
             result.append("0" if "xml" in response.text else response.text)
 
-        yield result
+        return result
 
     def __handle_aggregations(self, features):
         return [
@@ -237,18 +237,23 @@ class Executor:
 
         vector_features = [
             entry
-            for entry in self.vector_data["features"]
+            for entry in self.vector_data
             if not condition
                or all(
                 [
-                    value[1](entry["properties"][key], value[-1])
+                    value[1](entry[key], value[-1])
                     for key, value in condition[0].items()
                 ]
             )
         ]
+
+        relevant_attributes = set([key for key in selection[0]] + [key for key in order[0]])
+
+        vector_features = [feature for feature in vector_features if all(feature.get(key) for key in relevant_attributes)]
+
         for o in order[0]:
-            """sort vecctor_features based on order[0], the key may contain strings or numbers"""
-            vector_features.sort(key=lambda x: x["properties"][o])
+            """sort vector_features based on order[0], the key may contain strings or numbers"""
+            vector_features.sort(key=lambda x: x[o])
 
         result_path = self.network_manager.host_params.controller_result_folder.joinpath(
             f"results_{self.network_manager.measurements_loc.file_prepend}.{'cold' if warm_start_no == 0 else f'warm-{warm_start_no}'}.csv")
@@ -266,25 +271,41 @@ class Executor:
         self.network_manager.write_timings_marker(f"benchi_marker,,start,execution,rasdaman,aggregations,")
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            results = {
+                executor.submit(operation,
+                                properties=feature,
+                                selection=selection,
+                                condition=condition,
+                                limit=limit,
+                                order=order,
+                                )
+            : feature for feature in vector_features}
 
-            threading.Timer(self.network_manager.query_timeout, executor.shutdown, kwargs={"cancel_futures": True})
+            # timeout = threading.Timer(self.network_manager.query_timeout, executor.shutdown, kwargs={"cancel_futures": True, "wait": False})
+            # timeout.start()
 
-            results = {executor.submit(operation,
-                                       properties=feature["properties"],
-                                       selection=selection,
-                                       condition=condition,
-                                       limit=limit,
-                                       order=order,
-                                       ): feature for feature in vector_features}
+            finished_with_timeout = False
 
-            for future in concurrent.futures.as_completed(results):
-                try:
-                    writer.writerow(next(future.result()))
-                except Exception as exc:
-                    print(f"error while fetching result: {exc}")
+            try:
+                for future in concurrent.futures.as_completed(results, timeout=self.network_manager.query_timeout):
+                    # try:
+                        writer.writerow(future.result())
+                        # s = [r._state for r in results]
+                        # print({"p": s.count("PENDING"),
+                        #         "r": s.count("RUNNING"),
+                        #         "f": s.count("FINISHED"),
+                        #         "c": s.count("CANCELLED"),
+                        #        })
+                    # except Exception as exc:
+                    #     print(f"error while fetching result: {exc}")
+            except concurrent.futures.TimeoutError:
+                executor.shutdown(wait=False, cancel_futures=True)
+                finished_with_timeout = True
 
 
-        self.network_manager.write_timings_marker(f"benchi_marker,,end,execution,rasdaman,aggregations,")
+            #timeout.cancel()
+
+        self.network_manager.write_timings_marker(f"benchi_marker,,{'terminated' if finished_with_timeout else 'end'},execution,rasdaman,aggregations,")
         f.close()
 
         return result_path

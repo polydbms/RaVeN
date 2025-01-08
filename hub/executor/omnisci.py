@@ -4,7 +4,7 @@ from pathlib import Path
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.enums.stage import Stage
 from hub.evaluation.measure_time import measure_time
-from hub.executor._sqlbased import SQLBased
+from hub.executor.sqlbased import SQLBased
 from hub.utils.datalocation import DataLocation
 from hub.enums.datatype import DataType
 from hub.utils.filetransporter import FileTransporter

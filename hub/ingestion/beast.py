@@ -12,7 +12,7 @@ from hub.enums.vectorfiletype import VectorFileType
 from hub.evaluation.measure_time import measure_time
 from jinja2 import Template
 
-from hub.executor._sqlbased import SQLBased
+from hub.executor.sqlbased import SQLBased
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.interfaces import IngestionInterface
@@ -201,7 +201,7 @@ class Ingestor(IngestionInterface):
             case "Real":
                 return "Float"
             case "Integer64":
-                return "Int"
+                return "Long"
             case "Integer":
                 return "Int"
             case "Boolean":

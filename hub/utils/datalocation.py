@@ -152,10 +152,10 @@ class DataLocation:
     @property
     def docker_wkt(self) -> Path:
         """
-        the dataset file as a json containing well-known text as seen form the docker container
+        the dataset file as a csv containing well-known text as seen form the docker container
         :return:
         """
-        return self.docker_file_preprocessed.with_suffix(".json")
+        return self.docker_file_preprocessed.with_suffix(".csv")
 
     @property
     def docker_dir_preprocessed(self) -> Path:
@@ -192,10 +192,10 @@ class DataLocation:
     @property
     def host_wkt(self) -> Path:
         """
-        the dataset file as a json containing well-known text as seen form the host
+        the dataset file as a csv containing well-known text as seen form the host
         :return:
         """
-        return self.host_file_preprocessed.with_suffix(".json")
+        return self.host_file_preprocessed.with_suffix(".csv")
 
     @property
     def host_dir_preprocessed(self) -> Path:
@@ -232,10 +232,10 @@ class DataLocation:
     @property
     def controller_wkt(self) -> Path:
         """
-        the dataset file as a json containing well-known text as seen form the host
+        the dataset file as a csv containing well-known text as seen form the host
         :return:
         """
-        return self.controller_location.with_suffix(".json")
+        return self.controller_location.with_suffix(".csv")
 
     def set_preprocessed(self):
         """

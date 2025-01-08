@@ -3,7 +3,7 @@ import re
 from hub.configuration import PROJECT_ROOT
 from hub.enums.datatype import DataType
 from hub.enums.stage import Stage
-from hub.executor._sqlbased import SQLBased
+from hub.executor.sqlbased import SQLBased
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.evaluation.measure_time import measure_time
 from hub.executor.sedona import Executor as SedonaExecutor

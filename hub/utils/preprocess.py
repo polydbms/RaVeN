@@ -25,7 +25,7 @@ from osgeo_utils import gdal_polygonize
 from pyproj import CRS
 from shapely import lib
 
-from hub.executor._sqlbased import SQLBased
+from hub.executor.sqlbased import SQLBased
 from hub.enums.rasterfiletype import RasterFileType
 from hub.enums.vectorfiletype import VectorFileType
 from hub.enums.vectorizationtype import VectorizationType
@@ -420,11 +420,15 @@ class CRSFilterPreprocessor(Preprocessor):
 
         filter_string = SQLBased.build_condition(self.config.vector_filter, "", "and") if self.config.vector_filter else ""
 
+        singleparts = "-explodecollections" if self.config.system in Capabilities.read_capabilities().get("requires_singleparts") else ""
+
+
         output_file = self._vector_tmp_out_folder.joinpath(self.config.vector_file)
         cmd_string = f"ogr2ogr " \
                      f"-t_srs {self.config.vector_target_crs} " \
                      f"""{'-where "' if self.config.vector_filter else ''} {filter_string} {'"' if self.config.vector_filter else ''} """ \
                      f"-simplify {self.config.vector_simplify} " \
+                     f"{singleparts} " \
                      f"{output_file} " \
                      f"{self.config.vector_file_path} " \
                      f"-lco ENCODING=UTF-8 " \
@@ -488,6 +492,27 @@ class FileConverterPreprocessor(Preprocessor):
 
         self.config.set_raster_suffix(".xyz")
         self.update_raster_folder()
+
+    @measure_time
+    @print_timings("vector", "translate")
+    def vector_to_csv_wkt(self, *args, **kwargs):
+        """
+        converts a vector file into a csv file with the geometries as WKT
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        print(f"converting file {self.config.vector_file} to csv with WKT")
+
+        output_file = self._vector_tmp_out_folder \
+            .joinpath(self.config.vector_file).with_suffix(".csv")
+
+        subprocess.call(f"ogr2ogr -f CSV -lco GEOMETRY=AS_WKT {output_file} {self.config.vector_file_path}", shell=True)
+
+        print(f"translated vector file to {output_file}")
+
+        self.config.set_raster_suffix(".csv")
+        self.update_vector_folder()
 
 
 class FileTypeProcessor(Preprocessor):  # TODO merge with FileConverterProcessor
@@ -717,9 +742,9 @@ def main():
 
     # todo fi rasterize
 
-    if preprocess_config.system in capabilities["rasterize"]:
-        file_type_preprocessor = FileTypeProcessor(preprocess_config)
-        file_type_preprocessor.shape_to_wkt(log_time=file_type_preprocessor.logger)
+    if preprocess_config.system in capabilities["wkt_csv"]:
+        file_type_preprocessor = FileConverterPreprocessor(preprocess_config)
+        file_type_preprocessor.vector_to_csv_wkt(log_time=file_type_preprocessor.logger)
         print(file_type_preprocessor.logger)
 
     preprocess_config.copy_to_output()

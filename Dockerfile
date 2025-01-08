@@ -23,6 +23,7 @@ COPY ./hub/enums/vectorizationtype.py hub/enums/vectorizationtype.py
 COPY ./hub/utils/capabilities.py hub/utils/capabilities.py
 COPY ./hub/utils/network.py hub/utils/network.py
 COPY ./hub/utils/system.py hub/utils/system.py
+COPY ./hub/executor/sqlbased.py hub/executor/sqlbased.py
 COPY ./hub/utils/preprocess.py preprocess.py
 COPY ./hub/capabilities.yaml hub/capabilities.yaml
 CMD [ "/bin/bash" ]
