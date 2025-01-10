@@ -89,6 +89,8 @@ class PreprocessConfig:
         :param args: the arguments sent by the controller
         :param capabilities: the capabilities the systems have, based on the capabilities.yaml
         """
+        print(args)
+
         self.base_path = Path(args.base_path)
 
         self.system = args.system
@@ -101,6 +103,9 @@ class PreprocessConfig:
         self.vector_target_crs = CRS.from_epsg(args.vector_target_crs)
         self.vectorization_type = VectorizationType.get_by_value(args.vectorization_type)
         self.vector_simplify = args.vector_simplify
+        self.extent_wkt = args.extent_wkt
+        self.bbox = args.bbox
+        self.bbox_srs = args.bbox_srs
 
         self._raster_folder = Path(args.raster_path)
         self._raster_file = self._find_file(self._raster_folder, RasterFileType).parts[-1]
@@ -240,7 +245,10 @@ class PreprocessConfig:
             str(self.raster_target_crs),
             str(self.raster_resolution),
             str(self.raster_clip),
-            str(self.vector_filter)
+            str(self.vector_filter),
+            str(self.extent_wkt),
+            str(self.bbox),
+            str(self.bbox_srs)
         ])
 
 
@@ -390,7 +398,9 @@ class CRSFilterPreprocessor(Preprocessor):
             cmd_string += f"-ts {int(width / self.config.raster_resolution)} {int(height / self.config.raster_resolution)} "
 
         cmd_string += f"{self.config.raster_file_path} " \
-                      f"{output_file}"
+                      f"{output_file} " \
+                      f"--debug ON " \
+                      f""
 
         print(f"executing command for raster: {cmd_string}")
         subprocess.call(cmd_string, shell=True)
@@ -427,11 +437,14 @@ class CRSFilterPreprocessor(Preprocessor):
         cmd_string = f"ogr2ogr " \
                      f"-t_srs {self.config.vector_target_crs} " \
                      f"""{'-where "' if self.config.vector_filter else ''} {filter_string} {'"' if self.config.vector_filter else ''} """ \
+                     f"""{f'-clipsrc "{self.config.extent_wkt}"' if self.config.extent_wkt else ''} """ \
+                     f"""{f'-spat {" ".join(self.config.bbox)} -spat_srs "EPSG:{self.config.bbox_srs}"' if self.config.bbox else ''} """ \
                      f"-simplify {self.config.vector_simplify} " \
                      f"{singleparts} " \
                      f"{output_file} " \
                      f"{self.config.vector_file_path} " \
                      f"-lco ENCODING=UTF-8 " \
+                     f"--debug ON " \
                      f""
 
         print(f"executing command for vector: {cmd_string}")
@@ -707,6 +720,9 @@ def main():
     # parser.add_argument("--raster-filter", help="Filters to be applied on the raster pixels", required=False, action="append", default=[])
     parser.add_argument("--raster_clip", help="Whether to clip the Raster on the vector extent", required=True,
                         action=argparse.BooleanOptionalAction)
+    parser.add_argument("--extent_wkt", help="The extent of the area to query", required=False, default="")
+    parser.add_argument("--bbox", help="The bounding box of the area to query", required=False, nargs=4)
+    parser.add_argument("--bbox_srs", help="The CRS of the bounding box", required=False, default="")
     preprocess_config = PreprocessConfig(parser.parse_args(), capabilities)
     print(preprocess_config)
 

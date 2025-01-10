@@ -19,6 +19,7 @@ from hub.utils.network import NetworkManager
 from hub.utils.system import System
 from hub.utils.interfaces import ExecutorInterface
 from hub.zsresultsdb.submit_data import DuckDBRunCursor
+from hub.utils.query import extent_to_geom
 
 
 class Setup:
@@ -173,6 +174,16 @@ class Setup:
         vector_filter = run.workload.get("condition", {}).get("vector",
                                                               []) if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS else []
         vector_filter_str = base64.b64encode(json.dumps(vector_filter).encode('utf-8')).decode('utf-8')
+        # extent = extent_to_geom(run.workload.get("extent", {}), run.benchmark_params, run.vector.get_crs()) \
+        #     if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS \
+        #     else None
+        # extent_str = extent.wkt \
+        #     if extent \
+        #     else ""
+        bbox = run.workload.get("extent", {}).get("bbox", {}) if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS else {}
+        bbox_str = f"{bbox['xmin']} {bbox['ymin']} {bbox['xmax']} {bbox['ymax']}" if bbox else ""
+
+
         parameters = f'--system {system} ' \
                      f'--vector_path {run.vector.docker_dir} ' \
                      f'--vector_target_suffix {run.benchmark_params.vector_target_format.value} ' \
@@ -187,7 +198,10 @@ class Setup:
                      f'--raster_resolution {run.benchmark_params.raster_resolution} ' \
                      f'--{"" if run.benchmark_params.raster_clip else "no-"}raster_clip ' \
                      f'{"--vector_filter " + vector_filter_str if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS else ""} ' \
+                     f'''{f'--bbox {bbox_str} --bbox_srs {bbox["srid"]}' if bbox else ""}''' \
                      f''
+                     # f'''{'--extent "' + extent_str + '"' if extent else ""} ''' \
+
         print(f"running {command} {parameters}")
         "create a string that encodess parameters to a base64 string"
         network_manager.run_ssh(f"{command} {base64.b64encode(parameters.encode('utf-8')).decode('utf-8')}",

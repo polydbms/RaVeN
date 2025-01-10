@@ -4,19 +4,19 @@ import re
 import subprocess
 from pathlib import Path
 
-import jinja2
-
-from hub.configuration import PROJECT_ROOT
-from hub.benchmarkrun.benchmark_params import BenchmarkParameters
-from hub.enums.vectorfiletype import VectorFileType
-from hub.evaluation.measure_time import measure_time
 from jinja2 import Template
 
+from hub.enums.stage import Stage
+from hub.benchmarkrun.benchmark_params import BenchmarkParameters
+from hub.configuration import PROJECT_ROOT
+from hub.enums.vectorfiletype import VectorFileType
+from hub.evaluation.measure_time import measure_time
 from hub.executor.sqlbased import SQLBased
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.interfaces import IngestionInterface
 from hub.utils.network import NetworkManager
+from hub.utils.query import extent_to_geom
 
 
 # import geopandas as gpd
@@ -67,6 +67,12 @@ class Ingestor(IngestionInterface):
 
     def __parse_order(self, order):
         return SQLBased.parse_order(order, vector_table_name="raptorjoined", raster_table_name="raptorjoined")
+
+    def __parse_extent(self, extent):
+        geom = extent_to_geom(extent, self.benchmark_params)
+        return str(geom.wkt)
+
+
 
     def __translate(self, workload):
         selection = self.__parse_get(workload["get"]) if "get" in workload else ""
@@ -155,6 +161,7 @@ class Ingestor(IngestionInterface):
             "raster_geotiff_path": self.raster.docker_file_preprocessed.with_suffix(".geotiff"),
             "vector_conditions": vector_condition,
             "raster_conditions": raster_conditions,
+            "extent": self.__parse_extent(self.workload["extent"]) if self.benchmark_params.vector_filter_at_stage == Stage.EXECUTION else None,
             "get": {
                 "field": self.workload["get"]["vector"][0],
                 "datatype": self.__dtype_to_scala_vector(self.workload["get"]["vector"][0])

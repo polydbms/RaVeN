@@ -20,8 +20,10 @@ class Executor:
         self.logger = {}
         self.network_manager = network_manager
         self.transporter = FileTransporter(network_manager)
-        self.table_vector = vector_path.name
-        self.table_raster = raster_path.name
+        self.vector = vector_path
+        self.raster = raster_path
+        self.table_vector = self.vector.name
+        self.table_raster = self.raster.name
         self.host_base_path = network_manager.host_params.host_base_path
         self.benchmark_params = benchmark_params
 
@@ -82,6 +84,31 @@ class Executor:
     def __parse_order(self, order):
         return SQLBased.parse_order(order)
 
+    def __parse_extent(self, extent: dict):
+        extenttype = list(extent.keys())[0]
+        match extenttype:
+            case "bbox":
+                extent_str = f"ST_MakeEnvelope({extent['bbox']['xmin']}, {extent['bbox']['ymin']}, {extent['bbox']['xmax']}, {extent['bbox']['ymax']}, {extent['bbox']['srid']})"
+            case "wkt":
+                extent_str = f"ST_GeomFromText('{extent['wkt']}', {extent['srid']})"
+            case _:
+                raise ValueError("Extent type not supported")
+
+        match (self.benchmark_params.align_to_crs, self.benchmark_params.align_crs_at_stage):
+            case (DataType.RASTER, Stage.PREPROCESS):
+                target_crs = self.benchmark_params.raster_target_crs
+            case (DataType.VECTOR, Stage.PREPROCESS):
+                target_crs = self.benchmark_params.vector_target_crs
+            case (_, Stage.EXECUTION):
+                target_crs = self.vector.get_crs()
+            case _:
+                raise ValueError("Extent type not supported")
+
+        if str(extent[extenttype]["srid"]) != str(target_crs.to_epsg()):
+            extent_str = f"ST_Transform({extent_str}, {target_crs.to_epsg()})"
+
+        return f"ST_Intersects(vector.geom, {extent_str})"
+
     def __translate(self, workload):
         selection = self.__parse_get(workload["get"]) if "get" in workload else ""
         join = self.__parse_join(workload["join"]) if "join" in workload else ""
@@ -90,10 +117,12 @@ class Executor:
             if "condition" in workload
             else ""
         )
+        extent = " and " if condition else " where " + self.__parse_extent(
+            workload["extent"]) if "extent" in workload else ""
         group = self.__parse_group(workload["group"]) if "group" in workload else ""
         order = self.__parse_order(workload["order"]) if "order" in workload else ""
         limit = f'limit {workload["limit"]}' if "limit" in workload else ""
-        query = f"{selection} {join} {condition} {group} {order} {limit}"
+        query = f"{selection} {join} {condition} {extent} {group} {order} {limit}"
 
         raster_geom = "raster.rast"
         vector_geom = "vector.geom"

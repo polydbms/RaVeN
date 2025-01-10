@@ -30,10 +30,17 @@ object RaptorScala {
       {%  if vector_conditions %}
         .filter(f => {{ vector_conditions }})
       {% endif %}
+      {% if extent %}
+        .filter(f => f.getGeometry.intersects(new org.locationtech.jts.io.WKTReader().read("{{extent}}")))
+      {% endif %}
+
+      println(f"vector count: ${vector.count()}")
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,end,execution,beast,vector,inner")
 
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,start,execution,beast,raster,inner")
       val raster: RDD[ITile[{{raster.datatype}}]] = sc.geoTiff[{{raster.datatype}}]("{{raster_geotiff_path}}")
+
+      println(f"raster count: ${raster.count()}")
 
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,end,execution,beast,raster,inner")
 
@@ -43,6 +50,8 @@ object RaptorScala {
       {% for c in raster_conditions %}
         .filter(v => v.m {{c.condition}})
       {% endfor %}
+
+      println(f"join count: ${join.count()}")
 
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,mid,execution,beast,,inner")
 

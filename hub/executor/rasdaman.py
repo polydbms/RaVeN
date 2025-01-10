@@ -7,12 +7,14 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 import requests
+from shapely.io import from_wkt
 
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.network import NetworkManager
+from hub.utils.query import extent_to_geom
 
 
 class Executor:
@@ -45,7 +47,7 @@ class Executor:
             "count": self.__get_count,
         }
         self.headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        self.crs = self.vector_path.get_crs().to_epsg()f
+        self.crs = self.vector_path.get_crs().to_epsg()
         self.crs_url = f"{self.base_url}/def/crs/EPSG/0/{self.crs}"
 
     def __get_avg(self, geometry):
@@ -199,6 +201,10 @@ class Executor:
                 v[-1] = None
         return vector, raster
 
+
+    def __parse_extent(self, extent):
+        return extent_to_geom(extent, self.benchmark_params)
+
     def __parse_order(self, order):
         vector = [feature for feature in order["vector"]] if "vector" in order else []
         raster = [feature for feature in order["raster"]] if "raster" in order else []
@@ -223,11 +229,13 @@ class Executor:
                 )
                 > 0
         )
-        return selection, condition, order, limit, has_aggregations
+        extent = self.__parse_extent(workload["extent"])
+
+        return selection, condition, order, limit, has_aggregations, extent
 
     @measure_time
     def run_query(self, workload, warm_start_no: int, **kwargs):
-        selection, condition, order, limit, has_aggregations = self.__translate(
+        selection, condition, order, limit, has_aggregations, extent = self.__translate(
             workload
         )
         header = selection[0] + selection[1]
@@ -245,6 +253,12 @@ class Executor:
                     for key, value in condition[0].items()
                 ]
             )
+        ]
+
+        vector_features = [
+            feature
+            for feature in vector_features
+            if extent.intersects(from_wkt(feature["WKT"]))
         ]
 
         relevant_attributes = set([key for key in selection[0]] + [key for key in order[0]])

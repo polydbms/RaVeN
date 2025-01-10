@@ -27,4 +27,3 @@ echo "benchi_marker,$(date +%s.%N),end,execution,beast,,outer"
 
 docker exec $DOCKER_CONTAINER bash -c 'find /data/beast_result -iname "*.csv" -exec mv {} /data/results/results_beast.csv \;'
 docker exec $DOCKER_CONTAINER bash -c 'rm -r /data/beast_result'
-#docker exec $DOCKER_CONTAINER bash -c 'rm -r /config/beast/scala-beast/target' # fixme add cleanup for jar to avoid weird bugs
