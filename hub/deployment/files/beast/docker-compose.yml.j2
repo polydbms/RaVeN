@@ -3,11 +3,14 @@ version: '2.1'
 services:
 
   beast:
-    image: ghcr.io/polydbms/beast:0.10.0-3.5.0
+    image: ghcr.io/polydbms/beast:0.9.5-3.5.0-hist
     volumes:
       - ../../data:/data
       - ../../config:/config
     user: root
+    ports:
+      - "4040:4040"
+      - "18080:18080"
     environment:
       - GRANT_SUDO=yes
     tty: true

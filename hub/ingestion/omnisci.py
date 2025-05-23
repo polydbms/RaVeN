@@ -19,7 +19,7 @@ class Ingestor:
         command = self.host_base_path.joinpath("config/omnisci/ingest.sh")
         self.network_manager.run_ssh(f""
                                      f"{command} "
-                                     f"-r={self.raster.docker_file_preprocessed} "
+                                     f"-r={self.raster.docker_file_preprocessed[0]} "
                                      f"-n={self.raster.name} ")
 
     @measure_time
@@ -27,5 +27,5 @@ class Ingestor:
         command = self.host_base_path.joinpath("config/omnisci/ingest.sh")
         self.network_manager.run_ssh(f""
                                      f"{command} "
-                                     f"-v={self.vector.docker_file_preprocessed} "
+                                     f"-v={self.vector.docker_file_preprocessed[0]} "
                                      f"-n={self.vector.name}")

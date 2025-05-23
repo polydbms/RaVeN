@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from hub.benchmarkrun.controller_params import ControllerParameters
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.benchmarkrun.host_params import HostParameters
 from hub.zsresultsdb.submit_data import DuckDBRunCursor

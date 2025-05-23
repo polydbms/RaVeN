@@ -18,9 +18,11 @@ class Ingestor:
 
     def ingest_raster(self, **kwargs):
         command = self.host_base_path.joinpath(f"config/postgis/ingest.sh")
+
+        raster_path = self.raster.docker_dir.joinpath(f"*{self.raster.target_suffix.value}") if self.raster.is_multifile() else self.raster.docker_file_preprocessed[0]
         self.network_manager.run_ssh(
             f"{command} "
-            f"-r={self.raster.docker_file_preprocessed} "
+            f"-r={raster_path} "
             f"-n={self.raster.name} "
             f"-s={self.benchmark_params.raster_target_crs.to_epsg() if self.benchmark_params.align_crs_at_stage == Stage.PREPROCESS else self.raster.get_crs().to_epsg()} "
             f"-t={self.benchmark_params.raster_tile_size.postgis_str} "
@@ -31,7 +33,7 @@ class Ingestor:
         command = self.host_base_path.joinpath(f"config/postgis/ingest.sh")
         self.network_manager.run_ssh(
             f"{command} "
-            f"-v={self.vector.docker_file_preprocessed} "
+            f"-v={self.vector.docker_file_preprocessed[0]} " # FIXME
             f"-n={self.vector.name} "
             f"-s={self.benchmark_params.vector_target_crs.to_epsg() if self.benchmark_params.align_crs_at_stage == Stage.PREPROCESS else self.vector.get_crs().to_epsg()} "
         )

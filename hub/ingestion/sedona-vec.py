@@ -33,8 +33,8 @@ class Ingestor(SedonaIngestor):
         raster_reader, raster_method = super().get_vector_reader_from_filetype(self.benchmark_params.raster_target_format)
 
         payload = {
-            "vector_path": self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed,
-            "raster_path": self.raster.docker_dir if self.benchmark_params.raster_target_format == VectorFileType.SHP else self.raster.docker_file_preprocessed,
+            "vector_path": self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed[0], # FIXME
+            "raster_path": self.raster.docker_dir if self.benchmark_params.raster_target_format == VectorFileType.SHP else self.raster.docker_file_preprocessed[0], # FIXME
             "vector_name": vector_name,
             "raster_name": raster_name,
             "vector_reader": vector_reader,

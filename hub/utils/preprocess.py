@@ -1,7 +1,6 @@
 import argparse
 import base64
 import json
-import math
 import random
 import re
 import shutil
@@ -10,17 +9,16 @@ import subprocess
 from time import time
 from functools import wraps
 from pathlib import Path
-from typing import Type, Optional
+from typing import Optional, Any
+from venv import logger
 
 import numpy as np
 import pandas as pd
 import geopandas as gpd
 import pyproj
 import rioxarray as rxr
-import rasterio.crs
 import shapely.geometry
 import shapely
-from myst_parser.inventory import filter_string
 from osgeo_utils import gdal_polygonize
 from pyproj import CRS
 from shapely import lib
@@ -60,8 +58,9 @@ class PreprocessConfig:
     system: str
 
     _vector_folder: Path
-    _vector_file: str
+    _vector_files: list[Path]
     vector_name: str
+    vector_source_suffix: str
     vector_target_suffix: str
     vector_output_folder: Path
     vector_target_crs: CRS
@@ -69,12 +68,14 @@ class PreprocessConfig:
     vector_simplify: float
 
     _raster_folder: Path
-    _raster_file: str
+    _raster_files: list[Path]
     raster_name: str
+    raster_source_suffix: str
     raster_target_suffix: str
     raster_output_folder: Path
     raster_target_crs: CRS
     raster_resolution: float
+    raster_singlefile: bool
 
     vector_filter: dict | str
     raster_filter: list[str]
@@ -96,8 +97,11 @@ class PreprocessConfig:
         self.system = args.system
 
         self._vector_folder = Path(args.vector_path)
-        self._vector_file = self._find_file(self._vector_folder, VectorFileType).parts[-1]
         self.vector_name = self._vector_folder.name
+        self.vector_source_suffix = args.vector_source_suffix
+        self._vector_files = self._find_files(self._vector_folder,
+                                              VectorFileType.get_by_value(self.vector_source_suffix))
+
         self.vector_target_suffix = args.vector_target_suffix
         self.vector_output_folder = Path(args.vector_output_folder)
         self.vector_target_crs = CRS.from_epsg(args.vector_target_crs)
@@ -108,14 +112,19 @@ class PreprocessConfig:
         self.bbox_srs = args.bbox_srs
 
         self._raster_folder = Path(args.raster_path)
-        self._raster_file = self._find_file(self._raster_folder, RasterFileType).parts[-1]
         self.raster_name = self._raster_folder.name
+        self.raster_source_suffix = args.raster_source_suffix
+        self._raster_files = self._find_files(self._raster_folder,
+                                              RasterFileType.get_by_value(self.raster_source_suffix))
+
         self.raster_target_suffix = args.raster_target_suffix
         self.raster_output_folder = Path(args.raster_output_folder)
         self.raster_target_crs = CRS.from_epsg(args.raster_target_crs)
         self.raster_resolution = args.raster_resolution
+        self.raster_singlefile = args.raster_singlefile
 
-        self.vector_filter = json.loads(base64.b64decode(args.vector_filter).decode("utf-8")) if args.vector_filter else {}
+        self.vector_filter = json.loads(
+            base64.b64decode(args.vector_filter).decode("utf-8")) if args.vector_filter else {}
         # self.raster_filter = []
         # self.vector_clip = False
         self.raster_clip = args.raster_clip
@@ -128,43 +137,45 @@ class PreprocessConfig:
         self._vector_folder = folder
 
     def set_vector_suffix(self, suffix: str):
-        self._vector_file = self.vector_file_path.with_suffix(suffix).parts[-1]
-
-    def get_vector_suffix(self):
-        return self.vector_file_path.suffix
+        self._vector_files = [f.with_suffix(suffix) for f in self._vector_files]
 
     @property
     def vector_folder(self) -> Path:
         return self._vector_folder
 
     @property
-    def vector_file(self) -> str:
-        return self._vector_file
+    def vector_file(self) -> list[Path]:
+        return self._vector_files
+
+    @vector_file.setter
+    def vector_file(self, file: list[Path]):
+        self._vector_files = file
 
     @property
-    def vector_file_path(self) -> Path:
-        return self._vector_folder.joinpath(self._vector_file)
+    def vector_file_path(self) -> list[Path]:
+        return [self._vector_folder.joinpath(f) for f in self._vector_files]
 
     def set_raster_folder(self, folder: Path):
         self._raster_folder = folder
 
     def set_raster_suffix(self, suffix: str):
-        self._raster_file = self.raster_file_path.with_suffix(suffix).parts[-1]
-
-    def get_raster_suffix(self):
-        return self.raster_file_path.suffix
+        self._raster_files = [Path(f).with_suffix(suffix) for f in self._raster_files]
 
     @property
     def raster_folder(self) -> Path:
         return self._raster_folder
 
     @property
-    def raster_file(self) -> str:
-        return self._raster_file
+    def raster_file(self) -> list[Path]:
+        return self._raster_files
+
+    @raster_file.setter
+    def raster_file(self, file: list[Path]):
+        self._raster_files = file
 
     @property
-    def raster_file_path(self) -> Path:
-        return self._raster_folder.joinpath(self._raster_file)
+    def raster_file_path(self) -> list[Path]:
+        return [self._raster_folder.joinpath(f) for f in self._raster_files]
 
     def remove_intermediates(self):
         """
@@ -214,32 +225,35 @@ class PreprocessConfig:
         return ''.join(random.choice(string.ascii_lowercase) for i in range(length))
 
     @staticmethod
-    def _find_file(folder: Path, file_type_class: Type[RasterFileType | VectorFileType]) -> Path:
+    def _find_files(folder: Path, suffix: [VectorFileType | RasterFileType]) -> list[Path]:
         """
         find a file based on the given class of spatial data
         :param folder: the folder teh file resides in
-        :param file_type_class: the class of spatial data
+        :param suffix: the file type
         :return:
         """
-        for e in list(map(lambda t: f"*{t.value}", file_type_class)):
-            files = [f for f in folder.glob(e)]
-            if len(files) > 0:
-                return Path(files[0].name)
+        files = [f for f in folder.glob(f"*{suffix.value}")]
+        if len(files) > 0:
+            return [Path(f.name) for f in files]
+        else:
+            raise FileNotFoundError(f"no file found in {folder} with suffix {suffix}")
 
     def __str__(self):
         return ", ".join([
             str(self.system),
             str(self._vector_folder),
-            str(self._vector_file),
+            str(self._vector_files),
             str(self.vector_name),
+            str(self.vector_source_suffix),
             str(self.vector_target_suffix),
             str(self.vector_output_folder),
             str(self.vector_target_crs),
             str(self.vectorization_type),
             str(self.vector_simplify),
             str(self._raster_folder),
-            str(self._raster_file),
+            str(self._raster_files),
             str(self.raster_name),
+            str(self.raster_source_suffix),
             str(self.raster_target_suffix),
             str(self.raster_output_folder),
             str(self.raster_target_crs),
@@ -290,18 +304,44 @@ class Preprocessor:
         #             self.raster_path = Path(files[0])
         #             break
 
-    def get_vector(self):
-        vector = gpd.read_file(self.config.vector_file_path)
-        return vector
+    def get_raster_meta(self) -> dict[Any, Any]:
+        """
+        return the CRS of the dataset
+        """
+        return json.loads(
+            subprocess.check_output(f'gdalinfo -json {self.config.raster_file_path[0]}', shell=True)
+            .decode('utf-8'))
 
-    def get_vector_crs(self):
-        return self.get_vector().crs
+    def get_raster_crs(self) -> CRS:
+        """
+        return the CRS of the dataset
+        """
+        crs = self.get_raster_meta()["stac"]["proj:epsg"]
+
+        return pyproj.CRS.from_epsg(crs)
+
+    def get_vector_crs(self) -> CRS:
+        """
+        return the CRS of the dataset
+        :return:
+        """
+        crs = json.loads(
+            subprocess.check_output(f'ogrinfo -json -nocount -nomd {self.config.vector_file_path[0]}', shell=True)
+            .decode('utf-8'))["layers"][0]["geometryFields"][0]["coordinateSystem"]["projjson"]["id"]["code"]
+        return pyproj.CRS.from_epsg(crs)
+
+    # def get_vector(self):
+    #     vector = gpd.read_file(self.config.vector_file_path[0]) #FIXME
+    #     return vector
+    #
+    # def get_vector_crs(self):
+    #     return self.get_vector().crs
 
     def get_raster(self):
-        return rxr.open_rasterio(self.config.raster_file_path, masked=True).squeeze()
-
-    def get_raster_crs(self):
-        return self.get_raster().rio.crs
+        return rxr.open_rasterio(self.config.raster_file_path[0], masked=True).squeeze() #FIXME
+    #
+    # def get_raster_crs(self):
+    #     return self.get_raster().rio.crs
 
     def update_vector_folder(self):
         """
@@ -332,6 +372,67 @@ class Preprocessor:
         self.config.set_raster_suffix(self.config.raster_target_suffix)
 
 
+class MultiFilePreprocessor(Preprocessor):
+    """
+    preprocessor for changing the cardinality of the files
+    """
+
+    def __init__(self, config: PreprocessConfig) -> None:
+        super().__init__(config, config.base_path.joinpath(f"multifile_tmp"))
+
+    @measure_time
+    @print_timings("raster", "merge")
+    def merge_raster(self, *args, **kwargs):
+        """
+        merges multiple raster files into one
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        print(f"merging raster files {self.config.raster_file}")
+
+        output_file = self._raster_tmp_out_folder.joinpath(self.config.raster_folder.stem + "_merged").with_suffix(
+            self.config.raster_source_suffix)
+
+        input_files = " ".join([str(self.config.raster_folder.joinpath(f)) for f in self.config.raster_file])
+
+        cmd_string = f"gdal_warp -multi --config GDAL_CACHEMAX 200000 -wm 200000 " \
+                     f"-t_srs {self.config.raster_target_crs} " \
+                     f"{input_files} " \
+                     f"{output_file}"
+
+        subprocess.call(cmd_string, shell=True)
+
+        self.config.raster_file = [output_file]
+        self.update_raster_folder()
+
+    @measure_time
+    @print_timings("vector", "merge")
+    def merge_vector(self, *args, **kwargs):
+        """
+        merges multiple vector files into one
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        print(f"merging vector files {self.config.vector_file}")
+
+        output_file = self._vector_tmp_out_folder.joinpath(self.config.vector_folder.stem + "_merged").with_suffix(
+            self.config.vector_source_suffix)
+
+        input_files = " ".join([str(self.config.vector_folder.joinpath(f)) for f in self.config.vector_file])
+
+        cmd_string = f"ogrmerge -single " \
+                      f"-t_srs {self.config.vector_target_crs} " \
+                      f"{input_files} " \
+                      f"{output_file} "
+
+        subprocess.call(cmd_string, shell=True)
+
+        self.config.vector_file = [output_file]
+        self.update_vector_folder()
+
+
 class CRSFilterPreprocessor(Preprocessor):
     """
     preprocessor for performing coordinate reference system transformations
@@ -354,7 +455,6 @@ class CRSFilterPreprocessor(Preprocessor):
         # rio_target_crs = rasterio.crs.CRS().from_user_input(self.config.raster_target_crs)
         # raster = self.get_raster()
         # out = raster.rio.reproject(rio_target_crs)
-        output_file = self._raster_tmp_out_folder.joinpath(self.config.raster_file)
         # try:
         #     out.rio.to_raster(str(output_file))
         # except OverflowError:
@@ -362,19 +462,26 @@ class CRSFilterPreprocessor(Preprocessor):
         #     out.rio.write_nodata(0, inplace=True)
         #     out.rio.to_raster(str(output_file))
 
-
         cmd_string = f"gdalwarp " \
                      f"-t_srs {self.config.raster_target_crs} "
 
-        if self.config.raster_clip:  # and False: # TODO shapely has a bug, so deactivating this temporarily
+        if self.config.raster_clip:  # and False:
+            # fix this by re-tiling all datasets from top-left, if a tile size is given. otherwise, use merged dataset
+
+            if len(self.config.raster_file) > 1:
+                logger.warning("raster clipping is not supported for multiple raster files. merging files. this may take a while")
+                mf_preprocessor = MultiFilePreprocessor(self.config)
+                mf_preprocessor.merge_raster()
+
             extent = np.asarray(json.loads(
-                subprocess.check_output(f'ogrinfo -json -nocount -nomd {self.config.vector_file_path}', shell=True)
+                subprocess.check_output(f'ogrinfo -json -nocount -nomd {self.config.vector_file_path[0]}', shell=True)
                 .decode('utf-8'))["layers"][0]["geometryFields"][0]["extent"])
 
-            affine_transf = self.get_raster().rio.transform()
+            # affine_transf = self.get_raster().rio.transform()
+            affine_transf = self.get_raster_meta()["geoTransform"]
 
-            pixel_size = max(affine_transf[0], -affine_transf[4])
-            fixpoint = np.asarray([affine_transf[2], affine_transf[5], affine_transf[2], affine_transf[5]])\
+            pixel_size = max(affine_transf[1], -affine_transf[5])
+            fixpoint = np.asarray([affine_transf[0], affine_transf[3], affine_transf[0], affine_transf[3]]) \
                 .reshape((2, 2))
             transformer = pyproj.Transformer.from_crs(self.get_vector_crs(), self.get_raster_crs(),
                                                       always_xy=True).transform
@@ -391,19 +498,23 @@ class CRSFilterPreprocessor(Preprocessor):
 
             cmd_string += f"{f'-te_srs {self.get_raster_crs().to_string()} -te {l} {b} {r} {t}' if self.config.raster_clip else ''} "
 
-        if self.config.raster_resolution != 1.0:
-            width, height = json.loads(
-                subprocess.check_output(f'gdalinfo -json {self.config.raster_file_path}', shell=True)
-                .decode('utf-8'))["size"]
-            cmd_string += f"-ts {int(width / self.config.raster_resolution)} {int(height / self.config.raster_resolution)} "
+        for f in self.config.raster_file_path:
 
-        cmd_string += f"{self.config.raster_file_path} " \
-                      f"{output_file} " \
-                      f"--debug ON " \
-                      f""
+            output_file = self._raster_tmp_out_folder.joinpath(f.name)
 
-        print(f"executing command for raster: {cmd_string}")
-        subprocess.call(cmd_string, shell=True)
+            if self.config.raster_resolution != 1.0:
+                width, height = json.loads(
+                    subprocess.check_output(f'gdalinfo -json {self.config.raster_file_path}', shell=True)
+                    .decode('utf-8'))["size"]
+                cmd_string += f"-ts {int(width / self.config.raster_resolution)} {int(height / self.config.raster_resolution)} "
+
+            cmd_string += f"{f} " \
+                          f"{output_file} " \
+                          f"--debug ON " \
+                          f""
+
+            print(f"executing command for raster: {cmd_string}")
+            subprocess.call(cmd_string, shell=True)
 
         # TODO this could probably be streamlined for efficiency
 
@@ -428,12 +539,13 @@ class CRSFilterPreprocessor(Preprocessor):
         # out = vector.to_crs(self.config.vector_target_crs)
         # out.to_file(self._vector_tmp_out_folder.joinpath(self.config.vector_file), encoding="UTF-8")
 
-        filter_string = SQLBased.build_condition(self.config.vector_filter, "", "and") if self.config.vector_filter else ""
+        filter_string = SQLBased.build_condition(self.config.vector_filter, "",
+                                                 "and") if self.config.vector_filter else ""
 
-        singleparts = "-explodecollections" if self.config.system in Capabilities.read_capabilities().get("requires_singleparts") else ""
+        singleparts = "-explodecollections" if self.config.system in Capabilities.read_capabilities().get(
+            "requires_singleparts") else ""
 
-
-        output_file = self._vector_tmp_out_folder.joinpath(self.config.vector_file)
+        output_file = self._vector_tmp_out_folder.joinpath(self.config.vector_file[0])
         cmd_string = f"ogr2ogr " \
                      f"-t_srs {self.config.vector_target_crs} " \
                      f"""{'-where "' if self.config.vector_filter else ''} {filter_string} {'"' if self.config.vector_filter else ''} """ \
@@ -442,7 +554,7 @@ class CRSFilterPreprocessor(Preprocessor):
                      f"-simplify {self.config.vector_simplify} " \
                      f"{singleparts} " \
                      f"{output_file} " \
-                     f"{self.config.vector_file_path} " \
+                     f"{self.config.vector_file_path[0]} " \
                      f"-lco ENCODING=UTF-8 " \
                      f"--debug ON " \
                      f""
@@ -475,14 +587,16 @@ class FileConverterPreprocessor(Preprocessor):
         :param kwargs:
         :return:
         """
-        print(f"translating raster file {self.config.raster_file} to geotiff")
 
-        output_file = self._raster_tmp_out_folder \
-            .joinpath(self.config.raster_file).with_suffix(self.config.raster_target_suffix)
+        for f in self.config.raster_file_path:
+            print(f"translating raster file {self.config.raster_file} to geotiff")
 
-        subprocess.call(f"gdal_translate -of GTiff {self.config.raster_file_path} {output_file}", shell=True)
+            output_file = self._raster_tmp_out_folder \
+                .joinpath(f.name).with_suffix(self.config.raster_target_suffix)
 
-        print(f"translated raster file to {output_file}")
+            subprocess.call(f"gdal_translate -of GTiff {f} {output_file}", shell=True)
+
+            print(f"translated raster file to {output_file}")
 
         self.update_raster_suffix()
         self.update_raster_folder()
@@ -494,14 +608,20 @@ class FileConverterPreprocessor(Preprocessor):
         transforms a raster dataset into a xyz file
         :return:
         """
-        print(f"translating raster file {self.config.raster_file} to xyz")
 
-        output_file = self._raster_tmp_out_folder \
-            .joinpath(self.config.raster_file).with_suffix(".xyz")
+        for idx, f in enumerate(self.config.raster_file_path):
+            print(f"translating raster file {f} to xyz")
 
-        subprocess.call(f"gdal_translate -of XYZ {self.config.raster_file_path} {output_file}", shell=True)
+            output_file = self._raster_tmp_out_folder \
+                .joinpath(f).with_suffix(f".xyz.{idx}")
 
-        print(f"translated raster file to {output_file}")
+            subprocess.call(f"gdal_translate -of XYZ {self.config.raster_file_path} {output_file}", shell=True)
+
+            print(f"translated raster file to {output_file}")
+
+        subprocess.call(
+            f"cat {self._raster_tmp_out_folder}/*.xyz.* > {self._raster_tmp_out_folder}/{self.config.raster_file}.xyz",
+            shell=True)
 
         self.config.set_raster_suffix(".xyz")
         self.update_raster_folder()
@@ -515,66 +635,19 @@ class FileConverterPreprocessor(Preprocessor):
         :param kwargs:
         :return:
         """
-        print(f"converting file {self.config.vector_file} to csv with WKT")
+        for f in self.config.vector_file_path:
+            print(f"converting file {f} to csv with WKT")
 
-        output_file = self._vector_tmp_out_folder \
-            .joinpath(self.config.vector_file).with_suffix(".csv")
+            output_file = self._vector_tmp_out_folder \
+                .joinpath(f.name).with_suffix(".csv")
 
-        subprocess.call(f"ogr2ogr -f CSV -lco GEOMETRY=AS_WKT {output_file} {self.config.vector_file_path}", shell=True)
+            subprocess.call(f"ogr2ogr -f CSV -lco GEOMETRY=AS_WKT {output_file} {f}", shell=True)
 
-        print(f"translated vector file to {output_file}")
+            print(f"translated vector file to {output_file}")
 
-        self.config.set_raster_suffix(".csv")
+        self.config.set_vector_suffix(".csv")
+
         self.update_vector_folder()
-
-
-class FileTypeProcessor(Preprocessor):  # TODO merge with FileConverterProcessor
-    """
-    preprocessor for converting classes of spatial data into non-spatial datatypes
-    """
-
-    def __init__(self, config: PreprocessConfig) -> None:
-        super().__init__(config, config.base_path.joinpath(f"convert_tmp"))
-
-    @measure_time
-    @print_timings(dataset="vector", comment="rasterize")
-    def shape_to_wkt(self, *args, **kwargs):
-        """
-        converts a shape file into a json object containing the metadata of the objects and spatial information as Well-Known text
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        print(f"converting file {self.config.vector_file} from shp to wkt")
-
-        vector = self.get_vector()
-        vector = vector[~vector.geometry.is_empty]
-        # invert lat with long
-        wkt = [
-            re.sub("([-]?[\d.]+) ([-]?[\d.]+)",
-                   r"\1 \2" if self.config.vector_target_crs.axis_info[0].direction in ["east", "west"] else r"\2 \1",
-                   geom.wkt)
-            for geom in vector.geometry if geom is not None
-        ]  # FIXME some don't need to be inverted
-        vector["wkt"] = wkt
-        # del vector["geometry"]
-        # wkt_out = list(self.config.vector_file_path.parts)
-        # wkt_out.insert(-1, f"preprocessed_{system}")
-        output = self._vector_tmp_out_folder.joinpath(self.config.vector_file).with_suffix(".json")
-        json_out = vector.to_json()
-        with open(output, "w") as f:
-            f.write(json_out)
-
-        self.config.set_vector_suffix(".json")
-        self.update_vector_folder()
-
-        print(f"conversion to WKT done for file {output}")
-
-    # @measure_time
-    # def read_wkt(self, **kwargs):
-    #     output = config.base_path.joinpath(f"{self.vector_path.stem}.json")  # TODO maybe change
-    #     wkt = Path(output).read_bytes()
-    #     return json.loads(wkt)
 
 
 class DataModelProcessor(Preprocessor):
@@ -594,17 +667,18 @@ class DataModelProcessor(Preprocessor):
         :param kwargs:
         :return:
         """
-        print(f"vectorizing raster file {self.config.raster_file} with polygons")
+        for idx, f in enumerate(self.config.raster_file_path):
+            print(f"vectorizing raster file {self.config.raster_file} with polygons")
 
-        output_file = self._raster_tmp_out_folder \
-            .joinpath(self.config.raster_file).with_suffix(self.config.raster_target_suffix)
+            output_file = self._raster_tmp_out_folder \
+                .joinpath(f.name).with_suffix(self.config.raster_target_suffix)
 
-        gdal_polygonize.gdal_polygonize(src_filename=str(self.config.raster_file_path),
-                                        dst_filename=str(output_file),
-                                        driver_name=self.get_driver_name(output_file),
-                                        dst_fieldname="values")
+            gdal_polygonize.gdal_polygonize(src_filename=str(self.config.raster_file_path),
+                                            dst_filename=str(output_file),
+                                            driver_name=self.get_driver_name(output_file),
+                                            dst_fieldname="values")
 
-        print(f"done vectorizing with polygons, saved output to {output_file}")
+            print(f"done vectorizing with polygons, saved output to {output_file}")
 
         self.update_raster_folder()
         self.update_raster_suffix()
@@ -618,12 +692,15 @@ class DataModelProcessor(Preprocessor):
         :param kwargs:
         :return:
         """
-        print(f"vectorizing raster file {self.config.raster_file} with points")
+
+        # we assume there only exists one file after xyz conversion
+
+        xyz_file = self.config.raster_file_path[0]
 
         output_file = self._raster_tmp_out_folder \
-            .joinpath(self.config.raster_file).with_suffix(self.config.raster_target_suffix)
+            .joinpath(self.config.raster_file[0]).with_suffix(self.config.raster_target_suffix)
 
-        points = pd.read_csv(self.config.raster_file_path, header=None, names=["x", "y", "values"], sep=" ")
+        points = pd.read_csv(xyz_file, header=None, names=["x", "y", "values"], sep=" ")
         geo_points = gpd.GeoDataFrame({
             "geometry": gpd.points_from_xy(points["x"], points["y"], crs=self.config.raster_target_crs),
             "values": points["values"]
@@ -701,6 +778,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--base_path", help="Base path for all operations", required=False, default="/data")
     parser.add_argument("--vector_path", help="Specify the absolute path to vector dataset", required=True)
+    parser.add_argument("--vector_source_suffix", help="source file suffix of the vector files", required=True)
     parser.add_argument("--vector_target_suffix", help="target file suffix of the vector files", required=True)
     parser.add_argument("--vector_output_folder", help="absolute path to the output folder of the vector files",
                         required=True)
@@ -709,14 +787,19 @@ def main():
     parser.add_argument("--vector_simplify", help="simplify the vector geometries using douglas-peucker",
                         required=False, default=0.0, type=float)
     parser.add_argument("--raster_path", help="Specify the absolute path to raster dataset", required=True)
+    parser.add_argument("--raster_source_suffix", help="source file suffix of the raster files", required=True)
     parser.add_argument("--raster_target_suffix", help="target file suffix of the raster files", required=True)
     parser.add_argument("--raster_output_folder", help="absolute path to the output folder of the raster files",
                         required=True)
     parser.add_argument("--raster_target_crs", help="target CRS for the raster file", required=True)
     parser.add_argument("--raster_resolution", help="target resolution for the raster file", required=False,
                         default=1.0, type=float)
+    parser.add_argument("--raster_singlefile", help="whether the output of the raster should be a single file",
+                        required=False,
+                        action=argparse.BooleanOptionalAction)
     parser.add_argument("--system", help="Specify which system should be benchmarked")
-    parser.add_argument("--vector_filter", help="Filters to be applied on the vector feature fields", required=False, default="")
+    parser.add_argument("--vector_filter", help="Filters to be applied on the vector feature fields", required=False,
+                        default="")
     # parser.add_argument("--raster-filter", help="Filters to be applied on the raster pixels", required=False, action="append", default=[])
     parser.add_argument("--raster_clip", help="Whether to clip the Raster on the vector extent", required=True,
                         action=argparse.BooleanOptionalAction)
@@ -725,6 +808,12 @@ def main():
     parser.add_argument("--bbox_srs", help="The CRS of the bounding box", required=False, default="")
     preprocess_config = PreprocessConfig(parser.parse_args(), capabilities)
     print(preprocess_config)
+
+
+    mf_preprocessor = MultiFilePreprocessor(preprocess_config)
+
+    if preprocess_config.raster_singlefile and len(preprocess_config.raster_file) > 1:
+        mf_preprocessor.merge_raster()
 
     # todo if CRS already correct
 
@@ -739,7 +828,7 @@ def main():
     # TODO if raster -> raster needs to be converted
 
     if preprocess_config.system not in capabilities["vectorize"] \
-            and preprocess_config.get_raster_suffix() != preprocess_config.raster_target_suffix:
+            and preprocess_config.raster_source_suffix != preprocess_config.raster_target_suffix:
         file_converter = FileConverterPreprocessor(preprocess_config)
         file_converter.raster_to_geotiff()
 

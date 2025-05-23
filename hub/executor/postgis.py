@@ -117,7 +117,7 @@ class Executor:
             if "condition" in workload
             else ""
         )
-        extent = " and " if condition else " where " + self.__parse_extent(
+        extent = " and " if condition and "extent" in workload else " where " + self.__parse_extent(
             workload["extent"]) if "extent" in workload else ""
         group = self.__parse_group(workload["group"]) if "group" in workload else ""
         order = self.__parse_order(workload["order"]) if "order" in workload else ""
@@ -194,6 +194,7 @@ class Executor:
         if workload_mod.get("order", {}).get("vector", {}):
             workload_mod["order"]["vector"] = list(
                 map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+
 
         query = self.__translate(workload_mod)
         query = query.replace("{self.table_vec}", f'"{self.table_vector.lower()}"')

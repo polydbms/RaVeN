@@ -12,7 +12,7 @@ from hub.configuration import PROJECT_ROOT
 from hub.enums.vectorfiletype import VectorFileType
 from hub.evaluation.measure_time import measure_time
 from hub.executor.sqlbased import SQLBased
-from hub.utils.datalocation import DataLocation
+from hub.utils.datalocation import VectorLocation, RasterLocation
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.interfaces import IngestionInterface
 from hub.utils.network import NetworkManager
@@ -23,7 +23,7 @@ from hub.utils.query import extent_to_geom
 
 
 class Ingestor(IngestionInterface):
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager,
+    def __init__(self, vector_path: VectorLocation, raster_path: RasterLocation, network_manager: NetworkManager,
                  benchmark_params: BenchmarkParameters, workload=None) -> None:
         if workload is None:
             workload = dict()
@@ -152,16 +152,21 @@ class Ingestor(IngestionInterface):
         #                              ).keys())[0]).group(1).strip()
         raster_field = "sval"
 
+
         sql_query = self.__translate(self.workload)
+
+        extent = self.__parse_extent(self.workload.get("extent")) if self.workload.get("extent") else None
 
         print(f"query to run: {sql_query}")
 
+        tile_size = self.benchmark_params.raster_tile_size.__dict__ if self.benchmark_params.raster_tile_size.width > 0 else None
+
         payload = {
-            "vector_path": self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed,
-            "raster_geotiff_path": self.raster.docker_file_preprocessed.with_suffix(".geotiff"),
+            "vector_path": self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed[0],
+            "raster_geotiff_path": self.raster.docker_file_preprocessed[0].with_suffix(".geotiff"),
             "vector_conditions": vector_condition,
             "raster_conditions": raster_conditions,
-            "extent": self.__parse_extent(self.workload["extent"]) if self.benchmark_params.vector_filter_at_stage == Stage.EXECUTION else None,
+            "extent": extent if extent and self.benchmark_params.vector_filter_at_stage == Stage.EXECUTION else None,
             "get": {
                 "field": self.workload["get"]["vector"][0],
                 "datatype": self.__dtype_to_scala_vector(self.workload["get"]["vector"][0])
@@ -170,7 +175,8 @@ class Ingestor(IngestionInterface):
                 "field": raster_field,
                 "datatype": raster_type
             },
-            "sql_query": sql_query
+            "raster_tile": tile_size,
+            "sql_query": sql_query,
         }
 
         print(f"Payload: {payload}")
@@ -198,7 +204,7 @@ class Ingestor(IngestionInterface):
 
     def __dtype_to_scala_vector(self, name):
         vectortypes = json.loads(
-            subprocess.check_output(f"ogrinfo -nocount -json -nomd {self.vector.controller_file}", shell=True).decode(
+            subprocess.check_output(f"ogrinfo -nocount -json -nomd {self.vector.controller_file[0]}", shell=True).decode(
                 "utf-8"))["layers"][0]["fields"]
         fieldtype = next(filter(lambda c: c["name"] == name, vectortypes))["type"]
         # vector_dtypes = gpd.read_file(self.vector.controller_file, rows=1).dtypes
@@ -206,7 +212,8 @@ class Ingestor(IngestionInterface):
             case "String":
                 return "String"
             case "Real":
-                return "Float"
+                precision = next(filter(lambda c: c["name"] == name, vectortypes)).get("precision", 0)
+                return "Float" if precision < 7 else "Double"
             case "Integer64":
                 return "Long"
             case "Integer":
@@ -218,7 +225,7 @@ class Ingestor(IngestionInterface):
 
     def __dtype_to_scala_raster(self):
         rastertypes = \
-        json.loads(subprocess.check_output(f'gdalinfo -json -nomd -norat -noct -nogcp {self.raster.controller_file}',
+        json.loads(subprocess.check_output(f'gdalinfo -json -nomd -norat -noct -nogcp {self.raster.controller_file[0]}', # Fixme?
                                            shell=True).decode("utf-8"))["bands"][0]["type"]
 
         match rastertypes:

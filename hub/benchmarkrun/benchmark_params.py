@@ -50,7 +50,9 @@ class BenchmarkParameters:
                  align_to_crs=None,
                  align_crs_at_stage=Stage.PREPROCESS,
                  vector_filter_at_stage=Stage.PREPROCESS,
-                 raster_clip=True
+                 raster_clip=True,
+                 raster_singlefile=False,
+                 external_raster_tile_size=TileSize(-1, -1),
                  ) -> None:
         self.system = system
 
@@ -69,6 +71,9 @@ class BenchmarkParameters:
         self.align_crs_at_stage = align_crs_at_stage
         self.vector_filter_at_stage = vector_filter_at_stage
         self.raster_clip = raster_clip
+        self.raster_singlefile = raster_singlefile
+
+        self.external_raster_tile_size = external_raster_tile_size
 
     def __str__(self):
         return "_".join([
@@ -85,7 +90,9 @@ class BenchmarkParameters:
             f"AlignTo-{self.align_to_crs.value}" if self.align_to_crs is not None else "",
             f"AlignAt-{self.align_crs_at_stage.value}" if self.align_crs_at_stage is not None else "",
             f"FilterAt-{self.vector_filter_at_stage.value}" if self.vector_filter_at_stage is not None else "",
-            f"Clip-{self.raster_clip}"
+            f"Clip-{self.raster_clip}",
+            f"SingleFile-{self.raster_singlefile}",
+            f"ETS-{self.external_raster_tile_size.postgis_str}" if self.external_raster_tile_size.width > 0 and self.external_raster_tile_size.height > 0 else "",
         ])
 
     # def to_dict(self):
@@ -145,7 +152,7 @@ class BenchmarkParameters:
             if not raster_depth_check:
                 err_msg += f"raster depth check failed: {self.raster_depth}, "
             if not raster_resolution_check:
-                err_msg += f"raster tile size check failed: {self.raster_resolution}, "
+                err_msg += f"raster resolution size check failed: {self.raster_resolution}, "
             if not vector_type_check:
                 err_msg += f"vector target format check failed: {self.vector_target_format}, "
             if not vector_resolution_check:
@@ -167,7 +174,9 @@ class BenchmarkParameters:
             self.align_to_crs == other.align_to_crs and \
             self.align_crs_at_stage == other.align_crs_at_stage and \
             self.vector_filter_at_stage == other.vector_filter_at_stage and \
-            self.raster_clip == other.raster_clip
+            self.raster_clip == other.raster_clip and \
+            self.raster_singlefile == other.raster_singlefile and \
+            self.external_raster_tile_size == other.external_raster_tile_size
 
     def __hash__(self):
         return hash(('system', self.system,
@@ -183,4 +192,7 @@ class BenchmarkParameters:
                      'align_to_crs', self.align_to_crs,
                      'align_crs_at_stage', self.align_crs_at_stage,
                      'vector_filter_at_stage', self.vector_filter_at_stage,
-                     'raster_clip', self.raster_clip))
+                     'raster_clip', self.raster_clip,
+                     'raster_singlefile', self.raster_singlefile,
+                     'external_raster_tile_size', self.external_raster_tile_size,
+                     ))

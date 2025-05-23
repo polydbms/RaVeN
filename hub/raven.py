@@ -57,7 +57,7 @@ class Setup:
         module = importlib.import_module(module)
         return getattr(module, class_name)
 
-    def run_tasks(self, run: BenchmarkRun, iteration=1) -> list[Path]:
+    def run_tasks(self, run: BenchmarkRun, iteration=1, stop_at_preprocess=False) -> list[Path]:
         """
         performs a single benchmark run. the following stages are executed:
 
@@ -71,12 +71,19 @@ class Setup:
         :param iteration: the iteration of the run
         :return:
         """
+
         system: System = run.benchmark_params.system
         print(system)
 
         network_manager, run_cursor, transporter = self.setup_host(iteration, run, system)
 
         self.do_preprocess(network_manager, run, system)
+
+        if stop_at_preprocess:
+            print("Stopping at preprocess")
+            transporter.get_measurements(run.measurements_loc)
+
+            return []
 
         self.do_ingestion(network_manager, run, system)
 
@@ -85,134 +92,6 @@ class Setup:
         result_files_not_empty = self.do_teardown(executor, result_files, run, run_cursor, transporter)
 
         return list(map(lambda resfile: resfile[0], result_files_not_empty))
-
-    def do_teardown(self, executor: ExecutorInterface,
-                    result_files: list[Path],
-                    run: BenchmarkRun,
-                    run_cursor: DuckDBRunCursor,
-                    transporter: FileTransporter) -> list[tuple[Path, bool]]:
-        """
-            Cleanup
-            """
-        transporter.get_measurements(run.measurements_loc)
-        executor.post_run_cleanup()
-        self.increase_progress()
-        """
-            transfer results to database
-            """
-        run_cursor.add_resource_utilization(
-            [run.measurements_loc.controller_measurements_folder.joinpath(f"{e.value}.csv") for e in list(Stage)]
-        )
-        result_files_emptiness_info = list(map(run_cursor.add_results_file, result_files))
-        result_files_not_empty = list(filter(lambda r: r[1], result_files_emptiness_info))
-        return result_files_not_empty
-
-    def do_execution(self,
-                     network_manager: NetworkManager,
-                     run: BenchmarkRun,
-                     system: System) -> tuple[ExecutorInterface, list[Path]]:
-        """
-            Execution stage
-            """
-        network_manager.init_timings_sync_marker(run.benchmark_params.system.name)
-        network_manager.start_measure_docker("execution")
-        Executor = self.__importer(f"hub.executor.{system}", "Executor")
-        executor = Executor(run.vector, run.raster, network_manager, run.benchmark_params)
-        result_files: list[Path] = []
-        # cold start
-        print(f"running cold start for parameters {run.benchmark_params}")
-        network_manager.add_meta_marker_start(0)
-        result_files.append(executor.run_query(run.workload, warm_start_no=0, log_time=self.logger))
-        network_manager.add_meta_marker_end()
-        self.increase_progress()
-        # i warm starts
-        for i in range(1, run.warm_starts + 1):
-            sleep(10)
-            print(f"running warm start {i} out of {run.warm_starts} for parameters {run.benchmark_params}")
-            network_manager.add_meta_marker_start(i)
-            result_files.append(executor.run_query(run.workload, warm_start_no=i, log_time=self.logger))
-            network_manager.add_meta_marker_end()
-
-            self.increase_progress()
-
-
-        network_manager.stop_measure_docker()
-
-        return executor, result_files
-
-    def do_ingestion(self,
-                     network_manager: NetworkManager,
-                     run: BenchmarkRun,
-                     system: System) -> None:
-        """
-            Ingestion stage
-            """
-        network_manager.start_measure_docker("ingestion")
-        Ingestor = self.__importer(f"hub.ingestion.{system}", "Ingestor")
-        ingestor = Ingestor(run.vector, run.raster, network_manager, run.benchmark_params, run.workload)
-        ingestor.ingest_raster(log_time=self.logger)
-        self.increase_progress()
-        ingestor.ingest_vector(log_time=self.logger)
-        self.increase_progress()
-        network_manager.stop_measure_docker()
-
-    def do_preprocess(self,
-                      network_manager: NetworkManager,
-                      run: BenchmarkRun,
-                      system: System) -> None:
-        """
-            Preprocess stage
-            """
-        network_manager.start_measure_docker("preprocess", prerecord=False)
-        command = run.host_params.host_base_path.joinpath(f'config/{system}/preprocess.sh')
-        vector_target_crs = run.benchmark_params.vector_target_crs.to_epsg() \
-            if run.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
-            else run.vector.get_crs().to_epsg()
-        raster_target_crs = run.benchmark_params.raster_target_crs.to_epsg() \
-            if run.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
-            else run.raster.get_crs().to_epsg()
-        vector_filter = run.workload.get("condition", {}).get("vector",
-                                                              []) if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS else []
-        vector_filter_str = base64.b64encode(json.dumps(vector_filter).encode('utf-8')).decode('utf-8')
-        # extent = extent_to_geom(run.workload.get("extent", {}), run.benchmark_params, run.vector.get_crs()) \
-        #     if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS \
-        #     else None
-        # extent_str = extent.wkt \
-        #     if extent \
-        #     else ""
-        bbox = run.workload.get("extent", {}).get("bbox", {}) if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS else {}
-        bbox_str = f"{bbox['xmin']} {bbox['ymin']} {bbox['xmax']} {bbox['ymax']}" if bbox else ""
-
-
-        parameters = f'--system {system} ' \
-                     f'--vector_path {run.vector.docker_dir} ' \
-                     f'--vector_target_suffix {run.benchmark_params.vector_target_format.value} ' \
-                     f'--vector_output_folder {run.vector.docker_dir_preprocessed} ' \
-                     f'--vector_target_crs {vector_target_crs} ' \
-                     f'--vectorization_type {run.benchmark_params.vectorize_type.value} ' \
-                     f'--vector_simplify {run.benchmark_params.vector_simplify} ' \
-                     f'--raster_path {run.raster.docker_dir} ' \
-                     f'--raster_target_suffix {run.benchmark_params.raster_target_format.value} ' \
-                     f'--raster_output_folder {run.raster.docker_dir_preprocessed} ' \
-                     f'--raster_target_crs {raster_target_crs} ' \
-                     f'--raster_resolution {run.benchmark_params.raster_resolution} ' \
-                     f'--{"" if run.benchmark_params.raster_clip else "no-"}raster_clip ' \
-                     f'{"--vector_filter " + vector_filter_str if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS else ""} ' \
-                     f'''{f'--bbox {bbox_str} --bbox_srs {bbox["srid"]}' if bbox else ""}''' \
-                     f''
-                     # f'''{'--extent "' + extent_str + '"' if extent else ""} ''' \
-
-        print(f"running {command} {parameters}")
-        "create a string that encodess parameters to a base64 string"
-        network_manager.run_ssh(f"{command} {base64.b64encode(parameters.encode('utf-8')).decode('utf-8')}",
-                                log_time=self.logger,
-                                )
-        run.raster.set_preprocessed()
-        run.vector.set_preprocessed()
-        network_manager.stop_measure_docker()
-        # print("Wait 5s until docker is ready")
-        # sleep(5)
-        self.increase_progress()
 
     def setup_host(self,
                    iteration: int,
@@ -251,8 +130,150 @@ class Setup:
         self.increase_progress()
         return network_manager, run_cursor, transporter
 
+    def do_preprocess(self,
+                      network_manager: NetworkManager,
+                      run: BenchmarkRun,
+                      system: System) -> None:
+        """
+            Preprocess stage
+            """
+        network_manager.start_measure_docker("preprocess", prerecord=False)
+        command = run.host_params.host_base_path.joinpath(f'config/{system}/preprocess.sh')
+        vector_target_crs = run.benchmark_params.vector_target_crs.to_epsg() \
+            if run.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
+            else run.vector.get_crs().to_epsg()
+        raster_target_crs = run.benchmark_params.raster_target_crs.to_epsg() \
+            if run.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
+            else run.raster.get_crs().to_epsg()
+
+        vector_filter = []
+        bbox = {}
+        if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS and run.workload.get("condition", {}).get("vector", {}):
+            vector_filter = run.workload.get("condition", {}).get("vector", [])
+            del run.workload["condition"]["vector"]
+
+        if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS and run.workload.get("extent", {}):
+            bbox = run.workload.get("extent", {}).get("bbox", {})
+            del run.workload["extent"]
+
+        # extent = extent_to_geom(run.workload.get("extent", {}), run.benchmark_params, run.vector.get_crs()) \
+        #     if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS \
+        #     else None
+        # extent_str = extent.wkt \
+        #     if extent \
+        #     else ""
+
+        vector_filter_str = base64.b64encode(json.dumps(vector_filter).encode('utf-8')).decode('utf-8')
+        bbox_str = f"{bbox['xmin']} {bbox['ymin']} {bbox['xmax']} {bbox['ymax']}" if bbox else ""
+
+
+        parameters = f'--system {system} ' \
+                     f'--vector_path {run.vector.docker_dir} ' \
+                     f'--vector_source_suffix {run.vector.suffix.value} ' \
+                     f'--vector_target_suffix {run.benchmark_params.vector_target_format.value} ' \
+                     f'--vector_output_folder {run.vector.docker_dir_preprocessed} ' \
+                     f'--vector_target_crs {vector_target_crs} ' \
+                     f'--vectorization_type {run.benchmark_params.vectorize_type.value} ' \
+                     f'--vector_simplify {run.benchmark_params.vector_simplify} ' \
+                     f'--raster_path {run.raster.docker_dir} ' \
+                     f'--raster_source_suffix {run.raster.suffix.value} ' \
+                     f'--raster_target_suffix {run.benchmark_params.raster_target_format.value} ' \
+                     f'--raster_output_folder {run.raster.docker_dir_preprocessed} ' \
+                     f'--raster_target_crs {raster_target_crs} ' \
+                     f'--raster_resolution {run.benchmark_params.raster_resolution} ' \
+                     f'--{"" if run.benchmark_params.raster_clip else "no-"}raster_clip ' \
+                     f'{"--vector_filter " + vector_filter_str if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS else ""} ' \
+                     f'''{f'--bbox {bbox_str} --bbox_srs {bbox["srid"]}' if bbox else ""} ''' \
+                     f'--{"" if run.benchmark_params.raster_singlefile else "no-"}raster_singlefile ' \
+                     f''
+                     # f'''{'--extent "' + extent_str + '"' if extent else ""} ''' \
+
+        print(f"running {command} {parameters}")
+        "create a string that encodess parameters to a base64 string"
+        network_manager.run_ssh(f"{command} {base64.b64encode(parameters.encode('utf-8')).decode('utf-8')}",
+                                log_time=self.logger,
+                                )
+        run.raster.set_preprocessed()
+        run.vector.set_preprocessed()
+        network_manager.stop_measure_docker()
+        # print("Wait 5s until docker is ready")
+        # sleep(5)
+        self.increase_progress()
+
+    def do_ingestion(self,
+                     network_manager: NetworkManager,
+                     run: BenchmarkRun,
+                     system: System) -> None:
+        """
+            Ingestion stage
+            """
+        # sleep(5)
+
+        network_manager.start_measure_docker("ingestion")
+        Ingestor = self.__importer(f"hub.ingestion.{system}", "Ingestor")
+        ingestor = Ingestor(run.vector, run.raster, network_manager, run.benchmark_params, run.workload)
+        ingestor.ingest_raster(log_time=self.logger)
+        self.increase_progress()
+        ingestor.ingest_vector(log_time=self.logger)
+        self.increase_progress()
+        network_manager.stop_measure_docker()
+
+    def do_execution(self,
+                     network_manager: NetworkManager,
+                     run: BenchmarkRun,
+                     system: System) -> tuple[ExecutorInterface, list[Path]]:
+        """
+            Execution stage
+            """
+        network_manager.init_timings_sync_marker(run.benchmark_params.system.name)
+        network_manager.start_measure_docker("execution")
+        Executor = self.__importer(f"hub.executor.{system}", "Executor")
+        executor = Executor(run.vector, run.raster, network_manager, run.benchmark_params)
+        result_files: list[Path] = []
+        # cold start
+        print(f"running cold start for parameters {run.benchmark_params}")
+        network_manager.add_meta_marker_start(0)
+        result_files.append(executor.run_query(run.workload, warm_start_no=0, log_time=self.logger))
+        network_manager.add_meta_marker_end()
+        self.increase_progress()
+        # i warm starts
+        for i in range(1, run.warm_starts + 1):
+            sleep(8)
+            print(f"running warm start {i} out of {run.warm_starts} for parameters {run.benchmark_params}")
+            network_manager.add_meta_marker_start(i)
+            result_files.append(executor.run_query(run.workload, warm_start_no=i, log_time=self.logger))
+            network_manager.add_meta_marker_end()
+
+            self.increase_progress()
+
+
+        network_manager.stop_measure_docker()
+
+        return executor, result_files
+
+    def do_teardown(self, executor: ExecutorInterface,
+                    result_files: list[Path],
+                    run: BenchmarkRun,
+                    run_cursor: DuckDBRunCursor,
+                    transporter: FileTransporter) -> list[tuple[Path, bool]]:
+        """
+            Cleanup
+            """
+        transporter.get_measurements(run.measurements_loc)
+        executor.post_run_cleanup()
+        self.increase_progress()
+        """
+            transfer results to database
+            """
+        run_cursor.add_resource_utilization(
+            [run.measurements_loc.controller_measurements_folder.joinpath(f"{e.value}.csv") for e in list(Stage)]
+        )
+        result_files_emptiness_info = list(map(run_cursor.add_results_file, result_files))
+        result_files_not_empty = list(filter(lambda r: r[1], result_files_emptiness_info))
+        return result_files_not_empty
+
     def benchmark(self, experiment_file_name: str, config_file: str, system=None, post_cleanup=True,
-                  single_run=True) -> tuple[list[Path], Path, list[str]]:
+                  single_run=True, stop_at_preprocess=False) -> tuple[list[Path], Path, list[str]]:
         """
         anchor function that starts a benchmark set
         :param experiment_file_name: the path to the experiment definintion
@@ -260,6 +281,7 @@ class Setup:
         :param system: the system-under-test
         :param post_cleanup: whether to perform a cleanup after the run. only evaluated if a single run is performed
         :param single_run: whether to perform only a single run (the first in the lsit of experiments). Intended for debugging purposes
+        :param stop_at_preprocess: whether to stop the benchmark after preprocessing
         :return: a list of paths containing references to the results
         """
         runs, iterations = FileIO.read_experiments_config(experiment_file_name, config_file,
@@ -274,20 +296,20 @@ class Setup:
             if single_run:
                 run = next(r for r in runs if r.benchmark_params.system.name == system)
                 print(str(run))
-                result_files.extend(self.run_tasks(run))
+                result_files.extend(self.run_tasks(run, stop_at_preprocess=stop_at_preprocess))
                 if post_cleanup:
                     self.clean(config_file)
             else:
                 for run in list(filter(lambda r: r.benchmark_params.system.name == system, runs)):
-                    result_files.extend(self.run_tasks(run))
+                    result_files.extend(self.run_tasks(run, stop_at_preprocess=stop_at_preprocess))
                     self.clean(config_file)
 
         else:
             for run in runs:
-                result_files.extend(self.run_tasks(run))
+                result_files.extend(self.run_tasks(run, stop_at_preprocess=stop_at_preprocess))
                 self.clean(config_file)
 
-        return result_files, runs[0].vector.controller_file, runs[0].workload.get("get", {}).get("vector", [])
+        return result_files, runs[0].vector.controller_file[0], runs[0].workload.get("get", {}).get("vector", [])
 
     def evaluate(self, config_filename: str, result_files: list[Path], base_run_str="", evalfolder=""):
         """
@@ -309,14 +331,14 @@ class Setup:
         :param config_filename: the config for which the cleanup shall be performed
         :return:
         """
-        host_params = FileIO.get_host_params(config_filename)
+        host_params, _ = FileIO.get_host_params(config_filename)
 
         network_manager = NetworkManager(host_params, "cleanup", None, None)
         file_transporter = FileTransporter(network_manager)
 
         file_transporter.send_file(PROJECT_ROOT.joinpath("teardown.sh"), Path("config/teardown.sh"))
         network_manager.run_ssh(f"chmod 755 {host_params.host_base_path.joinpath('config/teardown.sh')}")
-        network_manager.run_ssh(f"bash {host_params.host_base_path.joinpath('config/teardown.sh')}")
+        network_manager.run_ssh(f"bash {host_params.host_base_path.joinpath('config/teardown.sh')} {host_params.host_base_path}")
 
         # network_manager.run_ssh("""kill $(ps aux | grep "docker stats" | awk {\\'print $2\\'} )""")
         # network_manager.run_ssh("docker stop $(docker ps -q)")

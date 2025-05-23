@@ -193,5 +193,23 @@ class BenchmarkRunFactory:
 
                     updated_params_list.remove(param)
 
+                case "raster_singlefile":
+                    for r in params_dict["raster_singlefile"]:
+                        p = copy.deepcopy(param)
+                        p.raster_singlefile = bool(r)
+                        updated_params_list.append(p)
+
+                    updated_params_list.remove(param)
+
+                case "external_raster_tile_size":
+                    for t in params_dict["external_raster_tile_size"]:
+                        p = copy.deepcopy(param)
+                        if str(t) == "auto":
+                            p.raster_tile_size = TileSize(-1, -1)
+                        else:
+                            width, height = tuple(str(t).split("x"))
+                            p.external_raster_tile_size = TileSize(int(width), int(height))
+                        updated_params_list.append(p)
+
         del params_dict[params_key]
         return self._create_param_iter_step(params_dict, updated_params_list)

@@ -229,7 +229,7 @@ class Executor:
                 )
                 > 0
         )
-        extent = self.__parse_extent(workload["extent"])
+        extent = self.__parse_extent(workload["extent"]) if workload.get("extent") else None
 
         return selection, condition, order, limit, has_aggregations, extent
 
@@ -259,7 +259,7 @@ class Executor:
             feature
             for feature in vector_features
             if extent.intersects(from_wkt(feature["WKT"]))
-        ]
+        ] if extent else vector_features
 
         relevant_attributes = set([key for key in selection[0]] + [key for key in order[0]])
 

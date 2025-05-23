@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
-from hub.utils.datalocation import DataLocation
 from hub.utils.network import NetworkManager
+from hub.utils.datalocation import VectorLocation, RasterLocation
 
 
 class IngestionInterface(ABC):
@@ -10,7 +10,7 @@ class IngestionInterface(ABC):
     A generic interface for the ingestors
     """
 
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager,
+    def __init__(self, vector_path: VectorLocation, raster_path: RasterLocation, network_manager: NetworkManager,
                  benchmark_params: BenchmarkParameters, workload=None) -> None:
         """
         initialitzes an ingestor
@@ -44,8 +44,8 @@ class ExecutorInterface(ABC):
     A generic interface for the executors
     """
 
-    def __init__(self, vector_path: DataLocation,
-                 raster_path: DataLocation,
+    def __init__(self, vector_path: VectorLocation,
+                 raster_path: RasterLocation,
                  network_manager: NetworkManager,
                  benchmark_params: BenchmarkParameters) -> None:
         """

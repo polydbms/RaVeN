@@ -3,6 +3,7 @@ from pathlib import Path
 import yaml
 from pyproj import CRS
 
+from hub.benchmarkrun.controller_params import ControllerParameters
 from hub.enums.rasterfiletype import RasterFileType
 from hub.enums.stage import Stage
 from hub.enums.vectorfiletype import VectorFileType
@@ -16,6 +17,7 @@ from hub.enums.datatype import DataType
 from hub.utils.capabilities import Capabilities
 from hub.utils.datalocation import DataLocation
 from hub.utils.system import System
+from hub.utils.datalocation import RasterLocation, VectorLocation
 
 
 class FileIO:
@@ -46,8 +48,8 @@ class FileIO:
                                                                   FileIO.get_systems(experiments_filename),
                                                                   workload, controller_config_filename, parameters)
 
-                host_params = FileIO.get_host_params(controller_config_filename)
-                InitializeDuckDB(host_params.controller_db_connection, runs_no_dupes, experiments_filename)
+                _, controller_params = FileIO.get_host_params(controller_config_filename)
+                InitializeDuckDB(controller_params.controller_db_connection, runs_no_dupes, experiments_filename)
 
                 return runs_no_dupes, iterations
             except yaml.YAMLError as exc:
@@ -59,7 +61,7 @@ class FileIO:
                        controller_config_filename, parameters):
         capabilities = Capabilities.read_capabilities()
 
-        host_params = FileIO.get_host_params(controller_config_filename)
+        host_params, controller_params = FileIO.get_host_params(controller_config_filename)
         systems = all_systems
         if len(selected_systems) > 0:
             systems = list(
@@ -75,8 +77,8 @@ class FileIO:
 
         benchmark_params_raw = brf.create_params_iterations(systems, parameters)
         for benchmark_params in benchmark_params_raw:
-            raster_dl = DataLocation(data["raster"], DataType.RASTER, host_params)
-            vector_dl = DataLocation(data["vector"], DataType.VECTOR, host_params)
+            raster_dl = RasterLocation(data["raster"], host_params)
+            vector_dl = VectorLocation(data["vector"], host_params)
 
             FileIO.adjust_by_capabilities(benchmark_params, capabilities, vector_dl, raster_dl)
 
@@ -84,18 +86,23 @@ class FileIO:
             raster_dl.adjust_target_files(benchmark_params)
 
             benchmark_params.validate(capabilities)
+            raster_dl.impose_limitations(benchmark_params)
+            vector_dl.impose_limitations(benchmark_params)
 
-            runs.append(BenchmarkRun(
+            run = BenchmarkRun(
                 raster_dl,
                 vector_dl,
                 workload,
-                host_params,
                 benchmark_params,
+                controller_params,
                 Path(experiments_filename).parts[-1],
                 warm_starts,
                 timeout,
                 resource_limits
-            ))
+            )
+
+            run.set_host(host_params)
+            runs.append(run)
 
         runs_no_dupes = list(set(runs))
 
@@ -155,8 +162,11 @@ class FileIO:
         if benchmark_params.system.name in capabilities["pixels_as_polygons"]:
             benchmark_params.vectorize_type = VectorizationType.TO_POLYGONS
 
+        if benchmark_params.system.name in capabilities["requires_single_raster_file"]:
+            benchmark_params.raster_singlefile = True
+
     @staticmethod
-    def get_host_params(config_filename: str) -> HostParameters:
+    def get_host_params(config_filename: str) -> (HostParameters, ControllerParameters):
         """
         loads the hsot parameters from a file
         :param config_filename: the location of the host parameter file
@@ -166,12 +176,14 @@ class FileIO:
             try:
                 yamlfile = yaml.safe_load(c)
 
+                controller_params = ControllerParameters(yamlfile["config"]["controller"]["results_folder"],
+                                                         Path(yamlfile["config"]["controller"]["results_db"]).expanduser())
+
                 return [HostParameters(h["host"],
                                        h["ssh_config_path"],
                                        Path(h["base_path"]),
-                                       yamlfile["config"]["controller"]["results_folder"],
-                                       Path(yamlfile["config"]["controller"]["results_db"]).expanduser())
-                        for h in yamlfile["config"]["hosts"]][0]  # FIXME remove [0] eventually
+                                       controller_params)
+                        for h in yamlfile["config"]["hosts"]][0], controller_params  # FIXME remove [0] eventually
 
             except yaml.YAMLError as exc:
                 raise Exception(f"error while processing host parameters: {exc}")

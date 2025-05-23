@@ -1,3 +1,6 @@
+import copy
+
+from hub.benchmarkrun.controller_params import ControllerParameters
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.benchmarkrun.host_params import HostParameters
 from hub.benchmarkrun.measurementslocation import MeasurementsLocation
@@ -21,12 +24,13 @@ class BenchmarkRun:
                  raster: DataLocation,
                  vector: DataLocation,
                  workload: dict,
-                 host_params: HostParameters,
                  benchmark_params: BenchmarkParameters,
+                 controller_params: ControllerParameters,
                  experiment_name_file: str,
                  warm_starts: int,
                  query_timeout: int,
-                 resource_limits: dict):
+                 resource_limits: dict
+                 ):
         """
         the Init function
         :param raster: all information on the raster data
@@ -38,16 +42,22 @@ class BenchmarkRun:
         :param warm_starts: the amount of warm starts to be done
         :param query_timeout: the query-timeout after which an execution shall be aborted
         """
-        self.raster = raster
-        self.vector = vector
-        self.workload = workload
-        self.host_params = host_params
+        self.raster = copy.deepcopy(raster)
+        self.vector = copy.deepcopy(vector)
+        self.workload = copy.deepcopy(workload)
+        self.controller_params = controller_params
         self.benchmark_params = benchmark_params
         self.experiment_name_file = experiment_name_file
         self.warm_starts = warm_starts
         self.query_timeout = query_timeout
-        self.resource_limits = resource_limits
+        self.resource_limits = resource_limits.copy()
 
+
+    def set_host(self, host_params: HostParameters):
+        """
+        define the host when the run will be executed
+        """
+        self.host_params = host_params
         self.measurements_loc = MeasurementsLocation(self.host_params, self.benchmark_params)
 
     def __str__(self):
@@ -55,6 +65,7 @@ class BenchmarkRun:
                                              str(self.vector),
                                              str(self.workload),
                                              str(self.host_params),
+                                             str(self.controller_params),
                                              str(self.benchmark_params),
                                              str(self.warm_starts),
                                              str(self.query_timeout),

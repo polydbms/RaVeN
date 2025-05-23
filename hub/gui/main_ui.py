@@ -151,8 +151,8 @@ class Ui_RaVeN(object):
 
                 p = run.benchmark_params
                 w = run.workload
-                ras_name = run.raster.name
-                vec_name = run.vector.name
+                ras_name = run.raster[0].name
+                vec_name = run.vector[0].name
                 ras_crs = run.raster.get_crs().to_epsg()
                 vec_crs = run.vector.get_crs().to_epsg()
                 conds = w.get('condition', {})

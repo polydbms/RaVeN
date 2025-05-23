@@ -62,7 +62,10 @@ class InitializeDuckDB:
             align_crs_at_stage varchar,
             
             vector_filter_at_stage varchar,
-            raster_clip boolean
+            raster_clip boolean,
+            raster_singlefile boolean,
+            
+            external_raster_tile_size varchar
         )
         """)  # systems_table
 

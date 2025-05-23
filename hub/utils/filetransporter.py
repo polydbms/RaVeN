@@ -130,11 +130,9 @@ class FileTransporter:
             self.send_folder(file.controller_location, host_dir_up)
         elif file.type == FileType.FOLDER:
             self.send_folder(file.controller_location, host_dir_up)
-        elif file.type == FileType.ZIP_ARCHIVE:
-            self.send_file(file.controller_location, host_dir_up)
-            self.network_manager.run_command(f"{self.network_manager.ssh_command} unzip")
-        else:
-            print("sent nothing")
+        # elif file.type == FileType.ZIP_ARCHIVE:
+        #     self.send_file(file.controller_location, host_dir_up)
+        #     self.network_manager.run_command(f"{self.network_manager.ssh_command} unzip")
 
     def get_measurements(self, measurements_loc: MeasurementsLocation):
         """

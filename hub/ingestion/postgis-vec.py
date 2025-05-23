@@ -20,7 +20,7 @@ class Ingestor:
         script = self.host_base_path.joinpath(f"config/postgis-vec/ingest.sh")
 
         command = (f"{script} "
-                   f"-r={self.raster.docker_file_preprocessed} "
+                   f"-r={self.raster.docker_file_preprocessed[0]} " # FIXME
                    f"-n={self.raster.name} "
                    f"-s={self.benchmark_params.raster_target_crs.to_epsg() if self.benchmark_params.align_crs_at_stage == Stage.PREPROCESS else self.raster.get_crs().to_epsg()} ")
 
@@ -31,7 +31,7 @@ class Ingestor:
         command = self.host_base_path.joinpath(f"config/postgis-vec/ingest.sh")
         self.network_manager.run_ssh(
             f"{command} "
-            f"-v={self.vector.docker_file_preprocessed} "
+            f"-v={self.vector.docker_file_preprocessed[0]} " # FIXME
             f"-n={self.vector.name} "
             f"-s={self.benchmark_params.vector_target_crs.to_epsg() if self.benchmark_params.align_crs_at_stage == Stage.PREPROCESS else self.vector.get_crs().to_epsg()} "
         )

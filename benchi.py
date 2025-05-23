@@ -31,7 +31,7 @@ class Raven:
         parser.add_argument("--singlerun",
                             help="Whether to run only one the first experiment. Only works together with '--system <system>'",
                             action=argparse.BooleanOptionalAction,
-                            default=True)
+                            default=False)
         parser.add_argument("--eval",
                             help="Whether to run the evaluation",
                             action=argparse.BooleanOptionalAction,
@@ -46,6 +46,10 @@ class Raven:
         parser.add_argument("--output_format",
                             help="specify the output format for the evaluation. Default is csv",
                             default="csv")
+        parser.add_argument("--stop_at_preprocess",
+                            help="stop the benchmark after preprocessing",
+                            action=argparse.BooleanOptionalAction,
+                            default=False)
 
         args = parser.parse_args()
         print(args)
@@ -54,7 +58,7 @@ class Raven:
             for experiment_file_name in args.experiment:
                 result_files, vector_file_location, join_attrs = setup.benchmark(experiment_file_name, args.config, args.system,
                                                                      args.postcleanup,
-                                                                     args.singlerun)
+                                                                     args.singlerun, args.stop_at_preprocess)
 
                 if len(result_files) >= 1:
                     match args.output_format:

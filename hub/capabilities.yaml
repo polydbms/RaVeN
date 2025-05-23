@@ -15,6 +15,7 @@ systems:
     - omnisci
   variable_tile_size:
     - postgis
+    - beast
   ingest_raster_tiff_only:
     - beast
     - sedona
@@ -31,6 +32,13 @@ systems:
     - beast
   requires_singleparts:
     - beast
+  requires_single_raster_file:
+    - beast
+    - omnisci
+    - sedona
+    - sedona-vec
+    #- postgis
+    - postgis-vec
 
 #  align_crs_at:
 #    preprocess:
