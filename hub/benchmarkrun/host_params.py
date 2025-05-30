@@ -13,12 +13,14 @@ class HostParameters:
     _ssh_connection: str
     _ssh_config_path: Path
     _run_folder: str
+    _workers: list[dict[str, str]] | None
 
     def __init__(self,
                  ssh_connection: str,
                  ssh_config_path: str,
                  host_base_path: Path,
-                 controller_params: ControllerParameters):
+                 controller_params: ControllerParameters,
+                 workers: list[dict[str, str]] = None):
         """
 
         :param ssh_connection: the ssh connection base string
@@ -32,6 +34,7 @@ class HostParameters:
         self._ssh_config_path = Path(ssh_config_path)
         self._ssh_connection = ssh_connection
         self._host_base_path = host_base_path
+        self._workers = workers
 
     @property
     def ssh_config_path(self):
@@ -68,6 +71,13 @@ class HostParameters:
         :return: the run-specific output folder
         """
         return self._run_folder
+
+    @property
+    def workers(self) -> list[dict[str, str]] | None:
+        """
+        :return: the list of workers, if any
+        """
+        return self._workers
 
     # FIXME eventually remove duplicated code with ControllerParameters
 

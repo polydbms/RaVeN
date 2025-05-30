@@ -34,6 +34,9 @@ class BenchmarkParameters:
     vector_filter_at_stage: Stage
     raster_clip: bool
 
+    parallel_machines: int
+    parallel_processes: int
+
     resource_limits: dict
 
     def __init__(self,
@@ -53,6 +56,8 @@ class BenchmarkParameters:
                  raster_clip=True,
                  raster_singlefile=False,
                  external_raster_tile_size=TileSize(-1, -1),
+                 parallel_machines=1,
+                 parallel_processes=-1
                  ) -> None:
         self.system = system
 
@@ -74,6 +79,9 @@ class BenchmarkParameters:
         self.raster_singlefile = raster_singlefile
 
         self.external_raster_tile_size = external_raster_tile_size
+
+        self.parallel_machines = parallel_machines
+        self.parallel_processes = parallel_processes
 
     def __str__(self):
         return "_".join([
@@ -176,7 +184,9 @@ class BenchmarkParameters:
             self.vector_filter_at_stage == other.vector_filter_at_stage and \
             self.raster_clip == other.raster_clip and \
             self.raster_singlefile == other.raster_singlefile and \
-            self.external_raster_tile_size == other.external_raster_tile_size
+            self.external_raster_tile_size == other.external_raster_tile_size and \
+            self.parallel_machines == other.parallel_machines and \
+            self.parallel_processes == other.parallel_processes
 
     def __hash__(self):
         return hash(('system', self.system,
@@ -195,4 +205,6 @@ class BenchmarkParameters:
                      'raster_clip', self.raster_clip,
                      'raster_singlefile', self.raster_singlefile,
                      'external_raster_tile_size', self.external_raster_tile_size,
+                     'parallel_machines', self.parallel_machines,
+                     'parallel_processes', self.parallel_processes
                      ))

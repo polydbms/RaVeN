@@ -20,6 +20,8 @@ from hub.utils.system import System
 from hub.utils.interfaces import ExecutorInterface
 from hub.zsresultsdb.submit_data import DuckDBRunCursor
 from hub.utils.query import extent_to_geom
+from hub.utils.capabilities import Capabilities
+from hub.utils.network import BasicNetworkManager
 
 
 class Setup:
@@ -32,6 +34,8 @@ class Setup:
         self._progress = 0
         self._max_progress = 0
         self._progress_listener = progress_listener
+        self.workers_nm: list[BasicNetworkManager] = []
+        self.workers_ft: list[FileTransporter] = []
 
     @property
     def progress(self) -> int:
@@ -100,10 +104,12 @@ class Setup:
         """
             Setup
             """
+
         run_cursor = run.host_params.controller_db_connection.initialize_benchmark_run(run.benchmark_params, iteration)
         network_manager = NetworkManager(run.host_params, run.benchmark_params.system.name, run.measurements_loc,
                                          run_cursor, run.query_timeout)
         transporter = FileTransporter(network_manager)
+        capabilities = Capabilities.read_capabilities()
         self.increase_progress()
         """
             resolve compose Template and set resource limitations
@@ -116,6 +122,59 @@ class Setup:
         rendered_yaml = yaml.safe_load(rendered)
         rendered_yaml["services"][system.name] = rendered_yaml["services"][system.name] | run.resource_limits
         PROJECT_ROOT.joinpath(f"deployment/files/{system.name}/docker-compose.yml").write_text(yaml.dump(rendered_yaml))
+
+        if system.name in capabilities["distributed"]:
+            env = rendered_yaml["services"][system.name].get("environment", {})
+
+            if system.name in capabilities["spark_based"]:
+                master_url = ""
+
+                with run.host_params.ssh_config_path.expanduser().open("r") as ssh_config_file:
+                    while line := ssh_config_file.readline():
+                        if line.lower().startswith("Host ".lower()) and run.host_params.ssh_connection in line:
+                            while line := ssh_config_file.readline():
+                                if line.lower().strip().startswith("HostName ".lower()):
+                                    master_url = line.strip().split(" ")[1].strip()
+                                    break
+                            break
+
+                if not master_url:
+                    raise ValueError(f"Could not find master URL for {run.host_params.ssh_connection} in ssh config")
+
+                if isinstance(env, list):
+                    env = {e.split('=')[0]: e.split('=')[1] for e in env}
+
+                env["SPARK_MODE"] = "worker"
+                env["SPARK_MASTER_URL"] = f"spark://{master_url}:7077"
+
+                rendered_yaml["services"][system.name]["environment"] = env
+                PROJECT_ROOT.joinpath(f"deployment/files/{system.name}/docker-compose.worker.yml").write_text(yaml.dump(rendered_yaml))
+
+
+            else:
+                raise NotImplementedError(f"System {system.name} is not supported for distributed execution")
+
+            system_name = run.benchmark_params.system.name
+            self.workers_nm = []
+            self.workers_ft = []
+
+            if system_name in capabilities["distributed"] and run.benchmark_params.parallel_machines > 1:
+                if len(run.host_params.workers) < run.benchmark_params.parallel_machines - 1:
+                    raise ValueError(
+                        f"Not enough workers available for {run.benchmark_params.parallel_machines} parallel machines. "
+                        f"Only {len(run.host_params.workers)} workers available."
+                    )
+
+                print(f"initializing {run.benchmark_params.parallel_machines - 1} workers for {system_name}")
+                for i in range(run.benchmark_params.parallel_machines - 1):
+                    worker = run.host_params.workers[i]
+                    worker_nm = BasicNetworkManager(worker["host"], run.host_params, system_name)
+                    worker_ft = FileTransporter(worker_nm)
+
+                    self.workers_nm.append(worker_nm)
+                    self.workers_ft.append(worker_ft)
+
+
         """
             transfer configs and datasets to the host
             """
@@ -127,8 +186,23 @@ class Setup:
         # Give execute permission
         network_manager.run_ssh(f"chmod +x {run.host_params.host_base_path.joinpath('config/**/*.sh')}",
                                 log_time=self.logger)
+
+        self.initialize_workers(run)
+
         self.increase_progress()
         return network_manager, run_cursor, transporter
+
+
+    def initialize_workers(self, run: BenchmarkRun):
+        """
+        initializes the worker nodes
+        :param run: the benchmark run containing the parameters
+        """
+
+        for worker_nm, worker_ft in zip(self.workers_nm, self.workers_ft):
+            worker_nm.run_remote_mkdir(worker_nm.host_params.host_base_path.joinpath("config"))
+            worker_ft.send_configs(log_time=self.logger)
+
 
     def do_preprocess(self,
                       network_manager: NetworkManager,
@@ -198,7 +272,19 @@ class Setup:
         network_manager.stop_measure_docker()
         # print("Wait 5s until docker is ready")
         # sleep(5)
+
+        self.launch_workers(system)
+
         self.increase_progress()
+
+
+    def launch_workers(self,
+                       system: System) -> None:
+
+            for worker_nm in self.workers_nm:
+                worker_nm.run_ssh(f"docker compose -f {worker_nm.host_params.host_base_path.joinpath(worker_nm.host_params.host_base_path, 'config', system.name, 'docker-compose.worker.yml')} up -d",
+                                  log_time=self.logger)
+
 
     def do_ingestion(self,
                      network_manager: NetworkManager,
@@ -261,6 +347,7 @@ class Setup:
             """
         transporter.get_measurements(run.measurements_loc)
         executor.post_run_cleanup()
+        self.stop_workers(run.benchmark_params.system.name)
         self.increase_progress()
         """
             transfer results to database
@@ -271,6 +358,11 @@ class Setup:
         result_files_emptiness_info = list(map(run_cursor.add_results_file, result_files))
         result_files_not_empty = list(filter(lambda r: r[1], result_files_emptiness_info))
         return result_files_not_empty
+
+    def stop_workers(self, system: str) -> None:
+        for worker_nm in self.workers_nm:
+            worker_nm.run_ssh(f"docker compose -f {worker_nm.host_params.host_base_path.joinpath(worker_nm.host_params.host_base_path, 'config', system, 'docker-compose.worker.yml')} down",
+                              log_time=self.logger)
 
     def benchmark(self, experiment_file_name: str, config_file: str, system=None, post_cleanup=True,
                   single_run=True, stop_at_preprocess=False) -> tuple[list[Path], Path, list[str]]:

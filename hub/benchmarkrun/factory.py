@@ -211,5 +211,21 @@ class BenchmarkRunFactory:
                             p.external_raster_tile_size = TileSize(int(width), int(height))
                         updated_params_list.append(p)
 
+                case "parallel_machines":
+                    for m in params_dict["parallel_machines"]:
+                        p = copy.deepcopy(param)
+                        p.parallel_machines = int(m)
+                        updated_params_list.append(p)
+
+                    updated_params_list.remove(param)
+
+                case "parallel_processes":
+                    for pp in params_dict["parallel_processes"]:
+                        p = copy.deepcopy(param)
+                        p.parallel_processes = int(pp)
+                        updated_params_list.append(p)
+
+                    updated_params_list.remove(param)
+
         del params_dict[params_key]
         return self._create_param_iter_step(params_dict, updated_params_list)

@@ -5,14 +5,14 @@ from hub.benchmarkrun.measurementslocation import MeasurementsLocation
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
 from hub.enums.filetype import FileType
-from hub.utils.network import NetworkManager
+from hub.utils.network import BasicNetworkManager
 
 
 class FileTransporter:
     """
     wrapper around scp to perform remote file movement operations
     """
-    def __init__(self, network_manager: NetworkManager) -> None:
+    def __init__(self, network_manager: BasicNetworkManager) -> None:
         self.network_manager = network_manager
         # self.system = network_manager.system_full
         self.host_base_path = self.network_manager.host_params.host_base_path

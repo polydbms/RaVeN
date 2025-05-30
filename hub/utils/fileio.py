@@ -182,7 +182,8 @@ class FileIO:
                 return [HostParameters(h["host"],
                                        h["ssh_config_path"],
                                        Path(h["base_path"]),
-                                       controller_params)
+                                       controller_params,
+                                       h.get("workers", []))
                         for h in yamlfile["config"]["hosts"]][0], controller_params  # FIXME remove [0] eventually
 
             except yaml.YAMLError as exc:

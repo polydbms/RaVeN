@@ -39,6 +39,14 @@ systems:
     - sedona-vec
     #- postgis
     - postgis-vec
+  distributed:
+    - beast
+    - sedona
+    - sedona-vec
+  spark_based:
+    - sedona
+    - sedona-vec
+    - beast
 
 #  align_crs_at:
 #    preprocess:

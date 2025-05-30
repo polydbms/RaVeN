@@ -65,7 +65,10 @@ class InitializeDuckDB:
             raster_clip boolean,
             raster_singlefile boolean,
             
-            external_raster_tile_size varchar
+            external_raster_tile_size varchar,
+            
+            parallel_machines int,
+            parallel_processes int,
         )
         """)  # systems_table
 
