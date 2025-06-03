@@ -168,6 +168,8 @@ class NetworkManager(BasicNetworkManager):
     socks_proxy: Popen[bytes] | Popen[Any]
     measure_docker: Popen[bytes] | Popen[Any]
 
+    master_url: str | None = None
+
     def __init__(self, host_params: HostParameters, system_name: str, measurements_loc: MeasurementsLocation | None,
                  run_cursor: DuckDBRunCursor | None, query_timeout: int = 0) -> None:
         """
@@ -190,6 +192,8 @@ class NetworkManager(BasicNetworkManager):
                          query_timeout=query_timeout)
 
         self.run_remote_mkdir(self.host_params.host_base_path.joinpath("data").joinpath("results"))
+
+        self.master_url = ""
 
 
 

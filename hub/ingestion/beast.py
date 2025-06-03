@@ -4,6 +4,7 @@ import re
 import subprocess
 from pathlib import Path
 
+from click import command
 from jinja2 import Template
 
 from hub.enums.stage import Stage
@@ -43,7 +44,11 @@ class Ingestor(IngestionInterface):
         file_transporter = FileTransporter(self.network_manager)
         file_transporter.send_configs()
 
-        self.network_manager.run_ssh(str(self.host_base_path.joinpath("config/beast/compile.sh")))
+        command = self.host_base_path.joinpath(f"config/beast/compile.sh "
+                                               f"-v={self.vector.docker_dir_preprocessed} "
+                                               f"-r={self.raster.docker_dir_preprocessed} ")
+
+        self.network_manager.run_ssh(command)
 
     @staticmethod
     def __handle_aggregations(type, features):
@@ -161,9 +166,19 @@ class Ingestor(IngestionInterface):
 
         tile_size = self.benchmark_params.raster_tile_size.__dict__ if self.benchmark_params.raster_tile_size.width > 0 else None
 
+        vector_path = self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed[0]
+        raster_path = self.raster.docker_file_preprocessed[0].with_suffix(".geotiff")
+        output_path = "/data/beast_result"
+
+        if self.benchmark_params.parallel_machines > 1:
+            vector_path = f"hdfs://{self.network_manager.master_url}:9010" + str(vector_path)
+            raster_path = f"hdfs://{self.network_manager.master_url}:9010" + str(raster_path)
+            output_path = f"hdfs://{self.network_manager.master_url}:9010" + str(output_path)
+
         payload = {
-            "vector_path": self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed[0],
-            "raster_geotiff_path": self.raster.docker_file_preprocessed[0].with_suffix(".geotiff"),
+            "spark_master": "local[*]" if self.benchmark_params.parallel_machines == 1 else f"spark://{self.network_manager.master_url}:7077",
+            "vector_path": vector_path,
+            "raster_geotiff_path": raster_path,
             "vector_conditions": vector_condition,
             "raster_conditions": raster_conditions,
             "extent": extent if extent and self.benchmark_params.vector_filter_at_stage == Stage.EXECUTION else None,
@@ -177,6 +192,7 @@ class Ingestor(IngestionInterface):
             },
             "raster_tile": tile_size,
             "sql_query": sql_query,
+            "output_path": output_path
         }
 
         print(f"Payload: {payload}")

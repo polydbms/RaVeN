@@ -14,13 +14,13 @@ object RaptorScala {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf().setAppName("Raptor Scala")
     // Set Spark master to local if not already set
-    if (!conf.contains("spark.master"))
-      conf.setMaster("local[*]")
+    conf.setMaster("{{ spark_master }}").set("spark.executor.memory", "120g").set("spark.driver.maxResultSize", "5g")
 
     val spark: SparkSession = SparkSession.builder().config(conf).getOrCreate()
     import spark.implicits._
 
     val sc = spark.sparkContext
+    sc.setLogLevel("DEBUG")
     try {
       val time_delta = System.currentTimeMillis() * scala.math.pow(10, 6) - System.nanoTime()
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,start,execution,beast,vector,inner")
@@ -66,7 +66,7 @@ object RaptorScala {
       spark.createDataset(rdd_raw).toDF(Seq("{{get.field}}", "{{raster.field}}"): _*).createOrReplaceTempView("df_raw")
       val zonal_stats: DataFrame = spark.sql("{{sql_query}}")
 
-      zonal_stats.coalesce(1).write.option("header",true).csv("/data/beast_result")
+      zonal_stats.coalesce(1).write.mode("overwrite").option("header",true).csv("{{ output_path }}")
 
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,end,execution,beast,,inner")
     } finally {

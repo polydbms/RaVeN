@@ -1,9 +1,13 @@
 import base64
+import copy
 import importlib
 import json
 import logging
+import subprocess
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
+from platform import system
 from time import sleep
 
 import jinja2
@@ -121,13 +125,25 @@ class Setup:
         rendered = template.render()
         rendered_yaml = yaml.safe_load(rendered)
         rendered_yaml["services"][system.name] = rendered_yaml["services"][system.name] | run.resource_limits
-        PROJECT_ROOT.joinpath(f"deployment/files/{system.name}/docker-compose.yml").write_text(yaml.dump(rendered_yaml))
+        main_yaml = copy.deepcopy(rendered_yaml)
+
+        worker_name = f"{system.name}_worker"
+
+        if system.name in capabilities["distributed"] and run.benchmark_params.parallel_machines > 1 and \
+                system.name in capabilities["spark_based"]:
+            del main_yaml["services"][worker_name]
+        else:
+            main_yaml = {"services": {system.name: main_yaml["services"][system.name]}}
+            del main_yaml["services"][system.name]["depends_on"]
+
+        PROJECT_ROOT.joinpath(f"deployment/files/{system.name}/docker-compose.yml").write_text(yaml.dump(main_yaml))
 
         if system.name in capabilities["distributed"]:
             env = rendered_yaml["services"][system.name].get("environment", {})
 
             if system.name in capabilities["spark_based"]:
                 master_url = ""
+
 
                 with run.host_params.ssh_config_path.expanduser().open("r") as ssh_config_file:
                     while line := ssh_config_file.readline():
@@ -141,14 +157,26 @@ class Setup:
                 if not master_url:
                     raise ValueError(f"Could not find master URL for {run.host_params.ssh_connection} in ssh config")
 
+                master_ip = subprocess.run(
+                    f'nslookup {master_url} | grep -oP "(?<=Address: ).*"',
+                    shell=True,
+                    capture_output=True,
+                ).stdout.decode('utf-8').strip()
+
+                network_manager.master_url = master_ip
+
                 if isinstance(env, list):
                     env = {e.split('=')[0]: e.split('=')[1] for e in env}
 
                 env["SPARK_MODE"] = "worker"
-                env["SPARK_MASTER_URL"] = f"spark://{master_url}:7077"
+                env["SPARK_MASTER_URL"] = f"spark://{master_ip}:7077"
 
-                rendered_yaml["services"][system.name]["environment"] = env
-                PROJECT_ROOT.joinpath(f"deployment/files/{system.name}/docker-compose.worker.yml").write_text(yaml.dump(rendered_yaml))
+                rendered_yaml["services"][worker_name]["environment"] = env
+
+                worker_yaml = {"services": {worker_name: rendered_yaml["services"][worker_name].copy()}}
+                del worker_yaml["services"][worker_name]["depends_on"]
+
+                PROJECT_ROOT.joinpath(f"deployment/files/{system.name}/docker-compose.worker.yml").write_text(yaml.dump(worker_yaml))
 
 
             else:
@@ -159,14 +187,14 @@ class Setup:
             self.workers_ft = []
 
             if system_name in capabilities["distributed"] and run.benchmark_params.parallel_machines > 1:
-                if len(run.host_params.workers) < run.benchmark_params.parallel_machines - 1:
+                if len(run.host_params.workers) < run.benchmark_params.parallel_machines:
                     raise ValueError(
                         f"Not enough workers available for {run.benchmark_params.parallel_machines} parallel machines. "
                         f"Only {len(run.host_params.workers)} workers available."
                     )
 
-                print(f"initializing {run.benchmark_params.parallel_machines - 1} workers for {system_name}")
-                for i in range(run.benchmark_params.parallel_machines - 1):
+                print(f"initializing {run.benchmark_params.parallel_machines} workers for {system_name}")
+                for i in range(run.benchmark_params.parallel_machines):
                     worker = run.host_params.workers[i]
                     worker_nm = BasicNetworkManager(worker["host"], run.host_params, system_name)
                     worker_ft = FileTransporter(worker_nm)
