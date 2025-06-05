@@ -1,9 +1,13 @@
-# ST_Benchi
+# RaVeN
+
+**Ra**ster-**Ve**ctor joi**n**
 
 
-![ST_Benchi logo](stbenchi_logo.svg)
+This is the source code for *RaVeN*, a unified framework for abstracting and comparing Spatial Systems capable of computing zonal statistics. You can find the complete documentation in the [wiki of this GitHub project](https://github.com/polydbms/RaVeN/wiki).
 
-This is the source code for *ST_Benchi*, a benchmarking framework capable of performing zonal statistics benchmarks. You can find the complete documentation in the [wiki of this GitHub project](https://github.com/polydbms/st_benchi/wiki).
+## Cite as
+
+Gereon Dusella, Haralampos Gavriilidis, Laert Nuhu, Volker Markl, and Eleni Tzirita Zacharatou. 2024. Multi-Backend Zonal Statistics Execution with Raven. In Companion of the 2024 International Conference on Management of Data (SIGMOD-Companion ’24), June 9–15, 2024, Santiago, AA, Chile. ACM, New York, NY, USA, 4 pages. https://doi.org/10.1145/3626246.3654730
 
 
 ## QGIS
