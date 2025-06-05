@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
-from hub.utils.datalocation import DataLocation
 from hub.utils.network import NetworkManager
+from hub.utils.datalocation import VectorLocation, RasterLocation
 
 
 class IngestionInterface(ABC):
@@ -10,7 +10,7 @@ class IngestionInterface(ABC):
     A generic interface for the ingestors
     """
 
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager,
+    def __init__(self, vector_path: VectorLocation, raster_path: RasterLocation, network_manager: NetworkManager,
                  benchmark_params: BenchmarkParameters, workload=None) -> None:
         """
         initialitzes an ingestor
@@ -44,8 +44,8 @@ class ExecutorInterface(ABC):
     A generic interface for the executors
     """
 
-    def __init__(self, vector_path: DataLocation,
-                 raster_path: DataLocation,
+    def __init__(self, vector_path: VectorLocation,
+                 raster_path: RasterLocation,
                  network_manager: NetworkManager,
                  benchmark_params: BenchmarkParameters) -> None:
         """
@@ -63,6 +63,14 @@ class ExecutorInterface(ABC):
         start running the query on the system-under-test
         :param query: the query as Benchi DSL
         :param warm_start_no: the iteration number of the query
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def post_run_cleanup(self):
+        """
+        clean up after the query run
         :return:
         """
         pass

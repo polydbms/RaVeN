@@ -1,23 +1,22 @@
 from pathlib import Path
 
-from configuration import PROJECT_ROOT
+from hub.configuration import PROJECT_ROOT
 from hub.benchmarkrun.measurementslocation import MeasurementsLocation
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
 from hub.enums.filetype import FileType
-from hub.utils.network import NetworkManager
+from hub.utils.network import BasicNetworkManager
 
 
 class FileTransporter:
     """
     wrapper around scp to perform remote file movement operations
     """
-    def __init__(self, network_manager: NetworkManager) -> None:
+    def __init__(self, network_manager: BasicNetworkManager) -> None:
         self.network_manager = network_manager
         # self.system = network_manager.system_full
         self.host_base_path = self.network_manager.host_params.host_base_path
         remote = self.network_manager.ssh_connection
-        private_key_path = self.network_manager.private_key_path
         # self.ssh_command = (
         #     f"ssh {remote} {self.network_manager.ssh_options}"
         # )
@@ -39,6 +38,7 @@ class FileTransporter:
         """
         if local.exists():
             command = (
+                # self.rsync_command_send.replace("options_plch", "")
                 self.rsync_command_send.replace("options_plch", "")
                 .replace("from_File_plch", str(local))
                 .replace("to_File_plch", str(self.host_base_path.joinpath(remote)))
@@ -57,6 +57,7 @@ class FileTransporter:
         """
         if local.exists():
             command = (
+                # self.rsync_command_send.replace("options_plch", "-r")
                 self.rsync_command_send.replace("options_plch", "-r")
                 .replace("from_File_plch", str(local))
                 .replace("to_File_plch", str(self.host_base_path.joinpath(remote)))
@@ -91,7 +92,8 @@ class FileTransporter:
         """
         command = (
             self.rsync_command_receive.replace("options_plch", "-r")
-            .replace("from_File_plch", str(self.host_base_path.joinpath(remote)))
+            # self.rsync_command_receive.replace("options_plch", "-r")
+            .replace("from_File_plch", str(self.host_base_path.joinpath(remote)) + "/.")  # FIXME scp adaptation
             .replace("to_File_plch", str(local))
         )
         return self.network_manager.run_command(command)
@@ -107,7 +109,7 @@ class FileTransporter:
         # print(host_config_path)
         self.network_manager.run_remote_mkdir(host_config_path)
         self.send_folder(
-            Path(f"{PROJECT_ROOT}/hub/deployment/files/{self.network_manager.system_name}"),
+            Path(f"{PROJECT_ROOT}/deployment/files/{self.network_manager.system_name}"),
             host_config_path
         )
 
@@ -124,15 +126,13 @@ class FileTransporter:
         self.network_manager.run_remote_mkdir(file.host_dir)
         self.network_manager.run_remote_mkdir(file.host_dir_preprocessed)
         if file.type == FileType.FILE:
-            raise NotImplementedError("Single Files are currently not supported")
-            # self.send_file(file.controller_location, file.host_dir)
+            # raise NotImplementedError("Single Files are currently not supported")
+            self.send_folder(file.controller_location, host_dir_up)
         elif file.type == FileType.FOLDER:
             self.send_folder(file.controller_location, host_dir_up)
-        elif file.type == FileType.ZIP_ARCHIVE:
-            self.send_file(file.controller_location, host_dir_up)
-            self.network_manager.run_command(f"{self.network_manager.ssh_command} unzip")
-        else:
-            print("sent nothing")
+        # elif file.type == FileType.ZIP_ARCHIVE:
+        #     self.send_file(file.controller_location, host_dir_up)
+        #     self.network_manager.run_command(f"{self.network_manager.ssh_command} unzip")
 
     def get_measurements(self, measurements_loc: MeasurementsLocation):
         """
@@ -140,4 +140,6 @@ class FileTransporter:
         :param measurements_loc: the lcoation of the measurements
         :return:
         """
+        print(measurements_loc.host_measurements_folder)
+        print(measurements_loc.controller_measurements_folder)
         self.get_folder(measurements_loc.host_measurements_folder, measurements_loc.controller_measurements_folder)

@@ -1,21 +1,18 @@
-class System:
-    """
-    data class representing a system
-    """
-    _name: str
-    _port: int
+from enum import Enum
 
-    def __init__(self, name: str, port: int):
-        self._name = name
-        self._port = port
+
+class System(Enum):
+    POSTGIS = "postgis"
+    SEDONA = "sedona"
+    SEDONA_VEC = "sedona-vec"
+    BEAST = "beast"
+    RASDAMAN = "rasdaman"
+    HEAVYAI = "omnisci"
+    POSTGIS_VEC = "postgis-vec"
 
     @property
     def name(self):
-        return self._name
-
-    @property
-    def port(self):
-        return self._port
+        return self.value
 
     def __str__(self):
-        return self._name
+        return self.value

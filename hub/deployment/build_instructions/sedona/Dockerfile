@@ -1,6 +1,6 @@
-FROM bitnami/spark:3.3.1
+FROM bitnami/spark:3.5.0
 
 USER root
 
-RUN pip install geopandas apache-sedona py4j
+RUN pip install geopandas apache-sedona py4j IPython
 COPY spark-defaults.conf /opt/bitnami/spark/conf/spark-defaults.conf

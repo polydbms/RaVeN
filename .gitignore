@@ -247,4 +247,6 @@ fabric.properties
 
 
 /hub/deployment/files/beast/scala-beast/src/main/scala/benchi/RaptorScala.scala
-controller_config.yaml
+config/controller_config.yaml
+/testing/
+/hub/deployment/files/*/docker-compose.yml

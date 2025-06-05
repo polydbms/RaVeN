@@ -7,51 +7,38 @@ from typing import Any
 
 from hub.benchmarkrun.host_params import HostParameters
 from hub.benchmarkrun.measurementslocation import MeasurementsLocation
-from hub.duckdb.submit_data import DuckDBRunCursor
+from hub.zsresultsdb.submit_data import DuckDBRunCursor
 from hub.evaluation.measure_time import measure_time
 
 
-class NetworkManager:
+class BasicNetworkManager:
     """
     wrapper around all remote operations the controller may execute
     """
+    ssh_connection: str
     _host_params: HostParameters
-    _measurements_loc: MeasurementsLocation | None
-    socks_proxy: Popen[bytes] | Popen[Any]
-    measure_docker: Popen[bytes] | Popen[Any]
 
-    def __init__(self, host_params: HostParameters, system_name: str, measurements_loc: MeasurementsLocation | None,
-                 run_cursor: DuckDBRunCursor | None, query_timeout: int = 0) -> None:
+    def __init__(self, ssh_connection: str,
+                 host_params: HostParameters,
+                 system_name: str,
+                 query_timeout: int = 0
+                 ) -> None:
         """
         the init function
-        :param host_params: the host parameters
-        :param system_name: the name of the system-under-test
-        :param measurements_loc: the measurements location
-        :param run_cursor: the database cursor
-        :param query_timeout: the query timeout
         """
+        self.ssh_connection = ssh_connection
         self._host_params = host_params
-        self.ssh_connection = host_params.ssh_connection
-        self._measurements_loc = measurements_loc
-        self.private_key_path = host_params.public_key_path.with_suffix("")
-        print(self.private_key_path)
         self.system_name = system_name
-        self.socks_proxy = None
-        self.measure_docker = None
-        self.run_cursor = run_cursor
-        self.warm_start_no = 0
         self.query_timeout = query_timeout
 
         self.ssh_options = f"" \
-                           f"-F ssh/config " \
+                           f"-F {self._host_params.ssh_config_path.expanduser()} " \
                            f"-o 'StrictHostKeyChecking=no' " \
-                           f"-o 'IdentitiesOnly=yes' " \
-                           f"-i {self.private_key_path}"
+                           f"-o 'IdentitiesOnly=yes' "
         self.ssh_command = (
             f"ssh {self.ssh_connection} {self.ssh_options}"
         )
 
-        self.run_remote_mkdir(self.host_params.host_base_path.joinpath("data").joinpath("results"))
 
     @property
     def host_params(self) -> HostParameters:
@@ -60,14 +47,6 @@ class NetworkManager:
         :return: the host paramters
         """
         return self._host_params
-
-    @property
-    def measurements_loc(self) -> MeasurementsLocation:
-        """
-        gets the measurements location
-        :return: the measurements location
-        """
-        return self._measurements_loc
 
     @measure_time
     def run_command(self, command, **kwargs) -> int:
@@ -112,6 +91,9 @@ class NetworkManager:
                     print("RETURN CODE", return_code)
                     print("\n\n")
                     # Process has finished, read rest of the output
+                    if "ssh" in command and return_code == 255:
+                        raise Exception("Unable to establish SSH connection")
+
                     for output in process.stdout.readlines():
                         print(output.strip())
                     return return_code
@@ -119,6 +101,15 @@ class NetworkManager:
                 last_line = output
         except Exception as e:
             print(e)
+
+    def write_timings_marker(self, marker: str):
+        """
+        write a timings marker into the database
+        :param marker: the timings string
+        :return:
+        """
+        # This method should be implemented in subclasses
+        pass
 
     @measure_time
     def run_ssh(self, command, **kwargs):
@@ -143,6 +134,78 @@ class NetworkManager:
             f"timeout -k 1m {timeout} {command}"
         )
 
+
+    @measure_time
+    def run_remote_mkdir(self, dir, **kwargs):
+        """
+        creates a folder on the host
+        :param dir: the path where the folder shall be created
+        :param kwargs:
+        :return:
+        """
+        return self.run_ssh(
+            f"mkdir -p {dir}"
+        )
+
+
+    @measure_time
+    def run_remote_rm_file(self, file: Path):
+        """
+        deletes a file on the host
+        :param file: the path to the file
+        :return:
+        """
+        return self.run_ssh(
+            f"rm {file}"
+        )
+
+
+class NetworkManager(BasicNetworkManager):
+    """
+    wrapper around all remote operations the controller may execute
+    """
+    _measurements_loc: MeasurementsLocation | None
+    socks_proxy: Popen[bytes] | Popen[Any]
+    measure_docker: Popen[bytes] | Popen[Any]
+
+    master_url: str | None = None
+
+    def __init__(self, host_params: HostParameters, system_name: str, measurements_loc: MeasurementsLocation | None,
+                 run_cursor: DuckDBRunCursor | None, query_timeout: int = 0) -> None:
+        """
+        the init function
+        :param host_params: the host parameters
+        :param system_name: the name of the system-under-test
+        :param measurements_loc: the measurements location
+        :param run_cursor: the database cursor
+        :param query_timeout: the query timeout
+        """
+        self._measurements_loc = measurements_loc
+        self.socks_proxy = None
+        self.measure_docker = None
+        self.run_cursor = run_cursor
+        self.warm_start_no = 0
+
+        super().__init__(host_params.ssh_connection,
+                         host_params,
+                         system_name,
+                         query_timeout=query_timeout)
+
+        self.run_remote_mkdir(self.host_params.host_base_path.joinpath("data").joinpath("results"))
+
+        self.master_url = ""
+
+
+
+
+    @property
+    def measurements_loc(self) -> MeasurementsLocation:
+        """
+        gets the measurements location
+        :return: the measurements location
+        """
+        return self._measurements_loc
+
     def run_query_ssh(self, command, **kwargs):
         """
         runs a query remotely on the host
@@ -158,28 +221,7 @@ class NetworkManager:
 
         return returncode
 
-    @measure_time
-    def run_remote_mkdir(self, dir, **kwargs):
-        """
-        creates a folder on the host
-        :param dir: the path where the folder shall be created
-        :param kwargs:
-        :return:
-        """
-        return self.run_ssh(
-            f"mkdir -p {dir}"
-        )
 
-    @measure_time
-    def run_remote_rm_file(self, file: Path):
-        """
-        deletes a file on the host
-        :param file: the path to the file
-        :return:
-        """
-        return self.run_ssh(
-            f"rm {file}"
-        )
 
     def open_socks_proxy(self, port=59123) -> str:
         """
@@ -254,7 +296,7 @@ class NetworkManager:
                 print(f"{init_line_counter} ", end="")
                 init_line_counter += 1
 
-            if (prerecord and init_line_counter > 3) or (not prerecord and init_measurement_flag in str(output)):
+            if (prerecord and init_line_counter > 1) or (not prerecord and init_measurement_flag in str(output)):
                 print("")
                 print(f"initialized and pre-loaded docker measurements for stage {stage}")
                 break
@@ -278,7 +320,7 @@ class NetworkManager:
                 print(f"{outro_line_counter} ", end="")
                 outro_line_counter += 1
 
-            if outro_line_counter > 20:
+            if outro_line_counter > 1:
                 print("\n", output.strip(), "\n")
                 print(f"completed docker measurements")
                 self.measure_docker.terminate()
@@ -330,3 +372,4 @@ class NetworkManager:
         """
         self.run_ssh(
             f"""echo "benchi_meta,$(date +%s.%N),end,execution,{self.system_name},,{"cold" if self.warm_start_no == 0 else f"warm_{self.warm_start_no}"}" """)
+

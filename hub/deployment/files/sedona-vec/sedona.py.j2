@@ -1,0 +1,53 @@
+import shutil
+import uuid
+from pathlib import Path
+from time import time
+
+from pyspark.sql.functions import expr
+from sedona.core.enums import GridType
+from sedona.core.enums import IndexType
+from sedona.core.formatMapper.shapefileParser import ShapefileReader
+from sedona.core.formatMapper import GeoJsonReader, WktReader
+from sedona.spark import SedonaContext
+from sedona.utils.adapter import Adapter
+
+config = SedonaContext.builder(). \
+    config('spark.jars.packages',
+                                        'org.apache.sedona:sedona-spark-3.0_2.12:1.5.1,'
+                                        'org.datasyslab:geotools-wrapper:1.5.1-28.2'). \
+    config('spark.jars.repositories', 'https://artifacts.unidata.ucar.edu/repository/unidata-all'). \
+    getOrCreate()
+sedona = SedonaContext.create(config)
+sedona.sparkContext.setLogLevel("ERROR")
+
+vector_table = "{{vector_name}}"
+raster_table = "{{raster_name}}"
+print(f"benchi_marker,{time()},start,ingestion,sedona-vec,vector,inner")
+vec = {{vector_reader}}.{{vector_method}}(sedona.sparkContext, "{{vector_path}}")
+vec.analyze()
+vec.spatialPartitioning(GridType.KDBTREE)
+vec.buildIndex(IndexType.RTREE, True)
+vec_df = Adapter.toDf(vec, sedona).repartition(1000).createOrReplaceTempView(vector_table)
+print(f"benchi_marker,{time()},end,ingestion,sedona-vec,vector,inner")
+
+print(f"benchi_marker,{time()},start,ingestion,sedona-vec,raster,inner")
+ras = {{raster_reader}}.{{raster_method}}(sedona.sparkContext, "{{raster_path}}")
+ras.analyze()
+ras.spatialPartitioning(vec.getPartitioner())
+ras.buildIndex(IndexType.RTREE, True)
+ras_df = Adapter.toDf(ras, sedona).repartition(1000).createOrReplaceTempView(raster_table)
+print(f"benchi_marker,{time()},end,ingestion,sedona-vec,raster,inner")
+
+
+print(f"benchi_marker,{time()},start,execution,sedona-vec,,")
+spatial_gdf = sedona.sql(
+                        """
+                        {{query}}
+                        """
+                       )
+
+name = uuid.uuid4().hex
+spatial_gdf.coalesce(1).write.option("header","true").csv(name)
+print(f"benchi_marker,{time()},end,execution,sedona-vec,,")
+[a for a in Path(name).glob("*.csv")][0].rename("results.csv")
+shutil.move("results.csv", "/data/results/results_sedona.csv")

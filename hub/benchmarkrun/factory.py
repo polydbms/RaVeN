@@ -44,7 +44,7 @@ class BenchmarkRunFactory:
                     if param.system.name not in self.capabilities["vectorize"]:
                         for f in params_dict["raster_format"]:
                             p = copy.deepcopy(param)
-                            p.raster_target_format = RasterFileType.get_by_value(str(f).lower())
+                            p.raster_target_format = RasterFileType.get_by_value(str(f).lower()) if isinstance(f, str) else f
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
@@ -53,7 +53,7 @@ class BenchmarkRunFactory:
                     if param.system.name in self.capabilities["rasterize"]:
                         for f in params_dict["rasterize_format"]:
                             p = copy.deepcopy(param)
-                            p.vector_target_format = RasterFileType.get_by_value(str(f).lower())
+                            p.vector_target_format = RasterFileType.get_by_value(str(f).lower()) if isinstance(f, str) else f
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
@@ -99,7 +99,7 @@ class BenchmarkRunFactory:
                     if param.system.name in self.capabilities["vectorize"]:
                         for f in params_dict["vectorize_type"]:
                             p = copy.deepcopy(param)
-                            p.vectorize_type = VectorizationType.get_by_value(str(f).lower())
+                            p.vectorize_type = VectorizationType.get_by_value(str(f).lower()) if isinstance(f, str) else f
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
@@ -108,7 +108,7 @@ class BenchmarkRunFactory:
                     if param.system.name not in self.capabilities["rasterize"]:
                         for f in params_dict["vector_format"]:
                             p = copy.deepcopy(param)
-                            p.vector_target_format = VectorFileType.get_by_value(str(f).lower())
+                            p.vector_target_format = VectorFileType.get_by_value(str(f).lower()) if isinstance(f, str) else f
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
@@ -117,7 +117,7 @@ class BenchmarkRunFactory:
                     if param.system.name in self.capabilities["vectorize"]:
                         for f in params_dict["vectorize_format"]:
                             p = copy.deepcopy(param)
-                            p.raster_target_format = VectorFileType.get_by_value(str(f).lower())
+                            p.raster_target_format = VectorFileType.get_by_value(str(f).lower()) if isinstance(f, str) else f
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
@@ -130,30 +130,38 @@ class BenchmarkRunFactory:
 
                     updated_params_list.remove(param)
 
-                case "vector_resolution":
-                    for r in params_dict["vector_resolution"]:
+                case "vector_simplify":
+                    for r in params_dict["vector_simplify"]:
                         p = copy.deepcopy(param)
-                        p.vector_resolution = float(r)
+                        p.vector_simplify = float(r)
                         updated_params_list.append(p)
 
                     updated_params_list.remove(param)
 
                 case "align_to_crs":
-                    match params_dict["align_to_crs"]:
-                        case "vector":
-                            param.align_to_crs = DataType.VECTOR
-                        case "raster":
-                            param.align_to_crs = DataType.RASTER
-                        case "both":
-                            p_v = copy.deepcopy(param)
-                            p_v.align_to_crs = DataType.VECTOR
-                            updated_params_list.append(p_v)
+                    if isinstance(params_dict["align_to_crs"], list):
+                        for s in params_dict["align_to_crs"]:
+                            p = copy.deepcopy(param)
+                            p.align_to_crs = DataType.get_by_value(s) if isinstance(s, str) else s
+                            updated_params_list.append(p)
 
-                            p_r = copy.deepcopy(param)
-                            p_r.align_to_crs = DataType.RASTER
-                            updated_params_list.append(p_r)
+                        updated_params_list.remove(param)
+                    else:
+                        match params_dict["align_to_crs"]:
+                            case "vector":
+                                param.align_to_crs = DataType.VECTOR
+                            case "raster":
+                                param.align_to_crs = DataType.RASTER
+                            case "both":
+                                p_v = copy.deepcopy(param)
+                                p_v.align_to_crs = DataType.VECTOR
+                                updated_params_list.append(p_v)
 
-                            updated_params_list.remove(param)
+                                p_r = copy.deepcopy(param)
+                                p_r.align_to_crs = DataType.RASTER
+                                updated_params_list.append(p_r)
+
+                                updated_params_list.remove(param)
 
                 case "align_crs_at_stage":
                     if param.system.name in self.capabilities["no_st_transform"]:
@@ -161,10 +169,63 @@ class BenchmarkRunFactory:
                     else:
                         for s in params_dict["align_crs_at_stage"]:
                             p = copy.deepcopy(param)
-                            p.align_crs_at_stage = Stage.get_by_value(s)
+                            p.align_crs_at_stage = Stage.get_by_value(s) if isinstance(s, str) else s
                             updated_params_list.append(p)
 
                         updated_params_list.remove(param)
+
+                case "vector_filter_at_stage":
+                    # if param.system.name in self.capabilities["no_st_transform"]:
+                    #     param.align_crs_at_stage = Stage.PREPROCESS
+                    # else: TODO maybe enable to use systems that do not support filtering
+                        for s in params_dict["vector_filter_at_stage"]:
+                            p = copy.deepcopy(param)
+                            p.vector_filter_at_stage = Stage.get_by_value(s) if isinstance(s, str) else s
+                            updated_params_list.append(p)
+
+                        updated_params_list.remove(param)
+
+                case "raster_clip":
+                    for r in params_dict["raster_clip"]:
+                        p = copy.deepcopy(param)
+                        p.raster_clip = bool(r)
+                        updated_params_list.append(p)
+
+                    updated_params_list.remove(param)
+
+                case "raster_singlefile":
+                    for r in params_dict["raster_singlefile"]:
+                        p = copy.deepcopy(param)
+                        p.raster_singlefile = bool(r)
+                        updated_params_list.append(p)
+
+                    updated_params_list.remove(param)
+
+                case "external_raster_tile_size":
+                    for t in params_dict["external_raster_tile_size"]:
+                        p = copy.deepcopy(param)
+                        if str(t) == "auto":
+                            p.raster_tile_size = TileSize(-1, -1)
+                        else:
+                            width, height = tuple(str(t).split("x"))
+                            p.external_raster_tile_size = TileSize(int(width), int(height))
+                        updated_params_list.append(p)
+
+                case "parallel_machines":
+                    for m in params_dict["parallel_machines"]:
+                        p = copy.deepcopy(param)
+                        p.parallel_machines = int(m)
+                        updated_params_list.append(p)
+
+                    updated_params_list.remove(param)
+
+                case "parallel_processes":
+                    for pp in params_dict["parallel_processes"]:
+                        p = copy.deepcopy(param)
+                        p.parallel_processes = int(pp)
+                        updated_params_list.append(p)
+
+                    updated_params_list.remove(param)
 
         del params_dict[params_key]
         return self._create_param_iter_step(params_dict, updated_params_list)

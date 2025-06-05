@@ -1,23 +1,30 @@
+import json
+import logging
 import re
 import subprocess
 from pathlib import Path
 
-from configuration import PROJECT_ROOT
-from hub.benchmarkrun.benchmark_params import BenchmarkParameters
-from hub.enums.vectorfiletype import VectorFileType
-from hub.evaluation.measure_time import measure_time
+from click import command
 from jinja2 import Template
 
-from hub.executor._sqlbased import SQLBased
-from hub.utils.datalocation import DataLocation
+from hub.enums.stage import Stage
+from hub.benchmarkrun.benchmark_params import BenchmarkParameters
+from hub.configuration import PROJECT_ROOT
+from hub.enums.vectorfiletype import VectorFileType
+from hub.evaluation.measure_time import measure_time
+from hub.executor.sqlbased import SQLBased
+from hub.utils.datalocation import VectorLocation, RasterLocation
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.interfaces import IngestionInterface
 from hub.utils.network import NetworkManager
-import geopandas as gpd
+from hub.utils.query import extent_to_geom
+
+
+# import geopandas as gpd
 
 
 class Ingestor(IngestionInterface):
-    def __init__(self, vector_path: DataLocation, raster_path: DataLocation, network_manager: NetworkManager,
+    def __init__(self, vector_path: VectorLocation, raster_path: RasterLocation, network_manager: NetworkManager,
                  benchmark_params: BenchmarkParameters, workload=None) -> None:
         if workload is None:
             workload = dict()
@@ -28,7 +35,8 @@ class Ingestor(IngestionInterface):
         self.raster = raster_path
         self.host_base_path = self.network_manager.host_params.host_base_path
         self.benchmark_params = benchmark_params
-        self.raptor_scala_path = Path(f"hub/deployment/files/beast/scala-beast/src/main/scala/benchi/RaptorScala.scala")
+        self.raptor_scala_path = PROJECT_ROOT.joinpath(
+            f"deployment/files/beast/scala-beast/src/main/scala/benchi/RaptorScala.scala")
 
         rendered = self.render_template()
         self.__save_template(rendered)
@@ -36,7 +44,11 @@ class Ingestor(IngestionInterface):
         file_transporter = FileTransporter(self.network_manager)
         file_transporter.send_configs()
 
-        self.network_manager.run_ssh(str(self.host_base_path.joinpath("config/beast/compile.sh")))
+        command = self.host_base_path.joinpath(f"config/beast/compile.sh "
+                                               f"-v={self.vector.docker_dir_preprocessed} "
+                                               f"-r={self.raster.docker_dir_preprocessed} ")
+
+        self.network_manager.run_ssh(command)
 
     @staticmethod
     def __handle_aggregations(type, features):
@@ -60,6 +72,12 @@ class Ingestor(IngestionInterface):
 
     def __parse_order(self, order):
         return SQLBased.parse_order(order, vector_table_name="raptorjoined", raster_table_name="raptorjoined")
+
+    def __parse_extent(self, extent):
+        geom = extent_to_geom(extent, self.benchmark_params)
+        return str(geom.wkt)
+
+
 
     def __translate(self, workload):
         selection = self.__parse_get(workload["get"]) if "get" in workload else ""
@@ -88,7 +106,8 @@ class Ingestor(IngestionInterface):
 
     def render_template(self):
         template_path = Path(
-            PROJECT_ROOT.joinpath("hub/deployment/files/beast/RaptorScala.scala.j2"))
+            PROJECT_ROOT.joinpath("deployment/files/beast/RaptorScala.scala.j2"))
+        logging.info(template_path)
         template = self.__read_template(template_path)
 
         raster_conditions = list(
@@ -97,7 +116,7 @@ class Ingestor(IngestionInterface):
 
         def __parse_vector_cond(condition):
             field = re.search("([^<>!=]*)", condition).group(1).strip()
-            datatype = self.__dtype_to_scala(field)
+            datatype = self.__dtype_to_scala_vector(field)
             cond = self.__parse_condition_scala(condition, datatype)
 
             return {
@@ -106,13 +125,31 @@ class Ingestor(IngestionInterface):
                 "condition": cond
             }
 
-        vector_conditions = list(map(__parse_vector_cond, self.workload.get("condition", {}).get("vector", [])))
+        def __build_condition(condition, operator):
+            if isinstance(condition, str):
+                c = __parse_vector_cond(condition)
+                return f'''f.getAs[{c['datatype']}]("{c['field']}") {c['condition']}'''
+            if isinstance(condition, list):
+                result = ""
+                for idx, c in enumerate(condition):
+                    match operator:
+                        case "and":
+                            beast_op = "&&"
+                        case "or":
+                            beast_op = "||"
+                        case _:
+                            raise ValueError(f"Operator {operator} is not supported")
+                    result += f"{__build_condition(c, beast_op)} {beast_op if idx + 1 < len(condition) else ''} "
+                return f"{result}"
+            if isinstance(condition, dict):
+                if len(condition) > 1:
+                    raise ValueError("Only one condition is allowed")
+                for o, c in condition.items():
+                    return f"({__build_condition(c, o)})"
 
-        raster_type_raw = subprocess.run(f'gdalinfo {self.raster.controller_file} | grep -Po "(?<=Type=)(\w+)"',
-                                         shell=True, capture_output=True).stdout.decode("utf-8").strip()
-        raster_type = ("Float" if "64" in raster_type_raw else "Float") \
-            if "Float" in raster_type_raw else \
-            ("Int" if "64" in raster_type_raw else "Int")  # FIXME Double and Long seem to not be supported
+        vector_condition = __build_condition(self.workload.get("condition", {}).get("vector", []), "and")
+
+        raster_type = self.__dtype_to_scala_raster()
         # raster_field = re.search("([^<>!=]*)",
         #                          list(
         #                              next(
@@ -120,25 +157,46 @@ class Ingestor(IngestionInterface):
         #                              ).keys())[0]).group(1).strip()
         raster_field = "sval"
 
+
         sql_query = self.__translate(self.workload)
+
+        extent = self.__parse_extent(self.workload.get("extent")) if self.workload.get("extent") else None
 
         print(f"query to run: {sql_query}")
 
+        tile_size = self.benchmark_params.raster_tile_size.__dict__ if self.benchmark_params.raster_tile_size.width > 0 else None
+
+        vector_path = self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed[0]
+        raster_path = self.raster.docker_file_preprocessed[0].with_suffix(".geotiff")
+        output_path = "/data/beast_result"
+
+        if self.benchmark_params.parallel_machines > 1:
+            vector_path = f"hdfs://{self.network_manager.master_url}:9010" + str(vector_path)
+            raster_path = f"hdfs://{self.network_manager.master_url}:9010" + str(raster_path)
+            output_path = f"hdfs://{self.network_manager.master_url}:9010" + str(output_path)
+
         payload = {
-            "vector_path": self.vector.docker_dir if self.benchmark_params.vector_target_format == VectorFileType.SHP else self.vector.docker_file_preprocessed,
-            "raster_geotiff_path": self.raster.docker_file_preprocessed.with_suffix(".geotiff"),
-            "vector_conditions": vector_conditions,
+            "spark_master": "local[*]" if self.benchmark_params.parallel_machines == 1 else f"spark://{self.network_manager.master_url}:7077",
+            "vector_path": vector_path,
+            "raster_geotiff_path": raster_path,
+            "vector_conditions": vector_condition,
             "raster_conditions": raster_conditions,
+            "extent": extent if extent and self.benchmark_params.vector_filter_at_stage == Stage.EXECUTION else None,
             "get": {
                 "field": self.workload["get"]["vector"][0],
-                "datatype": self.__dtype_to_scala(self.workload["get"]["vector"][0])
+                "datatype": self.__dtype_to_scala_vector(self.workload["get"]["vector"][0])
             },
             "raster": {
                 "field": raster_field,
                 "datatype": raster_type
             },
-            "sql_query": sql_query
+            "raster_tile": tile_size,
+            "sql_query": sql_query,
+            "output_path": output_path
         }
+
+        print(f"Payload: {payload}")
+
         rendered = template.render(**payload)
         return rendered
 
@@ -160,16 +218,40 @@ class Ingestor(IngestionInterface):
             target = m.group(3).strip()
         return f"{op} {target}"
 
-    def __dtype_to_scala(self, name):
-        vector_dtypes = gpd.read_file(self.vector.controller_file, rows=1).dtypes
-        match vector_dtypes[name].name:
-            case "object":
+    def __dtype_to_scala_vector(self, name):
+        vectortypes = json.loads(
+            subprocess.check_output(f"ogrinfo -nocount -json -nomd {self.vector.controller_file[0]}", shell=True).decode(
+                "utf-8"))["layers"][0]["fields"]
+        fieldtype = next(filter(lambda c: c["name"] == name, vectortypes))["type"]
+        # vector_dtypes = gpd.read_file(self.vector.controller_file, rows=1).dtypes
+        match fieldtype:
+            case "String":
                 return "String"
-            case "float64":
-                return "Float"
-            case "int64":
+            case "Real":
+                precision = next(filter(lambda c: c["name"] == name, vectortypes)).get("precision", 0)
+                return "Float" if precision < 7 else "Double"
+            case "Integer64":
+                return "Long"
+            case "Integer":
                 return "Int"
-            case "bool":
+            case "Boolean":
                 return "Boolean"
             case _:
-                raise Exception(f"dtype {vector_dtypes[name].name} has not been implemented yet")
+                raise Exception(f"type {fieldtype} has not been implemented yet")
+
+    def __dtype_to_scala_raster(self):
+        rastertypes = \
+        json.loads(subprocess.check_output(f'gdalinfo -json -nomd -norat -noct -nogcp {self.raster.controller_file[0]}', # Fixme?
+                                           shell=True).decode("utf-8"))["bands"][0]["type"]
+
+        match rastertypes:
+            case "Byte" | "Int8" | "UInt16" | "Int16" | "Int32":
+                return "Int"
+            case "UInt32" | "UInt64" | "Int64":
+                return "Long"
+            case "Float64":
+                return "Double"
+            case "Float32":
+                return "Float"
+            case _:
+                raise Exception(f"type {rastertypes} has not been implemented yet")

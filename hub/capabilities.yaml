@@ -1,0 +1,61 @@
+systems:
+  rasterize:
+    - rasdaman
+  wkt_csv:
+    - rasdaman
+  vectorize:
+    - omnisci
+    - sedona-vec
+    - postgis-vec
+  same_crs:
+    - postgis
+    - postgis-vec
+    - sedona-vec
+  no_st_transform:
+    - omnisci
+  variable_tile_size:
+    - postgis
+    - beast
+  ingest_raster_tiff_only:
+    - beast
+    - sedona
+  require_geotiff_ending:
+    - beast
+  pixels_as_points:
+    - beast
+    - postgis
+  pixels_as_polygons:
+    - rasdaman
+  import_at_exec:
+    - sedona
+    - sedona-vec
+    - beast
+  requires_singleparts:
+    - beast
+  requires_single_raster_file:
+    - beast
+    - omnisci
+    - sedona
+    - sedona-vec
+    #- postgis
+    - postgis-vec
+  distributed:
+    - beast
+    - sedona
+    - sedona-vec
+  spark_based:
+    - sedona
+    - sedona-vec
+    - beast
+
+#  align_crs_at:
+#    preprocess:
+#      - rasdaman
+#      - postgis
+#      - omnisci
+#      - sedona
+#    execute:
+#      - rasdaman
+#      - postgis
+#      - omnisci
+#      - sedona

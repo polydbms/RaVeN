@@ -15,8 +15,6 @@ experiments:
               - count
               - sum
     join:
-      table1: vector
-      table2: raster
       condition: {intersect,contains,bestrasvecjoin}(raster, vector)
     condition:
       vector:
@@ -49,7 +47,7 @@ experiments:
       - 12
     raster_resolution:
       - 1
-      - 0.5
+      - 2
 
     vector_format:
       - shp
@@ -62,12 +60,21 @@ experiments:
       - points
     vector_target_crs:
       - epsg:4326
-    vector_resolution:
-      - 0.8
-      - 0.32
+    vector_simplify:
+      - 0
+      - 1
+      - 50
 
-    align_to_crs: vector | raster | both # align vector crs to raster crs or vice versa or do 2 runs
+    align_to_crs:
+      - vector
+      - raster
     align_crs_at_stage:
+      - preprocess
+      - execution
+    raster_clip:
+      - Yes
+      - No
+    vector_filter_at_stage:
       - preprocess
       - execution
 

@@ -5,8 +5,10 @@ import requests
 from jinja2 import Template
 from lxml import etree
 
-from configuration import PROJECT_ROOT
+from hub.enums.stage import Stage
+from hub.configuration import PROJECT_ROOT
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
+from hub.enums.datatype import DataType
 from hub.evaluation.measure_time import measure_time
 from hub.utils.datalocation import DataLocation
 from hub.utils.filetransporter import FileTransporter
@@ -38,25 +40,26 @@ class Ingestor:
 
     @measure_time
     def ingest_raster(self, **kwargs):
-        template_path = Path(PROJECT_ROOT.joinpath("hub/deployment/files/rasdaman/ingestion.json.j2"))
+        template_path = PROJECT_ROOT.joinpath("deployment/files/rasdaman/ingestion.json.j2")
         try:
             with open(template_path) as file_:
                 template = Template(file_.read())
         except FileNotFoundError:
             print(f"{template_path} not found")
 
-        with rasterio.open(self.raster_path.controller_file) as f:
-            epsg_crs = f.crs.to_epsg()
+        epsg_crs = self.benchmark_params.raster_target_crs.to_epsg() \
+            if self.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
+            else self.raster_path.get_crs().to_epsg()
 
         payload = {
-                      "coverage_id": str(self.raster_path.name),
-                      "paths": [str(self.raster_path.docker_file)],
+                      "coverage_id": "r_" + str(self.raster_path.name),
+                      "paths": [str(f) for f in self.raster_path.docker_file],
                       "epsg_crs": str(epsg_crs)
                   } | self.get_axes_infos(str(epsg_crs))
         print(payload)
 
         rendered = template.render(**payload)
-        ingest_def_path = Path("hub/deployment/files/rasdaman/ingredients.json")
+        ingest_def_path = PROJECT_ROOT.joinpath("deployment/files/rasdaman/ingredients.json")
 
         with open(ingest_def_path, "w") as f:
             f.write(rendered)

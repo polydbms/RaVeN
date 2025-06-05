@@ -52,6 +52,10 @@ COPY entrypoint.sh /entrypoint.sh
 #COPY config_minio.txt ./
 RUN mkdir import
 
+RUN apt-get -y install libxml2-dev libxslt1-dev
+
+RUN apt-get -y install python3-lxml
+
 RUN pip3 install glob2 jsonschema
 
 #RUN pip3 install rasdapy3
@@ -88,6 +92,7 @@ RUN mkdir -p /var/lib/tomcat9/shared/classes && \
       chmod -R 777 /opt/rasdaman/log
      # chown -R tomcat:tomcat /var/lib/tomcat9/webapps/* && \
 
+RUN chmod -R 777 /entrypoint.sh
      
 COPY catalina.policy /var/lib/tomcat9/conf/policy.d/catalina.policy
 

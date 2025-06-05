@@ -1,0 +1,178 @@
+import copy
+import re
+from pathlib import Path
+
+from hub.benchmarkrun.benchmark_params import BenchmarkParameters
+from hub.enums.stage import Stage
+from hub.evaluation.measure_time import measure_time
+from hub.executor.sqlbased import SQLBased
+from hub.utils.datalocation import DataLocation
+from hub.enums.datatype import DataType
+from hub.utils.filetransporter import FileTransporter
+from hub.utils.network import NetworkManager
+from hub.executor.postgis import Executor as PostgisExecutor
+
+
+class Executor(PostgisExecutor):
+    def __init__(self, vector_path: DataLocation,
+                 raster_path: DataLocation,
+                 network_manager: NetworkManager,
+                 benchmark_params: BenchmarkParameters) -> None:
+        super().__init__(vector_path, raster_path, network_manager, benchmark_params)
+
+    def __oid_fix(self, feature):
+        return "__oid" if feature.lower() == "oid" else feature
+
+    def __handle_aggregations(self, type, features):
+        return SQLBased.handle_aggregations(type, features)
+
+    def __parse_get(self, get):
+        vector = []
+        raster = []
+        if "vector" in get:
+            for feature in get["vector"]:
+                if isinstance(feature, dict):
+                    vector.append(self.__handle_aggregations("vector", feature))
+                else:
+                    vector.append('vector.__oid as "oid"' if feature in ["oid", "__oid"] else f"vector.{feature}")
+            vector = ", ".join(vector)
+        else:
+            vector = ""
+        if "raster" in get:
+            for feature in get["raster"]:
+                if isinstance(feature, dict):
+                    raster.append(self.__handle_aggregations("raster", feature))
+                else:
+                    raster.append(f"raster.{feature}")
+            raster = ", ".join(raster)
+        else:
+            raster = ""
+        raster = f", {raster}" if raster else ""
+        return f"select {vector} {raster}"
+
+    def __parse_join(self, join):
+        return SQLBased.parse_join(join)
+
+    def __parse_condition(self, condition):
+        return SQLBased.parse_condition(condition)
+
+    def __parse_group(self, group):
+        return SQLBased.parse_group(group)
+
+    def __parse_order(self, order):
+        return SQLBased.parse_order(order)
+
+    def __translate(self, workload):
+        selection = self.__parse_get(workload["get"]) if "get" in workload else ""
+        join = self.__parse_join(workload["join"]) if "join" in workload else ""
+        condition = (
+            self.__parse_condition(workload["condition"])
+            if "condition" in workload
+            else ""
+        )
+        group = self.__parse_group(workload["group"]) if "group" in workload else ""
+        order = self.__parse_order(workload["order"]) if "order" in workload else ""
+        limit = f'limit {workload["limit"]}' if "limit" in workload else ""
+        query = f"{selection} {join} {condition} {group} {order} {limit}"
+
+        raster_geom = "raster.geom"
+        vector_geom = "vector.geom"
+        if self.benchmark_params.align_crs_at_stage == Stage.EXECUTION:
+            match self.benchmark_params.align_to_crs:
+                case DataType.RASTER:
+                    vector_geom = f"ST_Transform({vector_geom}, {self.benchmark_params.vector_target_crs.to_epsg()})"
+                case DataType.VECTOR:
+                    raster_geom = f"ST_Transform({raster_geom}, {self.benchmark_params.raster_target_crs.to_epsg()})"
+
+        if "bestrasvecjoin" in query:
+            query = re.sub(
+                "(bestrasvecjoin\(\w*, \w*\))",
+                f"ST_Within({raster_geom}, {vector_geom}) "
+                f"OR ST_Contains({raster_geom}, {vector_geom}) "
+                f"OR ST_Crosses({raster_geom}, {vector_geom}) "
+                f"OR ST_Overlaps({raster_geom}, {vector_geom})",
+                query,
+            )
+        if "intersect" in query:
+            query = re.sub(
+                "(intersect\(\w*, \w*\))",
+                f"ST_Intersects({raster_geom}, {vector_geom})",
+                query,
+            )
+        if "contains" in query:
+            query = re.sub(
+                "(contains\(\w*, \w*\))",
+                f"ST_Contains({raster_geom}, {vector_geom})",
+                query,
+            )
+
+        query = re.sub(
+            "(raster.sval)",
+            "raster.values",
+            query,
+        )
+        return query
+
+    @measure_time
+    def run_query(self, workload, warm_start_no: int, **kwargs) -> Path:
+        workload_mod = copy.deepcopy(workload)
+
+        if workload_mod.get("get", {}).get("vector", {}):
+            workload_mod["get"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+        if workload_mod.get("condition", {}).get("vector", {}):
+            PostgisExecutor.fix_condition_oid(workload_mod["condition"]["vector"])
+        if workload_mod.get("group", {}).get("vector", {}):
+            workload_mod["group"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+        if workload_mod.get("order", {}).get("vector", {}):
+            workload_mod["order"]["vector"] = list(map(lambda x: "__oid" if x.lower() == "oid" else x, workload_mod["get"]["vector"]))
+
+
+
+        query = self.__translate(workload_mod)
+        query = query.replace("{self.table_vec}", f'"{self.table_vector.lower()}"')
+        query = query.replace("{self.table_ras}", f'"{self.table_raster.lower()}"')
+        print(f"query to run: {query}")
+
+        if warm_start_no == 0:
+            relative_explain_file = Path(
+                f"data/results/{self.network_manager.measurements_loc.file_prepend}.queryplan.txt")
+            explain_path_host = self.host_base_path.joinpath(relative_explain_file)
+            query_ea = f"""EXPLAIN {query};"""
+            with open("query_ea.sql", "w") as f:
+                f.write(query_ea)
+            self.transporter.send_file(Path("query_ea.sql"), self.host_base_path.joinpath("data/query_ea.sql"), **kwargs)
+            self.network_manager.run_query_ssh(f'{self.host_base_path.joinpath("config/postgis-vec/execute-analyze.sh")} {Path("/").joinpath(relative_explain_file)}', **kwargs)
+            Path("query_ea.sql").unlink()
+
+            explain_path = self.network_manager.host_params.controller_result_folder.joinpath(
+                f"results_{self.network_manager.measurements_loc.file_prepend}.queryplan.txt")
+            self.transporter.get_file(
+                explain_path_host,
+                explain_path,
+                **kwargs,
+            )
+
+        relative_results_file = Path(
+            f"data/results/{self.network_manager.measurements_loc.file_prepend}.{'cold' if warm_start_no == 0 else f'warm-{warm_start_no}'}.csv")
+        results_path_host = self.host_base_path.joinpath(relative_results_file)
+        query = f"""\copy ({query}) To '{Path("/").joinpath(relative_results_file)}';"""
+        with open("query.sql", "w") as f:
+            f.write(query)
+        self.transporter.send_file(Path("query.sql"), self.host_base_path.joinpath("data/query.sql"), **kwargs)
+        self.network_manager.run_query_ssh(self.host_base_path.joinpath("config/postgis-vec/execute.sh"), **kwargs)
+        Path("query.sql").unlink()
+
+        result_path = self.network_manager.host_params.controller_result_folder.joinpath(
+            f"results_{self.network_manager.measurements_loc.file_prepend}.{'cold' if warm_start_no == 0 else f'warm-{warm_start_no}'}.csv")
+        self.transporter.get_file(
+            results_path_host,
+            result_path,
+            **kwargs,
+        )
+
+        self.network_manager.run_remote_rm_file(results_path_host)
+
+        return result_path
+
+    def post_run_cleanup(self):
+        super().post_run_cleanup()

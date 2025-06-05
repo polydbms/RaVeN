@@ -14,28 +14,41 @@ object RaptorScala {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf().setAppName("Raptor Scala")
     // Set Spark master to local if not already set
-    if (!conf.contains("spark.master"))
-      conf.setMaster("local[*]")
+    conf.setMaster("{{ spark_master }}").set("spark.executor.memory", "120g").set("spark.driver.maxResultSize", "5g")
 
     val spark: SparkSession = SparkSession.builder().config(conf).getOrCreate()
     import spark.implicits._
 
     val sc = spark.sparkContext
+    sc.setLogLevel("DEBUG")
     try {
       val time_delta = System.currentTimeMillis() * scala.math.pow(10, 6) - System.nanoTime()
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,start,execution,beast,vector,inner")
 
       // 1- Load raster and vector data
       val vector: RDD[IFeature] = sc.spatialFile("{{vector_path}}")
-      {% for c in vector_conditions %}
-        .filter(f => f.getAs[{{c.datatype}}]("{{c.field}}") {{c.condition}})
-      {% endfor %}
+      {%  if vector_conditions %}
+        .filter(f => {{ vector_conditions }})
+      {% endif %}
+      {% if extent %}
+        .filter(f => f.getGeometry.intersects(new org.locationtech.jts.io.WKTReader().read("{{extent}}")))
+      {% endif %}
+
+      //println(f"vector count: ${vector.count()}")
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,end,execution,beast,vector,inner")
 
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,start,execution,beast,raster,inner")
-      val raster: RDD[ITile[{{raster.datatype}}]] = sc.geoTiff[{{raster.datatype}}]("{{raster_geotiff_path}}")
+      var raster: RDD[ITile[{{raster.datatype}}]] = sc.geoTiff[{{raster.datatype}}]("{{raster_geotiff_path}}")
 
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,end,execution,beast,raster,inner")
+
+      {%  if raster_tile %}
+      raster = raster.retile({{ raster_tile.width }}, {{ raster_tile.height }})
+      {% endif %}
+
+
+      //println(f"raster count: ${raster.count()}")
+
 
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,start,execution,beast,,inner")
 
@@ -44,6 +57,8 @@ object RaptorScala {
         .filter(v => v.m {{c.condition}})
       {% endfor %}
 
+      //println(f"join count: ${join.count()}")
+
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,mid,execution,beast,,inner")
 
       val rdd_raw: RDD[({{get.datatype}}, {{raster.datatype}})] = join.map(v => (v.feature.getAs[{{get.datatype}}]("{{get.field}}"), v.m))
@@ -51,7 +66,7 @@ object RaptorScala {
       spark.createDataset(rdd_raw).toDF(Seq("{{get.field}}", "{{raster.field}}"): _*).createOrReplaceTempView("df_raw")
       val zonal_stats: DataFrame = spark.sql("{{sql_query}}")
 
-      zonal_stats.coalesce(1).write.option("header",true).csv("/data/beast_result")
+      zonal_stats.coalesce(1).write.mode("overwrite").option("header",true).csv("{{ output_path }}")
 
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,end,execution,beast,,inner")
     } finally {

@@ -5,20 +5,21 @@ services:
     build:
       context: .
       target: benchi
+    #image: ghcr.io/polydbms/raven:CHOOSECORRECTVERSION
     volumes:
-      - benchi/config:/hub/config
-      - benchi/recipes:/hub/recipes
-      - data:/data
-      - benchi/ssh/config:/hub/ssh/config
-      - benchi/ssh/keys:/hub/ssh/keys
+      - ./config:/hub/config
+      - ./recipes:/hub/recipes
+      - ./data:/data
+      - ./ssh/config:/hub/ssh/config
+      - ./ssh/keys:/hub/ssh/keys
     environment:
       PYTHONUNBUFFERED: 1
     command:
       - python
       - benchi.py
       - --config
-      - config/controller_config.yaml
+      - /hub/config/controller_config.yaml
       - --experiment
-      - recipes/county-glc.yaml
+      - /hub/recipes/county-glc.yaml
       - start
 

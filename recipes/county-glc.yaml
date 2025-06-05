@@ -1,30 +1,28 @@
 experiments:
   data:
-    raster: /data/glc/GlcShare_v10_Dominant
-    vector: /data/us_county
+    raster: /home/gereon/git/dima/data/datasets/GlcShare_v10_Dominant
+    vector: /home/gereon/git/dima/data/datasets/us_county
   workload:
     get:
       vector:
         - AFFGEOID
       raster:
-        - sval
+#        - sval
         - sval:
             aggregations:
               - count
     join:
-      table1: vector
-      table2: raster
       condition: intersect(raster, vector)
     group:
       vector:
         - AFFGEOID
-      raster:
-        - sval
+#      raster:
+#        - sval
     order:
       vector:
         - AFFGEOID
-      raster:
-        - sval
+#      raster:
+#        - sval
 
   parameters:
     raster_tile_size:

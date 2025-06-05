@@ -1,0 +1,45 @@
+experiments:
+  data:
+    raster: /home/gereon/git/dima/data/datasets/PRISM_ppt_stable_4kmD2_20210901
+    vector: /home/gereon/git/dima/data/datasets/us_county
+  workload:
+    get:
+      vector:
+        - AFFGEOID
+      raster:
+#        - sval
+        - sval:
+            aggregations:
+              - count
+    join:
+      condition: intersect(raster, vector)
+    group:
+      vector:
+        - AFFGEOID
+#      raster:
+#        - sval
+    order:
+      vector:
+        - AFFGEOID
+#      raster:
+#        - sval
+
+  parameters:
+    raster_tile_size:
+      - auto
+    vectorize_type:
+      - polygons
+    align_to_crs: raster
+    align_crs_at_stage:
+      - preprocess
+
+  timeout: 7200
+
+  systems:
+    - name: postgis
+    - name: beast
+    - name: sedona
+    - name: omnisci
+    - name: rasdaman
+    - name: sedona-vec
+    - name: postgis-vec

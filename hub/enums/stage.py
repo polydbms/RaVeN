@@ -11,4 +11,4 @@ class Stage(Enum):
 
     @staticmethod
     def get_by_value(stage):
-        return {s.value: s for s in list(Stage)}.get(stage)
+        return {s.value: s for s in list(Stage)}.get(stage.lower())

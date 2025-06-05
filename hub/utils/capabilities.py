@@ -1,6 +1,6 @@
 import yaml
 
-from configuration import PROJECT_ROOT
+from hub.configuration import PROJECT_ROOT
 
 
 class Capabilities:

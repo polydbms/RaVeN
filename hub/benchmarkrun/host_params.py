@@ -1,7 +1,8 @@
 from datetime import datetime
 from pathlib import Path
 
-from hub.duckdb.submit_data import DuckDBConnector
+from hub.benchmarkrun.controller_params import ControllerParameters
+from hub.zsresultsdb.submit_data import DuckDBConnector
 
 
 class HostParameters:
@@ -9,18 +10,17 @@ class HostParameters:
     The Host Parameters, vommon for all benchmark runs
     """
     _host_base_path: Path
-    _controller_result_folder: Path
-    _controller_db_connection: DuckDBConnector
     _ssh_connection: str
-    _public_key_path: Path
+    _ssh_config_path: Path
     _run_folder: str
+    _workers: list[dict[str, str]] | None
 
     def __init__(self,
                  ssh_connection: str,
-                 public_key_path: str,
+                 ssh_config_path: str,
                  host_base_path: Path,
-                 controller_result_folder: str,
-                 controller_result_db: Path):
+                 controller_params: ControllerParameters,
+                 workers: list[dict[str, str]] = None):
         """
 
         :param ssh_connection: the ssh connection base string
@@ -29,18 +29,16 @@ class HostParameters:
         :param controller_result_folder: the path where result files shall be put on the controller, later extended by a run-specific folder to group results
         :param controller_result_db: the path where the results database is located
         """
-        self._run_folder = f"run_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        self._public_key_path = Path(public_key_path)
+        self.controller_params = controller_params
+        self._run_folder = controller_params.run_folder
+        self._ssh_config_path = Path(ssh_config_path)
         self._ssh_connection = ssh_connection
         self._host_base_path = host_base_path
-        self._controller_result_base_folder = Path(controller_result_folder).expanduser()
-        self._controller_result_folder = self._controller_result_base_folder \
-            .joinpath(self._run_folder)
-        self._controller_db_connection = DuckDBConnector(db_filename=controller_result_db)
+        self._workers = workers
 
     @property
-    def public_key_path(self):
-        return self._public_key_path
+    def ssh_config_path(self):
+        return self._ssh_config_path
 
     @property
     def ssh_connection(self):
@@ -56,7 +54,7 @@ class HostParameters:
 
         :return: the folder where all result-folders are located
         """
-        return self._controller_result_base_folder
+        return self.controller_params._controller_result_base_folder
 
     @property
     def controller_result_folder(self) -> Path:
@@ -64,7 +62,7 @@ class HostParameters:
 
         :return: the run-specific result folder
         """
-        return self._controller_result_folder
+        return self.controller_params._controller_result_folder
 
     @property
     def run_folder(self):
@@ -75,13 +73,28 @@ class HostParameters:
         return self._run_folder
 
     @property
+    def workers(self) -> list[dict[str, str]] | None:
+        """
+        :return: the list of workers, if any
+        """
+        return self._workers
+
+    # FIXME eventually remove duplicated code with ControllerParameters
+
+    def close_db(self):
+        if self.controller_params.controller_db_connection is not None:
+            self.controller_params.controller_db_connection.close_connection()
+
+    @property
     def controller_db_connection(self):
-        return self._controller_db_connection
+        if self.controller_params.controller_db_connection is None:
+            self.controller_params.connect_db()
+        return self.controller_params.controller_db_connection
 
     def __str__(self):
         return ", ".join([
-            str(self._public_key_path),
+            str(self._ssh_config_path),
             str(self._ssh_connection),
             str(self._host_base_path),
-            str(self._controller_result_folder)
+            str(self.controller_params),
         ])

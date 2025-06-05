@@ -1,8 +1,0 @@
-config:
-  controller:
-    results_folder: /data/results
-    results_db: /data/results.db
-  hosts:
-    - host: "sgx10.dima.tub"
-      base_path: /data/benchipath
-      public_key_path: ~/.ssh/id_rsa.pub

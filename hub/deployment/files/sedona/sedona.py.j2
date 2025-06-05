@@ -1,50 +1,44 @@
-from pyspark.sql import SparkSession
-from sedona.register import SedonaRegistrator
-from sedona.core.formatMapper.shapefileParser import ShapefileReader
-from sedona.core.formatMapper import GeoJsonReader, WktReader
-from sedona.utils.adapter import Adapter
-from sedona.core.enums import GridType
-from sedona.core.enums import IndexType
-from sedona.utils import SedonaKryoRegistrator, KryoSerializer
-from pathlib import Path
-import uuid
 import shutil
+import uuid
+from pathlib import Path
 from time import time
 
-spark = SparkSession.\
-    builder.\
-    master("local[*]").\
-    appName("Sedona App").\
-    config("spark.serializer", KryoSerializer.getName).\
-    config("spark.kryo.registrator", SedonaKryoRegistrator.getName) .\
+from pyspark.sql.functions import expr
+from sedona.core.enums import GridType
+from sedona.core.enums import IndexType
+from sedona.core.formatMapper.shapefileParser import ShapefileReader
+from sedona.core.formatMapper import GeoJsonReader, WktReader
+from sedona.spark import SedonaContext
+from sedona.utils.adapter import Adapter
+
+config = SedonaContext.builder(). \
     config('spark.jars.packages',
-           'org.apache.sedona:sedona-python-adapter-3.0_2.12:1.1.1-incubating,'
-           'org.datasyslab:geotools-wrapper:1.1.0-25.2'). \
+                                        'org.apache.sedona:sedona-spark-3.0_2.12:1.5.1,'
+                                        'org.datasyslab:geotools-wrapper:1.5.1-28.2'). \
+    config('spark.jars.repositories', 'https://artifacts.unidata.ucar.edu/repository/unidata-all'). \
     getOrCreate()
-SedonaRegistrator.registerAll(spark)
-sc = spark.sparkContext
+sedona = SedonaContext.create(config)
+sedona.sparkContext.setLogLevel("ERROR")
 
 vector_table = "{{vector_name}}"
 raster_table = "{{raster_name}}"
 print(f"benchi_marker,{time()},start,ingestion,sedona,vector,inner")
-{{vector_name}} = {{vector_reader}}.{{raster_method}}(sc, "{{vector_path}}")
-{{vector_name}}.analyze()
-{{vector_name}}.spatialPartitioning(GridType.KDBTREE)
-{{vector_name}}.buildIndex(IndexType.RTREE, True)
-{{vector_name}}_df = Adapter.toDf({{vector_name}}, spark).repartition(1000).createOrReplaceTempView(vector_table)
+vec = {{vector_reader}}.{{vector_method}}(sedona.sparkContext, "{{vector_path}}")
+vec.analyze()
+vec.spatialPartitioning(GridType.KDBTREE)
+vec.buildIndex(IndexType.RTREE, True)
+Adapter.toDf(vec, sedona).repartition(1000).createOrReplaceTempView(vector_table)
 print(f"benchi_marker,{time()},end,ingestion,sedona,vector,inner")
 
 print(f"benchi_marker,{time()},start,ingestion,sedona,raster,inner")
-{{raster_name}} = {{raster_reader}}.{{raster_method}}(sc, "{{raster_path}}")
-{{raster_name}}.analyze()
-{{raster_name}}.spatialPartitioning({{vector_name}}.getPartitioner())
-{{raster_name}}.buildIndex(IndexType.RTREE, True)
-{{raster_name}}_df = Adapter.toDf({{raster_name}}, spark).repartition(1000).createOrReplaceTempView(raster_table)
+ras = sedona.read.format("binaryFile").load("{{raster_path}}")
+ras = ras.withColumn("rast", expr("{{raster_method}}(content)"))
+ras.createOrReplaceTempView(raster_table)
 print(f"benchi_marker,{time()},end,ingestion,sedona,raster,inner")
 
 
 print(f"benchi_marker,{time()},start,execution,sedona,,")
-spatial_gdf = spark.sql(
+spatial_gdf = sedona.sql(
                         """
                         {{query}}
                         """

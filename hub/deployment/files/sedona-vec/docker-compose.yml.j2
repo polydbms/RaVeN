@@ -1,0 +1,15 @@
+version: '2.1'
+
+services:
+
+  sedona-vec:
+    image: ghcr.io/polydbms/sedona:1.5.1-3.5.0
+    volumes:
+      - ../../data:/data
+      - ../../config:/config
+    ports:
+      - "7077:7077"
+    user: root
+    environment:
+      - GRANT_SUDO=yes
+    tty: true
