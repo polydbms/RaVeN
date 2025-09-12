@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import yaml
 from pyproj import CRS
@@ -22,6 +23,30 @@ from hub.utils.datalocation import RasterLocation, VectorLocation
 
 class FileIO:
     pass
+
+    @staticmethod
+    def read_experiment_essentials(experiments_filename: str, controller_config_filename: str) -> tuple[
+        dict[str, Any], RasterLocation, VectorLocation, HostParameters, ControllerParameters]:
+        """
+        reads the essentials of an experiment file, namely the workload and the systems
+        :param experiments_filename: the location of the experiment file
+        :return: the workload and the systems
+        """
+        with PROJECT_ROOT.joinpath(experiments_filename).open(mode="r") as c:
+            try:
+                yamlfile = yaml.safe_load(c)
+                experiments = yamlfile["experiments"]
+                workload = experiments["workload"]
+                data = experiments["data"]
+
+                host_params, controller_params = FileIO.get_host_params(controller_config_filename)
+
+                raster_location = RasterLocation(experiments["data"]["raster"], host_params)
+                vector_location = VectorLocation(experiments["data"]["vector"], host_params)
+
+                return workload, raster_location, vector_location, host_params, controller_params
+            except yaml.YAMLError as exc:
+                raise Exception(f"error while processing experiment essentials: {exc}")
 
     @staticmethod
     def read_experiments_config(experiments_filename: str, controller_config_filename: str,
@@ -48,6 +73,10 @@ class FileIO:
                                                                   FileIO.get_systems(experiments_filename),
                                                                   workload, controller_config_filename, parameters)
 
+                if not runs_no_dupes:
+                    print(f"WARNING: no valid runs found in workload file {experiments_filename}")
+                    return [], -1
+
                 _, controller_params = FileIO.get_host_params(controller_config_filename)
                 InitializeDuckDB(controller_params.controller_db_connection, runs_no_dupes, experiments_filename)
 
@@ -66,6 +95,10 @@ class FileIO:
         if len(selected_systems) > 0:
             systems = list(
                 filter(lambda s: s.name.lower() in list(map(lambda sel: sel.lower(), selected_systems)), systems))
+
+        if len(systems) == 0:
+            print(f"WARNING: no valid systems found in workload file {experiments_filename}, available systems are: "
+                  f"{', '.join([s.name for s in all_systems])}")
 
         iterations = int(experiments.get("iterations", 1))
         warm_starts = int(experiments.get("warm_starts", 0))

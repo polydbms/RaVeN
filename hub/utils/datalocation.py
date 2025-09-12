@@ -3,10 +3,16 @@ import subprocess
 import zipfile
 from abc import abstractmethod
 from pathlib import Path
+from typing import TypedDict
 
 import pyproj
+import shapely
 from pyproj import CRS
 
+from shapely import box
+from shapely.geometry.polygon import Polygon
+
+from hub.executor.sqlbased import SQLBased
 from hub.enums.datatype import DataType
 from hub.enums.filetype import FileType
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
@@ -28,6 +34,10 @@ class DataLocation:
     _target_suffix: VectorFileType | RasterFileType
     _suffix: VectorFileType | RasterFileType
     _allowed_endings: list[str]
+    _metadata: dict
+    _uuid: str
+
+    EXTENT_CRS = pyproj.CRS.from_epsg(9822)
 
     def __init__(self,
                  path_str: str,
@@ -73,6 +83,7 @@ class DataLocation:
         self._docker_dir = Path("/data").joinpath(Path(self._dir_name))
 
         self._preprocessed = False
+        self.get_metadata()
 
         # if self._data_type == DataType.VECTOR:
         #     self.type = json.loads(
@@ -238,6 +249,23 @@ class DataLocation:
         """
         self._target_suffix = suffix
 
+    @property
+    def uuid(self) -> str:
+        """
+        the uuid of the dataset
+        :return:
+        """
+        return self._uuid
+
+    @uuid.setter
+    def uuid(self, uuid: str):
+        """
+        set the uuid of the dataset
+        :param uuid:
+        :return:
+        """
+        self._uuid = uuid
+
     @abstractmethod
     def get_crs(self) -> CRS:
         """
@@ -254,8 +282,33 @@ class DataLocation:
         """
         pass
 
+    @abstractmethod
+    def get_metadata(self) -> dict:
+        """
+        return metadata of the dataset
+        :return:
+        """
+        pass
+
     def get_vector_types(self):
         return
+
+    @abstractmethod
+    def get_extent(self) -> Polygon:
+        """
+        return the extent of the dataset
+        :return:
+        """
+        pass
+
+    def transform_extent(self, poly: Polygon) -> Polygon:
+        """
+        transform the extent of the dataset to the target CRS
+        :param target_crs: the target CRS
+        :return: the transformed extent
+        """
+        transformer = pyproj.Transformer.from_crs(self.get_crs(), self.EXTENT_CRS, always_xy=True).transform
+        return shapely.transform(poly, transformer, interleaved=False)
 
     @abstractmethod
     def impose_limitations(self, benchmark_params: BenchmarkParameters):
@@ -304,14 +357,63 @@ class VectorLocation(DataLocation):
 
         self._suffix = VectorFileType.get_by_value(self._files[0].suffix)
 
+    def get_metadata(self) -> dict:
+        """
+        return metadata of the dataset
+        :return:
+        """
+        self._metadata = json.loads(
+            subprocess.check_output(f'ogrinfo -json -nomd {self.controller_file[0]}', shell=True)
+            .decode('utf-8'))
+        return self._metadata
+
+    def get_feature_count(self) -> int:
+        """
+        return the number of features in the dataset
+        :return:
+        """
+        return int(self._metadata["layers"][0]["featureCount"])
+
+    def get_selectivity(self, filter):
+        if not filter:
+            return 1.0
+
+        filter_string = SQLBased.build_condition(filter, "", "and")
+
+        features = json.loads(
+            subprocess.check_output(
+                f'ogrinfo -json -where "{filter_string}" -nomd {self.controller_file[0]}',
+                shell=True)
+            .decode('utf-8'))["layers"][0]["featureCount"]
+
+        return features / self.get_feature_count()
+
+    def get_extent(self) -> Polygon:
+        """
+        return the extent of the dataset
+        :return:
+        """
+        extent = self._metadata["layers"][0]["geometryFields"][0]["extent"]
+        return self.transform_extent(
+            box(xmin=float(extent[0]),
+                   ymin=float(extent[1]),
+                   xmax=float(extent[2]),
+                   ymax=float(extent[3]))
+        )
+
+    def get_feature_type(self) -> str:
+        """
+        return the feature type of the dataset
+        :return:
+        """
+        return self._metadata["layers"][0]["geometryFields"][0]["type"]
+
     def get_crs(self) -> CRS:
         """
         return the CRS of the dataset
         :return:
         """
-        crs = json.loads(
-            subprocess.check_output(f'ogrinfo -json -nocount -nomd {self.controller_file[0]}', shell=True)
-            .decode('utf-8'))["layers"][0]["geometryFields"][0]["coordinateSystem"]["projjson"]["id"]["code"]
+        crs = self._metadata["layers"][0]["geometryFields"][0]["coordinateSystem"]["projjson"]["id"]["code"]
         return pyproj.CRS.from_epsg(crs)
 
     def _fix_files(self):
@@ -386,13 +488,43 @@ class RasterLocation(DataLocation):
 
         self._suffix = RasterFileType.get_by_value(self._files[0].suffix)
 
+    def get_width(self):
+        return self._metadata["size"][0]
+
+    def get_height(self):
+        return self._metadata["size"][1]
+
+    def get_pixels(self):
+        return self.get_width() * self.get_height()
+
+    def get_metadata(self) -> dict:
+        """
+        return metadata of the dataset
+        :return:
+        """
+        self._metadata = json.loads(
+            subprocess.check_output(f'gdalinfo -json {self.controller_file[0]}', shell=True)
+            .decode('utf-8'))
+        return self._metadata
+
+    def get_extent(self):
+        """
+        return the extent of the dataset
+        :return:
+        """
+        extent = self._metadata["cornerCoordinates"]
+        return self.transform_extent(
+            box(xmin=float(extent["lowerLeft"][0]),
+                   ymin=float(extent["lowerLeft"][1]),
+                   xmax=float(extent["upperRight"][0]),
+                   ymax=float(extent["upperRight"][1]))
+        )
+
     def get_crs(self) -> CRS:
         """
         return the CRS of the dataset
         """
-        crs = json.loads(
-            subprocess.check_output(f'gdalinfo -json {self.controller_file[0]}', shell=True)
-            .decode('utf-8'))["stac"]["proj:epsg"]
+        crs = self._metadata["stac"]["proj:epsg"]
 
         return pyproj.CRS.from_epsg(crs)
 

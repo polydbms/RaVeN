@@ -1,6 +1,7 @@
 import argparse
 import base64
 import json
+import math
 import random
 import re
 import shutil
@@ -121,6 +122,7 @@ class PreprocessConfig:
         self.raster_output_folder = Path(args.raster_output_folder)
         self.raster_target_crs = CRS.from_epsg(args.raster_target_crs)
         self.raster_resolution = args.raster_resolution
+        self.raster_datatype = args.raster_datatype
         self.raster_singlefile = args.raster_singlefile
 
         self.vector_filter = json.loads(
@@ -132,6 +134,8 @@ class PreprocessConfig:
         self.intermediate_folders = []
 
         self.capabilities = capabilities
+
+
 
     def set_vector_folder(self, folder: Path):
         self._vector_folder = folder
@@ -293,6 +297,9 @@ class Preprocessor:
         self.config.intermediate_folders.append(self._vector_tmp_out_folder)
         self.config.intermediate_folders.append(self._raster_tmp_out_folder)
 
+        self.raster_meta = None
+        self.vector_meta = None
+
         # self.vector_path = None
         # self.raster_path = None
         # if config.vector_path and (Path(config.vector_path).exists() and Path(config.vector_path).is_dir()):
@@ -308,9 +315,24 @@ class Preprocessor:
         """
         return the CRS of the dataset
         """
-        return json.loads(
-            subprocess.check_output(f'gdalinfo -json {self.config.raster_file_path[0]}', shell=True)
-            .decode('utf-8'))
+
+        if self.raster_meta is None:
+            self.raster_meta = json.loads(
+                subprocess.check_output(f'gdalinfo -json {self.config.raster_file_path[0]}', shell=True)
+                .decode('utf-8'))
+
+        return self.raster_meta
+
+    def get_vector_meta(self) -> dict[Any, Any]:
+        """
+        return the metadata of the vector dataset
+        """
+        if self.vector_meta is None:
+            self.vector_meta = json.loads(
+                subprocess.check_output(f'ogrinfo -json -nocount -nomd {self.config.vector_file_path[0]}', shell=True)
+                .decode('utf-8'))["layers"][0]
+
+        return self.vector_meta
 
     def get_raster_crs(self) -> CRS:
         """
@@ -325,9 +347,7 @@ class Preprocessor:
         return the CRS of the dataset
         :return:
         """
-        crs = json.loads(
-            subprocess.check_output(f'ogrinfo -json -nocount -nomd {self.config.vector_file_path[0]}', shell=True)
-            .decode('utf-8'))["layers"][0]["geometryFields"][0]["coordinateSystem"]["projjson"]["id"]["code"]
+        crs = self.get_vector_meta()["geometryFields"][0]["coordinateSystem"]["projjson"]["id"]["code"]
         return pyproj.CRS.from_epsg(crs)
 
     # def get_vector(self):
@@ -432,6 +452,67 @@ class MultiFilePreprocessor(Preprocessor):
         self.config.vector_file = [output_file]
         self.update_vector_folder()
 
+    @measure_time
+    @print_timings("raster", "split")
+    def split_raster(self, *args, **kwargs):
+        """
+        splits a raster file into multiple files
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        print(f"splitting raster file {self.config.raster_file}")
+
+        input_file = " ".join([str(r) for r in self.config.raster_file_path])
+        output_folder = self._raster_tmp_out_folder
+
+        max_width = kwargs.get("max_width", -1)
+        max_height = kwargs.get("max_height", -1)
+
+
+        if max_width < 0 or max_height < 0:
+            ratio_2gb = self.config.raster_file_path[0].stat().st_size * 1.3 * 2 / (2 * 1024 * 1024 * 1024)  # size in GB
+
+            subdivs_per_axis = int(np.ceil(np.sqrt(ratio_2gb)))
+            subdivs_x = subdivs_y = subdivs_per_axis
+
+            if subdivs_per_axis == 1:
+                return
+
+            max_width = int(math.ceil(self.get_raster_meta()["size"][0] / subdivs_per_axis))
+            max_height = int(math.ceil(self.get_raster_meta()["size"][1] / subdivs_per_axis))
+        else:
+            subdivs_x = int(math.ceil(self.get_raster_meta()["size"][0] / max_width))
+            subdivs_y = int(math.ceil(self.get_raster_meta()["size"][1] / max_height))
+
+        print(f"subdividing raster into {subdivs_x} x {subdivs_y} tiles of size {max_width} x {max_height}")
+
+        has_next_step = kwargs.get("has_next_step", False)
+
+        self.config.raster_file = []
+        for x in range(0, subdivs_x):
+            for y in range(0, subdivs_y):
+                cmd_string = f"gdal_translate " \
+                             f"-srcwin {x * max_width} {y * max_height} {max_width} {max_height} "
+
+                desired_suffix = self.config.raster_target_suffix
+
+                if has_next_step:
+                    cmd_string += "-of VRT "
+                    desired_suffix = ".vrt"
+
+                output_file = output_folder.joinpath(f'{self.config.raster_name}_{x}_{y}').with_suffix(desired_suffix)
+
+                cmd_string += f"{input_file} " \
+                                f"{output_file} "
+
+                subprocess.call(cmd_string, shell=True)
+
+                self.config.raster_file.append(output_file)
+
+
+        self.update_raster_folder()
+
 
 class CRSFilterPreprocessor(Preprocessor):
     """
@@ -452,16 +533,6 @@ class CRSFilterPreprocessor(Preprocessor):
         """
         print(f"{'clipping and ' if self.config.raster_clip else ''}reprojecting raster file {self.config.raster_file}")
 
-        # rio_target_crs = rasterio.crs.CRS().from_user_input(self.config.raster_target_crs)
-        # raster = self.get_raster()
-        # out = raster.rio.reproject(rio_target_crs)
-        # try:
-        #     out.rio.to_raster(str(output_file))
-        # except OverflowError:
-        #     print("Unable to parse nodata value correctly. Setting to 0")
-        #     out.rio.write_nodata(0, inplace=True)
-        #     out.rio.to_raster(str(output_file))
-
         cmd_string = f"gdalwarp " \
                      f"-t_srs {self.config.raster_target_crs} "
 
@@ -473,9 +544,7 @@ class CRSFilterPreprocessor(Preprocessor):
                 mf_preprocessor = MultiFilePreprocessor(self.config)
                 mf_preprocessor.merge_raster()
 
-            extent = np.asarray(json.loads(
-                subprocess.check_output(f'ogrinfo -json -nocount -nomd {self.config.vector_file_path[0]}', shell=True)
-                .decode('utf-8'))["layers"][0]["geometryFields"][0]["extent"])
+            extent = np.asarray(self.get_vector_meta()["geometryFields"][0]["extent"])
 
             # affine_transf = self.get_raster().rio.transform()
             affine_transf = self.get_raster_meta()["geoTransform"]
@@ -486,7 +555,7 @@ class CRSFilterPreprocessor(Preprocessor):
             transformer = pyproj.Transformer.from_crs(self.get_vector_crs(), self.get_raster_crs(),
                                                       always_xy=True).transform
 
-            extent_proj = np.asarray(transform(shapely.geometry.box(*extent), transformer, include_z=False,
+            extent_proj = np.asarray(shapely.transform(shapely.geometry.box(*extent), transformer, include_z=False,
                                                # FIXME switch back to shapely if possible
                                                interleaved=False).bounds).reshape((2, 2))
 
@@ -498,6 +567,25 @@ class CRSFilterPreprocessor(Preprocessor):
 
             cmd_string += f"{f'-te_srs {self.get_raster_crs().to_string()} -te {l} {b} {r} {t}' if self.config.raster_clip else ''} "
 
+
+        current_raster_type = self.get_raster_meta()["bands"][0]["type"]
+        if ((self.config.raster_datatype or self.config.system in self.config.capabilities["raster_require_double_precision"])
+                and current_raster_type != self.config.raster_datatype):
+            if self.config.system in self.config.capabilities["raster_require_double_precision"]:
+                print("current raster type:", current_raster_type)
+                match current_raster_type:
+                    case ("Float32" | "CFloat32" | "CFloat64"):
+                        self.config.raster_datatype = "Float64"
+                    case ("Byte" | "Int8" | "Int16" | "UInt16", "CInt16"):
+                        self.config.raster_datatype = "Int32"
+                    case ("UInt32", "CInt32"):
+                        self.config.raster_datatype = "Int64"
+                    case _:
+                        self.config.raster_datatype = current_raster_type
+
+
+            cmd_string += f"-ot {self.config.raster_datatype} "
+
         for f in self.config.raster_file_path:
 
             output_file = self._raster_tmp_out_folder.joinpath(f.name)
@@ -508,8 +596,10 @@ class CRSFilterPreprocessor(Preprocessor):
                     .decode('utf-8'))["size"]
                 cmd_string += f"-ts {int(width / self.config.raster_resolution)} {int(height / self.config.raster_resolution)} "
 
+            target_suffix = self.config.raster_target_suffix if not self.config.raster_target_suffix in [".shp", ".geojson"] else self.config.raster_source_suffix
+
             cmd_string += f"{f} " \
-                          f"{output_file} " \
+                          f"{output_file.with_suffix(target_suffix)} " \
                           f"--debug ON " \
                           f""
 
@@ -520,7 +610,7 @@ class CRSFilterPreprocessor(Preprocessor):
 
         self.update_raster_folder()
 
-        print(f"Transfered {self.config.raster_file_path} CRS to {self.config.raster_target_crs}")
+        print(f"Transferred {self.config.raster_file_path} CRS to {self.config.raster_target_crs}")
 
     @measure_time
     @print_timings("vector", "reproject")
@@ -670,10 +760,13 @@ class DataModelProcessor(Preprocessor):
         for idx, f in enumerate(self.config.raster_file_path):
             print(f"vectorizing raster file {self.config.raster_file} with polygons")
 
+            if len(self.config.raster_file_path) > 1:
+                print("warning: cannot vectorize multiple raster files into one. only processing the first file")
+
             output_file = self._raster_tmp_out_folder \
                 .joinpath(f.name).with_suffix(self.config.raster_target_suffix)
 
-            gdal_polygonize.gdal_polygonize(src_filename=str(self.config.raster_file_path),
+            gdal_polygonize.gdal_polygonize(src_filename=str(self.config.raster_file_path[0]),
                                             dst_filename=str(output_file),
                                             driver_name=self.get_driver_name(output_file),
                                             dst_fieldname="values")
@@ -797,6 +890,7 @@ def main():
     parser.add_argument("--raster_singlefile", help="whether the output of the raster should be a single file",
                         required=False,
                         action=argparse.BooleanOptionalAction)
+    parser.add_argument("--raster_datatype", help="the datatype of the raster file", required=False, default=None)
     parser.add_argument("--system", help="Specify which system should be benchmarked")
     parser.add_argument("--vector_filter", help="Filters to be applied on the vector feature fields", required=False,
                         default="")
@@ -811,19 +905,26 @@ def main():
 
 
     mf_preprocessor = MultiFilePreprocessor(preprocess_config)
+    crs_preprocessor = CRSFilterPreprocessor(preprocess_config)
+
+    will_reproject_vector = preprocess_config.vector_target_crs != crs_preprocessor.get_vector_crs() or preprocess_config.vector_filter != [] or preprocess_config.vector_simplify != 0.0
+    will_reproject_raster = preprocess_config.raster_target_crs != crs_preprocessor.get_raster_crs() or preprocess_config.raster_clip or preprocess_config.raster_resolution != 1.0
 
     if preprocess_config.raster_singlefile and len(preprocess_config.raster_file) > 1:
         mf_preprocessor.merge_raster()
 
+
     # todo if CRS already correct
 
-    crs_preprocessor = CRSFilterPreprocessor(preprocess_config)
 
-    if preprocess_config.vector_target_crs != crs_preprocessor.get_vector_crs() or preprocess_config.vector_filter != [] or preprocess_config.vector_simplify != 0.0:
+    if will_reproject_vector:
         crs_preprocessor.filter_reproject_simplify_vector(log_time=crs_preprocessor.logger)
 
-    if preprocess_config.raster_target_crs != crs_preprocessor.get_raster_crs() or preprocess_config.raster_clip or preprocess_config.raster_resolution != 1.0:
+    if will_reproject_raster:
         crs_preprocessor.clip_reproject_resolution_raster(log_time=crs_preprocessor.logger)
+
+    if preprocess_config.system in capabilities["raster_max_2gb"]:
+        mf_preprocessor.split_raster(has_next_step=False)
 
     # TODO if raster -> raster needs to be converted
 
@@ -854,87 +955,6 @@ def main():
 
     preprocess_config.copy_to_output()
     preprocess_config.remove_intermediates()
-
-
-"""
- The following code is the main branch version of the transform method from the Shapely library.
-
-BSD 3-Clause License
-
-Copyright (c) 2007, Sean C. Gillies. 2019, Casper van der Wel. 2007-2022, Shapely Contributors.
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright notice,
- this list of conditions and the following disclaimer in the documentation
- and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  """
-
-
-def transform(
-        geometry,
-        transformation,
-        include_z: Optional[bool] = False,
-        interleaved: bool = True,
-):
-    geometry_arr = np.array(geometry, dtype=np.object_)  # makes a copy
-    if include_z is None:
-        has_z = shapely.has_z(geometry_arr)
-        result = np.empty_like(geometry_arr)
-        result[has_z] = transform(
-            geometry_arr[has_z], transformation, True, interleaved
-        )
-        result[~has_z] = transform(
-            geometry_arr[~has_z], transformation, False, interleaved
-        )
-    else:
-        coordinates = lib.get_coordinates(geometry_arr, include_z, False)
-        if interleaved:
-            new_coordinates = transformation(coordinates)
-        else:
-            new_coordinates = np.asarray(
-                transformation(*coordinates.T), dtype=np.float64
-            ).T
-        # check the array to yield understandable error messages
-        if not isinstance(new_coordinates, np.ndarray) or new_coordinates.ndim != 2:
-            raise ValueError(
-                "The provided transformation did not return a two-dimensional numpy array"
-            )
-        if new_coordinates.dtype != np.float64:
-            raise ValueError(
-                "The provided transformation returned an array with an unexpected "
-                f"dtype ({new_coordinates.dtype})"
-            )
-        if new_coordinates.shape != coordinates.shape:
-            # if the shape is too small we will get a segfault
-            raise ValueError(
-                "The provided transformation returned an array with an unexpected "
-                f"shape ({new_coordinates.shape})"
-            )
-        result = lib.set_coordinates(geometry_arr, new_coordinates)
-    if result.ndim == 0 and not isinstance(geometry, np.ndarray):
-        return result.item()
-    return result
 
 
 if __name__ == "__main__":

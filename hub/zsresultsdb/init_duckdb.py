@@ -20,6 +20,8 @@ class InitializeDuckDB:
         self.initialize_experiments(runs, Path(filename).parts[-1])
 
     def setup_duckdb_tables(self):
+        self._connection.execute("INSTALL spatial; LOAD spatial;")
+
         self._connection.execute("""
         create table if not exists files (
             filename varchar,
@@ -157,6 +159,25 @@ class InitializeDuckDB:
             primary key (run_id, warm_start_no)
         )
         """)  # results_table
+
+        self._connection.execute("""
+        create table if not exists available_files (
+            id uuid primary key default gen_random_uuid(),
+            name varchar,
+            location varchar[],
+            crs varchar,
+            extent Polygon,
+            datatype varchar,
+            filter_predicate json,
+            vector_simplify double,
+            raster_resolution double,
+            raster_depth ubigint,
+            raster_tile_size struct(width int, height int),
+            system varchar,
+            
+            primary key (name) references files(name),
+        )
+        """)
 
         print("initialized tables")
 

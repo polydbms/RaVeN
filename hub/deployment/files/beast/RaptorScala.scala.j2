@@ -20,7 +20,7 @@ object RaptorScala {
     import spark.implicits._
 
     val sc = spark.sparkContext
-    sc.setLogLevel("DEBUG")
+    //sc.setLogLevel("DEBUG")
     try {
       val time_delta = System.currentTimeMillis() * scala.math.pow(10, 6) - System.nanoTime()
       println(f"benchi_marker,${(System.nanoTime() + time_delta) * scala.math.pow(10, -9)}%.9f,start,execution,beast,vector,inner")

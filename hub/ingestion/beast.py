@@ -171,12 +171,12 @@ class Ingestor(IngestionInterface):
         output_path = "/data/beast_result"
 
         if self.benchmark_params.parallel_machines > 1:
-            vector_path = f"hdfs://{self.network_manager.master_url}:9010" + str(vector_path)
-            raster_path = f"hdfs://{self.network_manager.master_url}:9010" + str(raster_path)
-            output_path = f"hdfs://{self.network_manager.master_url}:9010" + str(output_path)
+            vector_path = f"hdfs://namenode:9000" + str(vector_path)
+            raster_path = f"hdfs://namenode:9000" + str(raster_path)
+            output_path = f"hdfs://namenode:9000" + str(output_path)
 
         payload = {
-            "spark_master": "local[*]" if self.benchmark_params.parallel_machines == 1 else f"spark://{self.network_manager.master_url}:7077",
+            "spark_master": "local[*]" if self.benchmark_params.parallel_machines == 1 else f"spark://beast:7077",
             "vector_path": vector_path,
             "raster_geotiff_path": raster_path,
             "vector_conditions": vector_condition,

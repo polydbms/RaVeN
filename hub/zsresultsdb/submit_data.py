@@ -9,8 +9,13 @@ import numpy as np
 import pandas as pd
 from duckdb import DuckDBPyConnection, connect
 from pandas import DataFrame
+from shapely.geometry.polygon import Polygon
 
+from enums.datatype import DataType
+from enums.stage import Stage
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
+from utils.datalocation import DataLocation, RasterLocation
+from utils.system import System
 
 
 class DuckDBConnector:
@@ -43,6 +48,9 @@ class DuckDBConnector:
         :param param: the benchmark parameter object
         :return: the parameter id
         """
+        if not self._is_initialized:
+            raise Exception("the benchmark set has not been initialized yet")
+
         with self.get_cursor() as c:
             param_df = pd.DataFrame([param.__dict__]).fillna('')
             param_df_cleaned = c.execute("select * from param_df").fetch_df()
@@ -111,6 +119,54 @@ class DuckDBConnector:
             print(f"created benchmark run: {run}")
             return DuckDBRunCursor(self._connection, run[0])
 
+    def register_file(self, file: DataLocation, params: BenchmarkParameters, workload: dict, extent: Polygon):
+        """
+        inserts a file into the database
+        :param file: the data location
+        :param params: the benchmark parameters object
+        :return:
+        """
+        if params.align_crs_at_stage == Stage.EXECUTION:
+            crs = params.raster_target_crs if params.align_to_crs == DataType.RASTER else params.vector_target_crs
+        elif params.align_to_crs == DataType.RASTER:
+            crs = params.raster_target_crs
+        elif params.align_to_crs == DataType.VECTOR:
+            crs = params.vector_target_crs
+
+        if params.system == System.POSTGIS:
+            system = System.POSTGIS
+        elif params.system == System.RASDAMAN and isinstance(file, RasterLocation):
+            system = System.RASDAMAN
+        else:
+            system = "filesystem"
+
+        with self._connection.cursor() as conn:
+            dataset = conn.execute("""insert into available_files (name, location, crs, extent, datatype, filter_predicate, vector_simplify, raster_resolution, raster_depth, raster_tile_size, system)
+                                      values (?, ?, ?, ?, ?, ?, ?) returning id""",
+                                   [file.name, [str(f) for f in file.docker_file], crs, extent, file.target_suffix, workload.get("condition", {}).get("vector", {}),
+                                    params.vector_simplify, params.raster_resolution, params.raster_depth, params.raster_tile_size.__dict__, system]).fetchone()
+
+            print(f"registered file: {dataset}")
+
+            file.uuid = dataset[0]
+
+    def delete_file_by_uuid(self, uuid: str):
+        """
+        deletes a file from the database by its uuid
+        :param uuid: the uuid of the file
+        :return:
+        """
+        with self._connection.cursor() as conn:
+            conn.execute("delete from available_files where id = ?", [uuid])
+
+    def get_available_files_by_name(self, name: str) -> DataFrame:
+        """
+        returns a dataframe of all available files in the database
+        :return:
+        """
+        with self._connection.cursor() as conn:
+            return conn.execute("select * from available_files where name = ?", [name]).fetch_df()
+
     def close_connection(self):
         """
         closes the connection
@@ -134,6 +190,8 @@ class DuckDBRunCursor:
         """
         self._connection = connection
         self._run_id = run_id
+
+
 
     def write_timings_marker(self, marker: str):
         """

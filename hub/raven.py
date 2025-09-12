@@ -2,12 +2,8 @@ import base64
 import copy
 import importlib
 import json
-import logging
 import subprocess
-from copy import deepcopy
-from datetime import datetime
 from pathlib import Path
-from platform import system
 from time import sleep
 
 import jinja2
@@ -23,9 +19,10 @@ from hub.utils.network import NetworkManager
 from hub.utils.system import System
 from hub.utils.interfaces import ExecutorInterface
 from hub.zsresultsdb.submit_data import DuckDBRunCursor
-from hub.utils.query import extent_to_geom
 from hub.utils.capabilities import Capabilities
 from hub.utils.network import BasicNetworkManager
+from hub.optimizer.optimizer import Optimizer
+from hub.zsresultsdb.init_duckdb import InitializeDuckDB
 
 
 class Setup:
@@ -134,7 +131,13 @@ class Setup:
             del main_yaml["services"][worker_name]
         else:
             main_yaml = {"services": {system.name: main_yaml["services"][system.name]}}
-            del main_yaml["services"][system.name]["depends_on"]
+            if "volumes" in rendered_yaml:
+                main_yaml["volumes"] = copy.deepcopy(rendered_yaml["volumes"])
+
+            if "depends_on" in main_yaml["services"][system.name]:
+                del main_yaml["services"][system.name]["depends_on"]
+            if "networks" in main_yaml["services"][system.name]:
+                del main_yaml["services"][system.name]["networks"]
 
         PROJECT_ROOT.joinpath(f"deployment/files/{system.name}/docker-compose.yml").write_text(yaml.dump(main_yaml))
 
@@ -169,11 +172,17 @@ class Setup:
                     env = {e.split('=')[0]: e.split('=')[1] for e in env}
 
                 env["SPARK_MODE"] = "worker"
-                env["SPARK_MASTER_URL"] = f"spark://{master_ip}:7077"
+                # env["SPARK_MASTER_URL"] = f"spark://{master_ip}:7077"
+                env["SPARK_MASTER_URL"] = f"spark://beast:7077"
+
+                if env["GRANT_SUDO"]:
+                    env["GRANT_SUDO"] = "true" if env["GRANT_SUDO"] else "false"
 
                 rendered_yaml["services"][worker_name]["environment"] = env
 
-                worker_yaml = {"services": {worker_name: rendered_yaml["services"][worker_name].copy()}}
+                worker_yaml = {"services": {worker_name: rendered_yaml["services"][worker_name].copy()}, "networks": rendered_yaml["networks"]}
+                worker_yaml["services"][worker_name]["deploy"] = rendered_yaml["services"][worker_name].get("deploy", {"replicas": run.benchmark_params.parallel_machines})
+
                 del worker_yaml["services"][worker_name]["depends_on"]
 
                 PROJECT_ROOT.joinpath(f"deployment/files/{system.name}/docker-compose.worker.yml").write_text(yaml.dump(worker_yaml))
@@ -183,8 +192,8 @@ class Setup:
                 raise NotImplementedError(f"System {system.name} is not supported for distributed execution")
 
             system_name = run.benchmark_params.system.name
-            self.workers_nm = []
-            self.workers_ft = []
+            # self.workers_nm = []
+            # self.workers_ft = []
 
             if system_name in capabilities["distributed"] and run.benchmark_params.parallel_machines > 1:
                 if len(run.host_params.workers) < run.benchmark_params.parallel_machines:
@@ -193,14 +202,15 @@ class Setup:
                         f"Only {len(run.host_params.workers)} workers available."
                     )
 
-                print(f"initializing {run.benchmark_params.parallel_machines} workers for {system_name}")
-                for i in range(run.benchmark_params.parallel_machines):
-                    worker = run.host_params.workers[i]
-                    worker_nm = BasicNetworkManager(worker["host"], run.host_params, system_name)
-                    worker_ft = FileTransporter(worker_nm)
-
-                    self.workers_nm.append(worker_nm)
-                    self.workers_ft.append(worker_ft)
+                # print(f"initializing {run.benchmark_params.parallel_machines} workers for {system_name}")
+                # network_manager.run_ssh
+                # for i in range(run.benchmark_params.parallel_machines):
+                #     worker = run.host_params.workers[i]
+                #     worker_nm = BasicNetworkManager(worker["host"], run.host_params, system_name)
+                #     worker_ft = FileTransporter(worker_nm)
+                #
+                #     self.workers_nm.append(worker_nm)
+                #     self.workers_ft.append(worker_ft)
 
 
         """
@@ -215,21 +225,21 @@ class Setup:
         network_manager.run_ssh(f"chmod +x {run.host_params.host_base_path.joinpath('config/**/*.sh')}",
                                 log_time=self.logger)
 
-        self.initialize_workers(run)
+        # self.initialize_workers(run)
 
         self.increase_progress()
         return network_manager, run_cursor, transporter
 
 
-    def initialize_workers(self, run: BenchmarkRun):
-        """
-        initializes the worker nodes
-        :param run: the benchmark run containing the parameters
-        """
-
-        for worker_nm, worker_ft in zip(self.workers_nm, self.workers_ft):
-            worker_nm.run_remote_mkdir(worker_nm.host_params.host_base_path.joinpath("config"))
-            worker_ft.send_configs(log_time=self.logger)
+    # def initialize_workers(self, run: BenchmarkRun):
+    #     """
+    #     initializes the worker nodes
+    #     :param run: the benchmark run containing the parameters
+    #     """
+    #
+    #     for worker_nm, worker_ft in zip(self.workers_nm, self.workers_ft):
+    #         worker_nm.run_remote_mkdir(worker_nm.host_params.host_base_path.joinpath("config"))
+    #         worker_ft.send_configs(log_time=self.logger)
 
 
     def do_preprocess(self,
@@ -268,7 +278,6 @@ class Setup:
         vector_filter_str = base64.b64encode(json.dumps(vector_filter).encode('utf-8')).decode('utf-8')
         bbox_str = f"{bbox['xmin']} {bbox['ymin']} {bbox['xmax']} {bbox['ymax']}" if bbox else ""
 
-
         parameters = f'--system {system} ' \
                      f'--vector_path {run.vector.docker_dir} ' \
                      f'--vector_source_suffix {run.vector.suffix.value} ' \
@@ -301,17 +310,20 @@ class Setup:
         # print("Wait 5s until docker is ready")
         # sleep(5)
 
-        self.launch_workers(system)
+        self.launch_workers(system, network_manager)
 
         self.increase_progress()
 
 
     def launch_workers(self,
-                       system: System) -> None:
+                       system_i: System, network_manager: NetworkManager) -> None:
 
-            for worker_nm in self.workers_nm:
-                worker_nm.run_ssh(f"docker compose -f {worker_nm.host_params.host_base_path.joinpath(worker_nm.host_params.host_base_path, 'config', system.name, 'docker-compose.worker.yml')} up -d",
-                                  log_time=self.logger)
+        network_manager.run_ssh(
+            f"docker stack deploy --compose-file {network_manager.host_params.host_base_path.joinpath('config', system_i.name, 'docker-compose.worker.yml')} {system_i.name}",
+            log_time=self.logger)
+        # for worker_nm in self.workers_nm:
+        #         worker_nm.run_ssh(f"docker compose -f {worker_nm.host_params.host_base_path.joinpath(worker_nm.host_params.host_base_path, 'config', system.name, 'docker-compose.worker.yml')} up -d",
+        #                           log_time=self.logger)
 
 
     def do_ingestion(self,
@@ -327,9 +339,13 @@ class Setup:
         Ingestor = self.__importer(f"hub.ingestion.{system}", "Ingestor")
         ingestor = Ingestor(run.vector, run.raster, network_manager, run.benchmark_params, run.workload)
         ingestor.ingest_raster(log_time=self.logger)
+        network_manager.host_params.controller_params.controller_db_connection.register_file(run.raster, run.benchmark_params, run.workload)
         self.increase_progress()
+
         ingestor.ingest_vector(log_time=self.logger)
+        network_manager.host_params.controller_params.controller_db_connection.register_file(run.vector, run.benchmark_params, run.workload)
         self.increase_progress()
+
         network_manager.stop_measure_docker()
 
     def do_execution(self,
@@ -375,7 +391,10 @@ class Setup:
             """
         transporter.get_measurements(run.measurements_loc)
         executor.post_run_cleanup()
-        self.stop_workers(run.benchmark_params.system.name)
+        run.host_params.controller_params.controller_db_connection.delete_file_by_uuid(run.raster.uuid)
+        run.host_params.controller_params.controller_db_connection.delete_file_by_uuid(run.vector.uuid)
+
+        self.stop_workers(run.benchmark_params.system.name, transporter.network_manager)
         self.increase_progress()
         """
             transfer results to database
@@ -387,10 +406,54 @@ class Setup:
         result_files_not_empty = list(filter(lambda r: r[1], result_files_emptiness_info))
         return result_files_not_empty
 
-    def stop_workers(self, system: str) -> None:
-        for worker_nm in self.workers_nm:
-            worker_nm.run_ssh(f"docker compose -f {worker_nm.host_params.host_base_path.joinpath(worker_nm.host_params.host_base_path, 'config', system, 'docker-compose.worker.yml')} down",
-                              log_time=self.logger)
+    def stop_workers(self, system_i: str, network_manager: BasicNetworkManager) -> None:
+        network_manager.run_ssh(f"docker stack rm {system_i}", log_time=self.logger)
+        # for worker_nm in self.workers_nm:
+        #     worker_nm.run_ssh(f"docker compose -f {worker_nm.host_params.host_base_path.joinpath(worker_nm.host_params.host_base_path, 'config', system, 'docker-compose.worker.yml')} down",
+        #                       log_time=self.logger)
+
+    def optimize(self, experiment_file_name: str, config_file: str, post_cleanup=True) -> None:
+        workload, raster_location, vector_location, host_cofig, controller_config = FileIO.read_experiment_essentials(
+            experiment_file_name, config_file)
+        capabilities = Capabilities.read_capabilities()
+
+        params = Optimizer.create_run_config(workload, raster_location, vector_location)
+
+        FileIO.adjust_by_capabilities(params, capabilities, vector_location, raster_location)
+        vector_location.adjust_target_files(params)
+        raster_location.adjust_target_files(params)
+
+        params.validate(capabilities)
+
+        vector_location.impose_limitations(params)
+        raster_location.impose_limitations(params)
+
+        exp_file = Path("OPTIMIZED." + experiment_file_name).parts[-1]
+
+        run = BenchmarkRun(raster=raster_location,
+                           vector=vector_location,
+                           workload=workload,
+                           benchmark_params=params,
+                           controller_params=controller_config,
+                           experiment_name_file=exp_file,
+                           warm_starts=0,
+                           query_timeout=3600,
+                           resource_limits={}
+                           )
+
+        run.set_host(host_cofig)
+        InitializeDuckDB(controller_config.controller_db_connection, [run], exp_file)
+
+        run.host_params.controller_db_connection.initialize_benchmark_set(exp_file, {})
+
+        print(str(run))
+
+        result = self.run_tasks(run)
+
+        print(result)
+
+
+
 
     def benchmark(self, experiment_file_name: str, config_file: str, system=None, post_cleanup=True,
                   single_run=True, stop_at_preprocess=False) -> tuple[list[Path], Path, list[str]]:
@@ -406,6 +469,11 @@ class Setup:
         """
         runs, iterations = FileIO.read_experiments_config(experiment_file_name, config_file,
                                                           system)  # todo use iterations
+
+        if not runs or iterations < 1:
+            print("No runs found, aborting")
+            return [], None, []
+
         print(f"running {len(runs)} experiments")
         print([str(r.benchmark_params) for r in runs])
 

@@ -41,12 +41,17 @@ systems:
     - postgis-vec
   distributed:
     - beast
-    - sedona
-    - sedona-vec
+#    - sedona
+#    - sedona-vec
   spark_based:
+#    - sedona
+#    - sedona-vec
+    - beast
+  raster_require_double_precision:
     - sedona
     - sedona-vec
-    - beast
+  raster_max_2gb:
+    - sedona
 
 #  align_crs_at:
 #    preprocess:
