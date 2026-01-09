@@ -93,7 +93,7 @@ class Raven:
 
             def run_bg():
                 for run in runs:
-                    result_files.extend(self.benchi.run_tasks(run))
+                    result_files.extend(self.benchi.run_tasks(run)[0])
 
                 runs[0].host_params.controller_db_connection.close_connection()
 

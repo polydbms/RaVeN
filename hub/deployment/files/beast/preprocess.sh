@@ -7,9 +7,9 @@ eval "ARGS=($parameters)"
 docker network create --driver overlay --attachable beast_network || true
 
 echo "Preprocessing data"
-docker pull ghcr.io/polydbms/preprocess:0.11.2-0
+docker pull ghcr.io/polydbms/preprocess:0.11.4-0
 echo "benchi_marker,$(date +%s.%N),start,preprocess,beast,,"
-docker run -e PYTHONUNBUFFERED=1 -v $(dirname $0)/../../data:/data --name "preprocess_beast" --rm  ghcr.io/polydbms/preprocess:0.11.2-0 python preprocess.py "${ARGS[@]}"
+docker run -e PYTHONUNBUFFERED=1 -v $(dirname $0)/../../data:/data --name "preprocess_beast" --rm  ghcr.io/polydbms/preprocess:0.11.4-0 python preprocess.py "${ARGS[@]}"
 echo "benchi_marker,$(date +%s.%N),end,preprocess,beast,,"
 
 echo "Starting Container in background"

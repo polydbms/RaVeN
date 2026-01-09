@@ -78,7 +78,8 @@ class FileIO:
                     return [], -1
 
                 _, controller_params = FileIO.get_host_params(controller_config_filename)
-                InitializeDuckDB(controller_params.controller_db_connection, runs_no_dupes, experiments_filename)
+                init_db = InitializeDuckDB(controller_params.controller_db_connection)
+                init_db.initialize(runs_no_dupes, experiments_filename)
 
                 return runs_no_dupes, iterations
             except yaml.YAMLError as exc:

@@ -1,0 +1,23 @@
+networks:
+  beast_network:
+    external: true
+services:
+  beast_worker:
+    deploy:
+      replicas: 1
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      GRANT_SUDO: 'true'
+      SPARK_MASTER_URL: spark://beast:7077
+      SPARK_MODE: worker
+    image: ghcr.io/polydbms/beast:0.9.5-3.5.0-hist
+    networks:
+    - beast_network
+    ports:
+    - 4040
+    - 18080
+    tty: true
+    user: root
+    volumes:
+    - ../../data:/data
+    - ../../config:/config

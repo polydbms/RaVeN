@@ -1,8 +1,6 @@
-from datetime import datetime
 from pathlib import Path
 
 from hub.benchmarkrun.controller_params import ControllerParameters
-from hub.zsresultsdb.submit_data import DuckDBConnector
 
 
 class HostParameters:

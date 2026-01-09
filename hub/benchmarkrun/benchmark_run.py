@@ -4,7 +4,6 @@ from hub.benchmarkrun.controller_params import ControllerParameters
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.benchmarkrun.host_params import HostParameters
 from hub.benchmarkrun.measurementslocation import MeasurementsLocation
-from hub.zsresultsdb.submit_data import DuckDBConnector, DuckDBRunCursor
 from hub.utils.datalocation import DataLocation
 
 
@@ -29,7 +28,7 @@ class BenchmarkRun:
                  experiment_name_file: str,
                  warm_starts: int,
                  query_timeout: int,
-                 resource_limits: dict
+                 resource_limits: dict,
                  ):
         """
         the Init function

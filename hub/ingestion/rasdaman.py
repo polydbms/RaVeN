@@ -40,6 +40,9 @@ class Ingestor:
 
     @measure_time
     def ingest_raster(self, **kwargs):
+        if self.raster_path.is_ingested:
+            return
+
         template_path = PROJECT_ROOT.joinpath("deployment/files/rasdaman/ingestion.json.j2")
         try:
             with open(template_path) as file_:

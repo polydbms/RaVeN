@@ -1,0 +1,53 @@
+experiments:
+  data:
+    raster: /home/gereon/UNI/research/tpctc-data/s2a/ndvi
+    vector: /home/gereon/UNI/research/tpctc-data/cad/ALKIS_nutzung_MOL_fixed
+  workload:
+    get:
+      vector:
+        - oid
+      raster:
+        - sval:
+            aggregations:
+              - avg
+              - max
+              - min
+              - count
+              - sum
+    join:
+      condition: intersect(raster, vector)
+    group:
+      vector:
+        - oid
+    order:
+      vector:
+        - oid
+    condition:
+      vector:
+        - nutzart = 'Landwirtschaft'
+
+  parameters:
+    raster_tile_size:
+      - auto
+    vectorize_type:
+      - polygons
+    vectorize_format:
+      - shp
+    raster_clip:
+      - false
+    vector_filter_at_stage:
+      - execution
+    align_crs_at_stage:
+      - preprocess
+
+
+  timeout: 1800
+  warm_starts: 1
+
+  resource_limits:
+    cpu_count: 2
+    mem_limit: 4g
+
+  systems:
+    - name: postgis
+    - name: beast

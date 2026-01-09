@@ -13,7 +13,7 @@ docutils==0.20.1
 duckdb==1.0.0
 Fiona==1.9.6
 GDAL==3.10.0
-geopandas==0.14.2
+geopandas==1.1.1
 idna==3.3
 imagesize==1.4.1
 Jinja2==3.1.2
@@ -26,8 +26,8 @@ munch==2.5.0
 myst-parser==2.0.0
 numpy==1.26.4
 packaging==23
-pandas==1.5.3
-protobuf==4.23.3
+pandas==2.3.3
+protobuf==6.33.2
 py4j==0.10.9.7
 Pygments==2.14.0
 pyparsing==3.0.9
@@ -56,3 +56,6 @@ tzdata==2023.3
 urllib3==1.26.12
 xarray==2023.5.0
 pyqt-editable-list-widget==0.0.11
+cpmpy[pysat]==0.9.28
+sqlglot[rs]==28.0.0
+exact==2.2.1

@@ -1,0 +1,67 @@
+experiments:
+  data:
+    raster: /home/gereon/UNI/research/tpctc-data/s2a/sentinel2a_mol_band9
+    vector: /home/gereon/UNI/research/tpctc-data/cad/ALKIS_nutzung_MOL
+  workload:
+    get:
+      vector:
+        - oid
+      raster:
+        - sval:
+            aggregations:
+              - avg
+              - max
+              - min
+              - count
+              - sum
+    join:
+      condition: intersect(raster, vector)
+    group:
+      vector:
+        - oid
+    order:
+      vector:
+        - oid
+    condition:
+      vector:
+        - nutzart = 'Landwirtschaft'
+#    extent:
+#      bbox:
+#        xmin: 437777
+#        ymin: 5817169
+#        xmax: 462666
+#        ymax: 5838839
+#        srid: 25833
+
+
+  parameters:
+    raster_tile_size:
+      - auto
+    vectorize_type:
+      - polygons
+    vectorize_format:
+      - shp
+#    vector_target_crs:
+#      - epsg:4326
+#      - epsg:25833
+    raster_clip:
+      - true
+    vector_filter_at_stage:
+      - execution
+    align_crs_at_stage:
+      - preprocess
+
+
+  timeout: 1000
+  warm_starts: 0
+
+  #resource_limits:
+  #  cpu_count: 1
+
+  systems:
+    - name: postgis
+    - name: omnisci
+    - name: sedona
+    - name: beast
+    - name: rasdaman
+    - name: sedona-vec

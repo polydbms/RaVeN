@@ -18,15 +18,25 @@ class BasicNetworkManager:
     ssh_connection: str
     _host_params: HostParameters
 
-    def __init__(self, ssh_connection: str,
+    @property
+    def host_params(self) -> HostParameters:
+        """
+        gets the host parameters
+        :return: the host paramters
+        """
+        return self._host_params
+
+
+    def __init__(self,
                  host_params: HostParameters,
                  system_name: str,
+                 ssh_connection: str = "",
                  query_timeout: int = 0
                  ) -> None:
         """
         the init function
         """
-        self.ssh_connection = ssh_connection
+        self.ssh_connection = ssh_connection if ssh_connection != "" else host_params.ssh_connection
         self._host_params = host_params
         self.system_name = system_name
         self.query_timeout = query_timeout
@@ -38,15 +48,6 @@ class BasicNetworkManager:
         self.ssh_command = (
             f"ssh {self.ssh_connection} {self.ssh_options}"
         )
-
-
-    @property
-    def host_params(self) -> HostParameters:
-        """
-        gets the host parameters
-        :return: the host paramters
-        """
-        return self._host_params
 
     @measure_time
     def run_command(self, command, **kwargs) -> int:
@@ -123,6 +124,20 @@ class BasicNetworkManager:
             f"{self.ssh_command} '{command}'"
         )
 
+    def run_ssh_return_result(self, command, **kwargs) -> str:
+        try:
+            result = subprocess.run(
+                f"{self.ssh_command} '{command}'",
+                shell=True, universal_newlines=True,
+                capture_output=True)
+            output_lines = result.stdout
+            return output_lines
+        except Exception as e:
+            print(e)
+            return ""
+
+
+
     def run_ssh_with_timeout(self, command, timeout, **kwargs):
         """
         prefixes a command with the ssh command and a timeout to run it remotely on the host
@@ -186,10 +201,11 @@ class NetworkManager(BasicNetworkManager):
         self.run_cursor = run_cursor
         self.warm_start_no = 0
 
-        super().__init__(host_params.ssh_connection,
+        super().__init__(
                          host_params,
                          system_name,
-                         query_timeout=query_timeout)
+            host_params.ssh_connection,
+            query_timeout=query_timeout)
 
         self.run_remote_mkdir(self.host_params.host_base_path.joinpath("data").joinpath("results"))
 

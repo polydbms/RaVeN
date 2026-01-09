@@ -212,7 +212,7 @@ class PreprocessConfig:
                 print(f"copy {f} to {self.raster_output_folder}")
                 shutil.copy(f, self.raster_output_folder)
 
-        if self.system in self.capabilities["require_geotiff_ending"]:
+        if self.system in self.capabilities["require_geotiff_ending"] or True:
             for f in self.raster_output_folder.iterdir():
                 if f.suffix == ".tiff":
                     f.with_suffix(".geotiff").symlink_to(f)
@@ -900,8 +900,13 @@ def main():
     parser.add_argument("--extent_wkt", help="The extent of the area to query", required=False, default="")
     parser.add_argument("--bbox", help="The bounding box of the area to query", required=False, nargs=4)
     parser.add_argument("--bbox_srs", help="The CRS of the bounding box", required=False, default="")
+    parser.add_argument("--preprocess_vector", help="Whether to preprocess the vector data", required=False, action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--preprocess_raster", help="Whether to preprocess the raster data", required=False, action=argparse.BooleanOptionalAction, default=True)
     preprocess_config = PreprocessConfig(parser.parse_args(), capabilities)
     print(preprocess_config)
+
+    should_preprocess_vector = parser.parse_args().preprocess_vector
+    should_preprocess_raster = parser.parse_args().preprocess_raster
 
 
     mf_preprocessor = MultiFilePreprocessor(preprocess_config)
@@ -917,10 +922,10 @@ def main():
     # todo if CRS already correct
 
 
-    if will_reproject_vector:
+    if will_reproject_vector and (should_preprocess_vector or (preprocess_config.raster_clip and preprocess_config.vector_filter)):
         crs_preprocessor.filter_reproject_simplify_vector(log_time=crs_preprocessor.logger)
 
-    if will_reproject_raster:
+    if will_reproject_raster and should_preprocess_raster:
         crs_preprocessor.clip_reproject_resolution_raster(log_time=crs_preprocessor.logger)
 
     if preprocess_config.system in capabilities["raster_max_2gb"]:
@@ -928,14 +933,15 @@ def main():
 
     # TODO if raster -> raster needs to be converted
 
-    if preprocess_config.system not in capabilities["vectorize"] \
-            and preprocess_config.raster_source_suffix != preprocess_config.raster_target_suffix:
+    if (preprocess_config.system not in capabilities["vectorize"]
+            and preprocess_config.raster_source_suffix != preprocess_config.raster_target_suffix
+            and should_preprocess_raster):
         file_converter = FileConverterPreprocessor(preprocess_config)
         file_converter.raster_to_geotiff()
 
     # todo if vector -> vector needs to be converted
 
-    if preprocess_config.system in capabilities["vectorize"]:
+    if preprocess_config.system in capabilities["vectorize"] and should_preprocess_raster:
         if preprocess_config.vectorization_type == VectorizationType.TO_POLYGONS:
             data_preprocessor = DataModelProcessor(preprocess_config)
             data_preprocessor.vectorize_polygons()

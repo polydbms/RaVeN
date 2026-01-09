@@ -220,14 +220,14 @@ class ZSGen:
         self.benchi.do_execution(self._network_manager, self._selected_run, self._selected_system)
 
     def do_teardown(self):
+        self.pull_data(self._executor, result_files, run, run_cursor, transporter)
         self.benchi.do_teardown(self._network_manager, self._selected_run, self._selected_system)
-
 
 
     def do_benchmark(self):
         result = []
         for run in self._runs:
-            results = self.benchi.run_tasks(run)
+            results, _ = self.benchi.run_tasks(run)
 
             result.append({"all_results": results, "results": pd.read_csv(results[0]), "parameters": run.benchmark_params,
                     "set_id": self._set_id})

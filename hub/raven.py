@@ -62,7 +62,7 @@ class Setup:
         module = importlib.import_module(module)
         return getattr(module, class_name)
 
-    def run_tasks(self, run: BenchmarkRun, iteration=1, stop_at_preprocess=False) -> list[Path]:
+    def run_tasks(self, run: BenchmarkRun, iteration=1, stop_at_preprocess=False, do_teardown=True, optmizer_run=False) -> (list[Path], int):
         """
         performs a single benchmark run. the following stages are executed:
 
@@ -82,7 +82,9 @@ class Setup:
 
         network_manager, run_cursor, transporter = self.setup_host(iteration, run, system)
 
-        self.do_preprocess(network_manager, run, system)
+        self.do_preprocess(network_manager, run, system, optmizer_run)
+
+        print("Post Preprocess DL: {}, {}".format(str(run.raster), str(run.vector)))
 
         if stop_at_preprocess:
             print("Stopping at preprocess")
@@ -90,13 +92,16 @@ class Setup:
 
             return []
 
-        self.do_ingestion(network_manager, run, system)
+        self.do_ingestion(network_manager, run, system, optmizer_run)
 
         executor, result_files = self.do_execution(network_manager, run, system)
 
-        result_files_not_empty = self.do_teardown(executor, result_files, run, run_cursor, transporter)
+        result_files_not_empty = self.pull_data(executor, result_files, run, run_cursor, transporter)
 
-        return list(map(lambda resfile: resfile[0], result_files_not_empty))
+        if do_teardown:
+            self.do_teardown(run, transporter)
+
+        return list(map(lambda resfile: resfile[0], result_files_not_empty)), run_cursor.run_id
 
     def setup_host(self,
                    iteration: int,
@@ -206,7 +211,7 @@ class Setup:
                 # network_manager.run_ssh
                 # for i in range(run.benchmark_params.parallel_machines):
                 #     worker = run.host_params.workers[i]
-                #     worker_nm = BasicNetworkManager(worker["host"], run.host_params, system_name)
+                #     worker_nm = BasicNetworkManager(run.host_params, system_name, worker["host"])
                 #     worker_ft = FileTransporter(worker_nm)
                 #
                 #     self.workers_nm.append(worker_nm)
@@ -245,68 +250,74 @@ class Setup:
     def do_preprocess(self,
                       network_manager: NetworkManager,
                       run: BenchmarkRun,
-                      system: System) -> None:
+                      system: System,
+                      optimizer_run) -> None:
         """
             Preprocess stage
             """
-        network_manager.start_measure_docker("preprocess", prerecord=False)
-        command = run.host_params.host_base_path.joinpath(f'config/{system}/preprocess.sh')
-        vector_target_crs = run.benchmark_params.vector_target_crs.to_epsg() \
-            if run.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
-            else run.vector.get_crs().to_epsg()
-        raster_target_crs = run.benchmark_params.raster_target_crs.to_epsg() \
-            if run.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
-            else run.raster.get_crs().to_epsg()
+        if run.raster.should_preprocess or run.vector.should_preprocess:
+            network_manager.start_measure_docker("preprocess", prerecord=False)
+            command = run.host_params.host_base_path.joinpath(f'config/{system}/preprocess.sh')
+            vector_target_crs = run.benchmark_params.vector_target_crs.to_epsg() \
+                if run.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
+                else run.vector.get_crs().to_epsg()
+            raster_target_crs = run.benchmark_params.raster_target_crs.to_epsg() \
+                if run.benchmark_params.align_crs_at_stage == Stage.PREPROCESS \
+                else run.raster.get_crs().to_epsg()
 
-        vector_filter = []
-        bbox = {}
-        if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS and run.workload.get("condition", {}).get("vector", {}):
-            vector_filter = run.workload.get("condition", {}).get("vector", [])
-            del run.workload["condition"]["vector"]
+            vector_filter = []
+            bbox = {}
+            if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS and run.workload.get("condition", {}).get("vector", {}):
+                vector_filter = run.workload.get("condition", {}).get("vector", [])
+                del run.workload["condition"]["vector"]
 
-        if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS and run.workload.get("extent", {}):
-            bbox = run.workload.get("extent", {}).get("bbox", {})
-            del run.workload["extent"]
+            if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS and run.workload.get("extent", {}):
+                bbox = run.workload.get("extent", {}).get("bbox", {})
+                del run.workload["extent"]
 
-        # extent = extent_to_geom(run.workload.get("extent", {}), run.benchmark_params, run.vector.get_crs()) \
-        #     if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS \
-        #     else None
-        # extent_str = extent.wkt \
-        #     if extent \
-        #     else ""
+            # extent = extent_to_geom(run.workload.get("extent", {}), run.benchmark_params, run.vector.get_crs()) \
+            #     if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS \
+            #     else None
+            # extent_str = extent.wkt \
+            #     if extent \
+            #     else ""
 
-        vector_filter_str = base64.b64encode(json.dumps(vector_filter).encode('utf-8')).decode('utf-8')
-        bbox_str = f"{bbox['xmin']} {bbox['ymin']} {bbox['xmax']} {bbox['ymax']}" if bbox else ""
+            vector_filter_str = base64.b64encode(json.dumps(vector_filter).encode('utf-8')).decode('utf-8')
+            bbox_str = f"{bbox['xmin']} {bbox['ymin']} {bbox['xmax']} {bbox['ymax']}" if bbox else ""
 
-        parameters = f'--system {system} ' \
-                     f'--vector_path {run.vector.docker_dir} ' \
-                     f'--vector_source_suffix {run.vector.suffix.value} ' \
-                     f'--vector_target_suffix {run.benchmark_params.vector_target_format.value} ' \
-                     f'--vector_output_folder {run.vector.docker_dir_preprocessed} ' \
-                     f'--vector_target_crs {vector_target_crs} ' \
-                     f'--vectorization_type {run.benchmark_params.vectorize_type.value} ' \
-                     f'--vector_simplify {run.benchmark_params.vector_simplify} ' \
-                     f'--raster_path {run.raster.docker_dir} ' \
-                     f'--raster_source_suffix {run.raster.suffix.value} ' \
-                     f'--raster_target_suffix {run.benchmark_params.raster_target_format.value} ' \
-                     f'--raster_output_folder {run.raster.docker_dir_preprocessed} ' \
-                     f'--raster_target_crs {raster_target_crs} ' \
-                     f'--raster_resolution {run.benchmark_params.raster_resolution} ' \
-                     f'--{"" if run.benchmark_params.raster_clip else "no-"}raster_clip ' \
-                     f'{"--vector_filter " + vector_filter_str if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS else ""} ' \
-                     f'''{f'--bbox {bbox_str} --bbox_srs {bbox["srid"]}' if bbox else ""} ''' \
-                     f'--{"" if run.benchmark_params.raster_singlefile else "no-"}raster_singlefile ' \
-                     f''
-                     # f'''{'--extent "' + extent_str + '"' if extent else ""} ''' \
+            parameters = f'--system {system} ' \
+                         f'--vector_path {run.vector.docker_dir} ' \
+                         f'--vector_source_suffix {run.vector.suffix.value} ' \
+                         f'--vector_target_suffix {run.benchmark_params.vector_target_format.value} ' \
+                         f'--vector_output_folder {run.vector.docker_dir_preprocessed} ' \
+                         f'--vector_target_crs {vector_target_crs} ' \
+                         f'--vectorization_type {run.benchmark_params.vectorize_type.value} ' \
+                         f'--vector_simplify {run.benchmark_params.vector_simplify} ' \
+                         f'--raster_path {run.raster.docker_dir} ' \
+                         f'--raster_source_suffix {run.raster.suffix.value} ' \
+                         f'--raster_target_suffix {run.benchmark_params.raster_target_format.value} ' \
+                         f'--raster_output_folder {run.raster.docker_dir_preprocessed} ' \
+                         f'--raster_target_crs {raster_target_crs} ' \
+                         f'--raster_resolution {run.benchmark_params.raster_resolution} ' \
+                         f'--{"" if run.benchmark_params.raster_clip else "no-"}raster_clip ' \
+                         f'{"--vector_filter " + vector_filter_str if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS else ""} ' \
+                         f'''{f'--bbox {bbox_str} --bbox_srs {bbox["srid"]}' if bbox else ""} ''' \
+                         f'--{"" if run.benchmark_params.raster_singlefile else "no-"}raster_singlefile ' \
+                         f'--{"" if run.raster.should_preprocess else "no-"}preprocess_raster ' \
+                         f'--{"" if run.vector.should_preprocess else "no-"}preprocess_vector ' \
+                         f''
+                         # f'''{'--extent "' + extent_str + '"' if extent else ""} ''' \
 
-        print(f"running {command} {parameters}")
-        "create a string that encodess parameters to a base64 string"
-        network_manager.run_ssh(f"{command} {base64.b64encode(parameters.encode('utf-8')).decode('utf-8')}",
-                                log_time=self.logger,
-                                )
-        run.raster.set_preprocessed()
-        run.vector.set_preprocessed()
-        network_manager.stop_measure_docker()
+
+
+            print(f"running {command} {parameters}")
+            "create a string that encodess parameters to a base64 string"
+            network_manager.run_ssh(f"{command} {base64.b64encode(parameters.encode('utf-8')).decode('utf-8')}",
+                                    log_time=self.logger,
+                                    )
+            run.raster.set_preprocessed(run.controller_params.controller_db_connection.get_cursor(), run.benchmark_params, run.workload, network_manager, optimizer_run)
+            run.vector.set_preprocessed(run.controller_params.controller_db_connection.get_cursor(), run.benchmark_params, run.workload, network_manager, optimizer_run)
+            network_manager.stop_measure_docker()
         # print("Wait 5s until docker is ready")
         # sleep(5)
 
@@ -329,24 +340,32 @@ class Setup:
     def do_ingestion(self,
                      network_manager: NetworkManager,
                      run: BenchmarkRun,
-                     system: System) -> None:
+                     system: System,
+                     optimizer_run) -> None:
         """
             Ingestion stage
             """
         # sleep(5)
 
-        network_manager.start_measure_docker("ingestion")
-        Ingestor = self.__importer(f"hub.ingestion.{system}", "Ingestor")
-        ingestor = Ingestor(run.vector, run.raster, network_manager, run.benchmark_params, run.workload)
-        ingestor.ingest_raster(log_time=self.logger)
-        network_manager.host_params.controller_params.controller_db_connection.register_file(run.raster, run.benchmark_params, run.workload)
-        self.increase_progress()
+        if not run.raster.is_ingested or not run.vector.is_ingested:
+            Ingestor = self.__importer(f"hub.ingestion.{system}", "Ingestor")
+            ingestor = Ingestor(run.vector, run.raster, network_manager, run.benchmark_params, run.workload)
+            network_manager.start_measure_docker("ingestion")
 
-        ingestor.ingest_vector(log_time=self.logger)
-        network_manager.host_params.controller_params.controller_db_connection.register_file(run.vector, run.benchmark_params, run.workload)
-        self.increase_progress()
+            if not run.raster.is_ingested:
+                ingestor.ingest_raster(log_time=self.logger)
+                if system in (System.POSTGIS, System.RASDAMAN, System.POSTGIS_VEC) and not run.raster.is_ingested:
+                    run.raster.register_file(run.controller_params.controller_db_connection.get_cursor(), run.benchmark_params, run.workload, run.raster.get_remote_extent(network_manager), False, optimizer_run=optimizer_run)
 
-        network_manager.stop_measure_docker()
+            self.increase_progress()
+
+            if not run.vector.is_ingested:
+                ingestor.ingest_vector(log_time=self.logger)
+                if system in (System.POSTGIS, System.POSTGIS_VEC) and not run.vector.is_ingested:
+                    run.vector.register_file(run.controller_params.controller_db_connection.get_cursor(), run.benchmark_params, run.workload, run.vector.get_remote_extent(network_manager), False,  optimizer_run=optimizer_run)
+            self.increase_progress()
+
+            network_manager.stop_measure_docker()
 
     def do_execution(self,
                      network_manager: NetworkManager,
@@ -381,30 +400,38 @@ class Setup:
 
         return executor, result_files
 
-    def do_teardown(self, executor: ExecutorInterface,
-                    result_files: list[Path],
-                    run: BenchmarkRun,
-                    run_cursor: DuckDBRunCursor,
-                    transporter: FileTransporter) -> list[tuple[Path, bool]]:
-        """
-            Cleanup
-            """
+    def pull_data(self,
+                  executor: ExecutorInterface,
+                  result_files: list[Path],
+                  run: BenchmarkRun,
+                  run_cursor: DuckDBRunCursor,
+                  transporter: FileTransporter) -> list[tuple[Path, bool]]:
         transporter.get_measurements(run.measurements_loc)
         executor.post_run_cleanup()
-        run.host_params.controller_params.controller_db_connection.delete_file_by_uuid(run.raster.uuid)
-        run.host_params.controller_params.controller_db_connection.delete_file_by_uuid(run.vector.uuid)
-
-        self.stop_workers(run.benchmark_params.system.name, transporter.network_manager)
-        self.increase_progress()
         """
             transfer results to database
             """
+
+        resource_utilization_files = [run.measurements_loc.controller_measurements_folder.joinpath(f"{e.value}.csv") for e in list(Stage)]
         run_cursor.add_resource_utilization(
-            [run.measurements_loc.controller_measurements_folder.joinpath(f"{e.value}.csv") for e in list(Stage)]
+            [f for f in resource_utilization_files if f.exists()]
         )
         result_files_emptiness_info = list(map(run_cursor.add_results_file, result_files))
         result_files_not_empty = list(filter(lambda r: r[1], result_files_emptiness_info))
+
         return result_files_not_empty
+
+    def do_teardown(self,
+                    run: BenchmarkRun,
+                    transporter: FileTransporter) -> None:
+        """
+            Cleanup
+            """
+        run.host_params.controller_params.controller_db_connection.delete_available_file_by_uuid(run.raster.uuid)
+        run.host_params.controller_params.controller_db_connection.delete_available_file_by_uuid(run.vector.uuid)
+
+        self.stop_workers(run.benchmark_params.system.name, transporter.network_manager)
+        self.increase_progress()
 
     def stop_workers(self, system_i: str, network_manager: BasicNetworkManager) -> None:
         network_manager.run_ssh(f"docker stack rm {system_i}", log_time=self.logger)
@@ -412,12 +439,25 @@ class Setup:
         #     worker_nm.run_ssh(f"docker compose -f {worker_nm.host_params.host_base_path.joinpath(worker_nm.host_params.host_base_path, 'config', system, 'docker-compose.worker.yml')} down",
         #                       log_time=self.logger)
 
-    def optimize(self, experiment_file_name: str, config_file: str, post_cleanup=True) -> None:
-        workload, raster_location, vector_location, host_cofig, controller_config = FileIO.read_experiment_essentials(
+    def optimize(self, experiment_file_name: str, config_file: str, last_run_id: int = -1, exp_group: str = "", dry_run: bool = False) -> int:
+        workload, raster_location, vector_location, host_config, controller_config = FileIO.read_experiment_essentials(
             experiment_file_name, config_file)
         capabilities = Capabilities.read_capabilities()
+        init_db = InitializeDuckDB(controller_config.controller_db_connection)
+        network_manager = BasicNetworkManager(host_config, "optimize")
 
-        params = Optimizer.create_run_config(workload, raster_location, vector_location)
+        raster_location.use_uuid_name()
+        vector_location.use_uuid_name()
+
+        print("Pre Optimizer DL: {}, {}".format(str(raster_location), str(vector_location)))
+
+        params = Optimizer.create_run_config(workload, raster_location, vector_location, controller_config.controller_db_connection.get_cursor(), network_manager, dry_run)
+
+        print("Post Optimizer DL: {}, {}".format(str(raster_location), str(vector_location)))
+
+        if dry_run:
+            print("Dry run - not executing optimization")
+            return -10
 
         FileIO.adjust_by_capabilities(params, capabilities, vector_location, raster_location)
         vector_location.adjust_target_files(params)
@@ -438,22 +478,28 @@ class Setup:
                            experiment_name_file=exp_file,
                            warm_starts=0,
                            query_timeout=3600,
-                           resource_limits={}
+                           resource_limits={},
                            )
 
-        run.set_host(host_cofig)
-        InitializeDuckDB(controller_config.controller_db_connection, [run], exp_file)
+        run.set_host(host_config)
+        init_db.initialize([run], exp_file)
 
         run.host_params.controller_db_connection.initialize_benchmark_set(exp_file, {})
 
         print(str(run))
 
-        result = self.run_tasks(run)
+        result, run_id = self.run_tasks(run, do_teardown=False, optmizer_run=True)
+
+        run.controller_params.controller_db_connection.write_optimize_system_used(
+            run_id,
+            run.benchmark_params.system.name,
+            last_run_id,
+            exp_group
+        )
 
         print(result)
 
-
-
+        return run_id
 
     def benchmark(self, experiment_file_name: str, config_file: str, system=None, post_cleanup=True,
                   single_run=True, stop_at_preprocess=False) -> tuple[list[Path], Path, list[str]]:
@@ -484,17 +530,17 @@ class Setup:
             if single_run:
                 run = next(r for r in runs if r.benchmark_params.system.name == system)
                 print(str(run))
-                result_files.extend(self.run_tasks(run, stop_at_preprocess=stop_at_preprocess))
+                result_files.extend(self.run_tasks(run, stop_at_preprocess=stop_at_preprocess)[0])
                 if post_cleanup:
                     self.clean(config_file)
             else:
                 for run in list(filter(lambda r: r.benchmark_params.system.name == system, runs)):
-                    result_files.extend(self.run_tasks(run, stop_at_preprocess=stop_at_preprocess))
+                    result_files.extend(self.run_tasks(run, stop_at_preprocess=stop_at_preprocess)[0])
                     self.clean(config_file)
 
         else:
             for run in runs:
-                result_files.extend(self.run_tasks(run, stop_at_preprocess=stop_at_preprocess))
+                result_files.extend(self.run_tasks(run, stop_at_preprocess=stop_at_preprocess)[0])
                 self.clean(config_file)
 
         return result_files, runs[0].vector.controller_file[0], runs[0].workload.get("get", {}).get("vector", [])
@@ -519,7 +565,7 @@ class Setup:
         :param config_filename: the config for which the cleanup shall be performed
         :return:
         """
-        host_params, _ = FileIO.get_host_params(config_filename)
+        host_params, controller_params = FileIO.get_host_params(config_filename)
 
         network_manager = NetworkManager(host_params, "cleanup", None, None)
         file_transporter = FileTransporter(network_manager)
@@ -527,6 +573,8 @@ class Setup:
         file_transporter.send_file(PROJECT_ROOT.joinpath("teardown.sh"), Path("config/teardown.sh"))
         network_manager.run_ssh(f"chmod 755 {host_params.host_base_path.joinpath('config/teardown.sh')}")
         network_manager.run_ssh(f"bash {host_params.host_base_path.joinpath('config/teardown.sh')} {host_params.host_base_path}")
+
+        controller_params.controller_db_connection.delete_available_files()
 
         # network_manager.run_ssh("""kill $(ps aux | grep "docker stats" | awk {\\'print $2\\'} )""")
         # network_manager.run_ssh("docker stop $(docker ps -q)")

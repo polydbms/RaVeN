@@ -17,6 +17,9 @@ class Ingestor:
 
 
     def ingest_raster(self, **kwargs):
+        if self.raster.is_ingested:
+            return
+
         command = self.host_base_path.joinpath(f"config/postgis/ingest.sh")
 
         raster_path = self.raster.docker_dir.joinpath(f"*{self.raster.target_suffix.value}") if self.raster.is_multifile() else self.raster.docker_file_preprocessed[0]
@@ -30,6 +33,9 @@ class Ingestor:
 
     @measure_time
     def ingest_vector(self, **kwargs):
+        if self.vector.is_ingested:
+            return
+
         command = self.host_base_path.joinpath(f"config/postgis/ingest.sh")
         self.network_manager.run_ssh(
             f"{command} "

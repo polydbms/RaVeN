@@ -1,0 +1,52 @@
+experiments:
+  data:
+    raster: /home/gereon/UNI/research/tpctc-data/dem_us_div12
+    vector: /home/gereon/UNI/research/tpctc-data/amtrak_clean
+  workload:
+    get: 
+      vector:
+        - ref
+      raster: 
+        - sval:
+            aggregations:
+              - max
+    join:
+      table1: vector
+      table2: raster
+      condition: intersect(raster, vector)
+    group:
+      vector: 
+        - ref
+    order:
+      vector: 
+        - ref
+
+  parameters:
+    raster_tile_size:
+      - auto
+    align_crs_at_stage:
+#      - preprocess
+      - execution
+    raster_clip:
+      - false
+    vector_filter_at_stage:
+      - execution
+    vectorize_type:
+      - polygons
+    vectorize_format:
+      - shp
+    align_to_crs:
+#      - raster
+      - vector
+
+        
+
+  warm_starts: 0
+  timeout: 500
+
+  systems: 
+    - name: postgis
+    - name: beast
+    - name: rasdaman
+    - name: sedona
+    - name: sedona-vec

@@ -56,20 +56,36 @@ class Raven:
                             help="stop the benchmark after preprocessing",
                             action=argparse.BooleanOptionalAction,
                             default=False)
+        parser.add_argument("--cleanup_each_optimize",
+                            help="whether to clean up after running the benchmark",
+                            action=argparse.BooleanOptionalAction)
+        parser.add_argument("--dryrun",
+                            help="whether to only print the commands without executing them",
+                            action=argparse.BooleanOptionalAction,
+                            default=False)
 
         args = parser.parse_args()
         if not args.experiment and not args.experiment_list:
             parser.error("At least one experiment must be specified with --experiment or --experiment-list.")
 
+        exp_dict = {}
 
         if args.experiment_list:
-            args.experiment = args.experiment or []
-            for file in args.experiment_list:
-                for line in file:
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        args.experiment.append(line)
+            if args.experiment:
+                exp_dict["no_list"] = args.experiment
 
+            for file in args.experiment_list:
+                exp = [Path(line.strip()) for line in file if line.strip() and not line.startswith("#")]
+
+                exp_abs = []
+                for e in exp:
+                    if not e.is_absolute():
+                        e = Path(file.name).parent.joinpath(e)
+                    exp_abs.append(e)
+
+                exp_dict[file.name] = exp_abs
+
+            args.experiment = [item for sublist in exp_dict.values() for item in sublist]
 
         print(args)
         setup = Setup()
@@ -95,7 +111,30 @@ class Raven:
                             setup.evaluate(args.config, result_files, args.evalbase)
             case "optimize":
                 for experiment_file_name in args.experiment:
-                    setup.optimize(experiment_file_name, args.config, args.postcleanup)
+                    setup.optimize(experiment_file_name, args.config)
+
+                    if args.cleanup_each_optimize:
+                        setup.clean(args.config)
+
+                if args.postcleanup:
+                    setup.clean(args.config)
+            case "optimize_multiple_bench":
+                for exp_list, experiments in exp_dict.items():
+
+                    print("Running experiment group {} with experiments: {}".format(exp_list, experiments))
+
+                    last_run_id = -2
+                    for experiment_file_name in experiments:
+                        last_run_id = setup.optimize(str(experiment_file_name), args.config, last_run_id, exp_group=exp_list, dry_run=args.dryrun)
+
+                    setup.clean(args.config)
+
+                    # isolated run
+
+                    for experiment_file_name in experiments:
+                        setup.optimize(str(experiment_file_name), args.config, last_run_id=-4, exp_group=exp_list, dry_run=args.dryrun)
+
+                        setup.clean(args.config)
             case "clean":
                 setup.clean(args.config)
             case "eval":

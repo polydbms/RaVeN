@@ -11,10 +11,12 @@ class InitializeDuckDB:
     initialize a newly created duckdb instance
     """
 
-    def __init__(self, connection: DuckDBConnector, runs, filename):
+    def __init__(self, connection: DuckDBConnector):
         self._connection = connection.get_cursor()
 
         self.setup_duckdb_tables()
+
+    def initialize(self, runs: list[BenchmarkRun], filename: str):
         self.initialize_files(runs)
         self.initialize_parameters(runs)
         self.initialize_experiments(runs, Path(filename).parts[-1])
@@ -162,11 +164,13 @@ class InitializeDuckDB:
 
         self._connection.execute("""
         create table if not exists available_files (
-            id uuid primary key default gen_random_uuid(),
+            id uuid default gen_random_uuid(),
             name varchar,
+            filetype ENUM('raster', 'vector'),
             location varchar[],
+            preprocessed_dir varchar,
             crs varchar,
-            extent Polygon,
+            extent POLYGON_2D,
             datatype varchar,
             filter_predicate json,
             vector_simplify double,
@@ -174,8 +178,21 @@ class InitializeDuckDB:
             raster_depth ubigint,
             raster_tile_size struct(width int, height int),
             system varchar,
+            is_converted_datatype boolean,
             
-            primary key (name) references files(name),
+            primary key (id, system),
+            foreign key (name) references files(name),
+        )
+        """)
+
+        self._connection.execute("""
+        create table if not exists optimize_system_used (
+            run_id int,
+            system varchar,
+            previous_run_id int,
+            experiment_group varchar,
+            primary key (run_id, system),
+            foreign key (run_id) references benchmark_run(id)
         )
         """)
 
@@ -189,13 +206,13 @@ class InitializeDuckDB:
         experiment = experiments[0]
         rasterfile = experiment.raster
         raster_ingest = self._connection.execute(
-            "insert into files (name, type, filename) select ? as name, ? as type, ? as filename where ? not in (select name from files) returning *",
-            [rasterfile.name, "raster", str(rasterfile), rasterfile.name]).fetchone()
+            "insert into files (name, type, filename) select $ds_name as name, $ds_type as type, $filename as filename where $ds_name not in (select name from files) returning *",
+            {"ds_name": rasterfile.dataset_name, "ds_type": "raster", "filename": str(rasterfile)}).fetchone()
 
         vectorfile = experiment.vector
         vector_ingest = self._connection.execute(
-            "insert into files (name, type, filename) select ? as name, ? as type, ? as filename where ? not in (select name from files) returning *",
-            [vectorfile.name, "vector", str(vectorfile), vectorfile.name]).fetchone()
+            "insert into files (name, type, filename) select $ds_name as name, $ds_type as type, $filename as filename where $ds_name not in (select name from files) returning *",
+            {"ds_name": vectorfile.dataset_name, "ds_type": "vector", "filename": str(vectorfile)}).fetchone()
 
         print(
             f"initialized files, added raster: {True if raster_ingest else False}, vector: {True if vector_ingest else False}")
@@ -208,8 +225,8 @@ class InitializeDuckDB:
         :return:
         """
         experiment = experiments[0]
-        rastername = experiment.raster.name
-        vectorname = experiment.vector.name
+        rastername = experiment.raster.dataset_name
+        vectorname = experiment.vector.dataset_name
 
         experiment_add = self._connection.execute(
             "insert into experiments (filename, raster_file, vector_file) select ? as filename, ? as raster_file, ? as vector_file where ? not in (select filename from experiments)",

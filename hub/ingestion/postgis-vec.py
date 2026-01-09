@@ -17,6 +17,9 @@ class Ingestor:
 
     @measure_time
     def ingest_raster(self, **kwargs):
+        if self.raster.is_ingested:
+            return
+
         script = self.host_base_path.joinpath(f"config/postgis-vec/ingest.sh")
 
         command = (f"{script} "
@@ -26,8 +29,11 @@ class Ingestor:
 
         self.network_manager.run_ssh(command)
 
+
     @measure_time
     def ingest_vector(self, **kwargs):
+        if self.vector.is_ingested:
+            return
         command = self.host_base_path.joinpath(f"config/postgis-vec/ingest.sh")
         self.network_manager.run_ssh(
             f"{command} "

@@ -1,0 +1,57 @@
+experiments:
+  data:
+    raster: /home/gereon/UNI/research/tpctc-data/4xs2a/4xs2ab3_4326
+    vector: /home/gereon/UNI/research/tpctc-data/4xwaterways/4xwaterways_rel_clip
+  workload:
+    get:
+      vector:
+        - id
+      raster:
+        - sval:
+            aggregations:
+              - avg
+              - max
+              - min
+              - count
+              - sum
+    condition:
+      vector:
+        - waterway = 'river'
+    join:
+      table1: vector
+      table2: raster
+      condition: intersect(raster, vector)
+    group:
+      vector:
+        - id
+    order:
+      vector:
+        - id
+
+
+  parameters:
+    raster_tile_size:
+      - auto
+    align_crs_at_stage:
+      - execution
+    raster_clip:
+      - false
+    vector_filter_at_stage:
+      - execution
+    vectorize_type:
+      - polygons
+    vectorize_format:
+      - shp
+    align_to_crs:
+      - raster
+
+
+  timeout: 10000
+  warm_starts: 3
+
+  systems:
+    - name: postgis
+    - name: sedona
+    - name: beast
+    - name: rasdaman
+    - name: sedona-vec

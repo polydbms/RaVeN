@@ -1,0 +1,11 @@
+config:
+  controller:
+    results_folder: ~/git/dima/data/results
+    results_db: ~/git/dima/data/results.qgis.db
+  hosts:
+    - host: "bastion.sgx10.dima.tub"
+      base_path: /local-ssd/gdusella-ldap
+      ssh_config_path: ~/.ssh/config
+#    - host: "raven.localhost"
+#      base_path: /opt/raven
+#      ssh_config_path: ~/.ssh/config

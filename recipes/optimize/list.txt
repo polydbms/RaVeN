@@ -1,0 +1,2 @@
+/home/gereon/git/dima/benchi/recipes/optimize/all.ndvi60m.yaml
+agri.ndvi60m.yaml
