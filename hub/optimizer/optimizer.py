@@ -69,9 +69,9 @@ class Optimizer:
 
         matching_crs_ingested = pd.merge(ingested_raster, ingested_vector, how='inner', on=['crs'], suffixes=('_raster', '_vector'))
 
-        print("Ingested Vector", ingested_vector[["name", "location", "crs"]])
-        print("Ingested Raster", ingested_raster[["name", "location", "crs"]])
-        print("matching crs", matching_crs_ingested[["name_vector", "name_raster", "location_vector", "location_raster"]])
+        print("OPTIMIZER: Ingested Vector", ingested_vector[["name", "location", "crs"]])
+        print("OPTIMIZER: Ingested Raster", ingested_raster[["name", "location", "crs"]])
+        print("OPTIMIZER: matching crs", matching_crs_ingested[["name_vector", "name_raster", "location_vector", "location_raster"]])
 
         if not matching_crs_ingested.empty:
             if not dry_run:
@@ -80,8 +80,7 @@ class Optimizer:
 
                 rl.should_preprocess = False
                 vl.should_preprocess = False
-            else:
-                print("Dry run: found matching ingested files for both raster and vector with same CRS.")
+            print("OPTIMIZER: Dry run: found matching ingested files for both raster and vector with same CRS.")
 
             filter_vector_at_stage = Stage.PREPROCESS
 
@@ -100,14 +99,12 @@ class Optimizer:
             if not dry_run:
                 rl.set_ingested(True, ingested_raster.iloc[0]['location'][0])
                 rl.should_preprocess = False
-            else:
-                print("Dry run: found matching ingested file for raster.")
+            print("OPTIMIZER: found matching ingested file for raster.")
         elif not ingested_vector.empty:
             if not dry_run:
                 vl.set_ingested(True, ingested_vector.iloc[0]['location'][0])
                 vl.should_preprocess = False
-            else:
-                print("Dry run: found matching ingested file for vector.")
+            print("OPTIMIZER: found matching ingested file for vector.")
 
         pixels_per_feature = rl.get_pixels() / vl.get_feature_count()
         tile_size = TileSize(-1, -1)
@@ -119,9 +116,18 @@ class Optimizer:
             tile_size = TileSize(1000, 1000)
         elif pixels_per_feature >= 5_000_000:
             tile_size = TileSize(800, 800)
+        else:
+            tile_size = TileSize(600, 600)
+
+        print("OPTIMIZER: pixels per feature:", pixels_per_feature)
+        print("OPTIMIZER: selected tile size:", tile_size)
 
         extent_selectivity = intersection(rl.get_extent(), vl.get_extent()).area / max(vl.get_extent().area, rl.get_extent().area)
         filter_selectivity = vl.get_selectivity(workload.get("condition", {}).get("vector", {}))
+
+        print("OPTIMIZER: extent selectivity:", extent_selectivity)
+        print("OPTIMIZER: filter selectivity:", filter_selectivity)
+
 
 
         preprocessed_raster = preprocessed_raster[~preprocessed_raster['is_converted_datatype']]
@@ -132,11 +138,11 @@ class Optimizer:
         pre_matching_crs_vector = preprocessed_vector[preprocessed_vector['crs'] == rl.get_crs().name]
 
 
-        print("Preprocessed Vector", preprocessed_vector[["name", "location", "crs"]])
-        print("Preprocessed Raster", preprocessed_raster[["name", "location", "crs"]])
-        print("Preprocessed Merged", pre_matching_crs_both[["name_vector", "name_raster", "location_vector", "location_raster"]])
-        print("Preprocessed Match Vector", pre_matching_crs_vector[["name", "location"]])
-        print("Preprocessed Match Raster", pre_matching_crs_raster[["name", "location"]])
+        print("OPTIMIZER: Preprocessed Vector", preprocessed_vector[["name", "location", "crs"]])
+        print("OPTIMIZER: Preprocessed Raster", preprocessed_raster[["name", "location", "crs"]])
+        print("OPTIMIZER: Preprocessed Merged", pre_matching_crs_both[["name_vector", "name_raster", "location_vector", "location_raster"]])
+        print("OPTIMIZER: Preprocessed Match Vector", pre_matching_crs_vector[["name", "location"]])
+        print("OPTIMIZER: Preprocessed Match Raster", pre_matching_crs_raster[["name", "location"]])
 
         if not dry_run:
             if not pre_matching_crs_both.empty:
@@ -195,6 +201,10 @@ class Optimizer:
         postgis_ingested_raster = ingested_raster[ingested_raster['system'] == System.POSTGIS.value]
         postgis_ingested_vector = ingested_vector[ingested_vector['system'] == System.POSTGIS.value]
 
+        align_to_crs = DataType.RASTER if rl.should_preprocess else DataType.VECTOR
+
+        print("OPTIMIZER: aligning to CRS of", align_to_crs.value)
+
 
         if not rasdaman_ingested_raster.empty and (vl.get_feature_count() <= 100) and (rl.get_pixels() >= 500_000_000):
             if not dry_run:
@@ -202,8 +212,7 @@ class Optimizer:
                 rl.set_ingested(True, raster_is_ingest['location_raster'][0])
 
                 rl.should_preprocess = False
-            else:
-                print("Dry run: found matching ingested file for target rasdaman")
+            print("OPTIMIZER: found matching ingested file for target rasdaman")
 
             return BenchmarkParameters(
                 system=System.RASDAMAN,
@@ -215,7 +224,22 @@ class Optimizer:
                 vector_target_crs=pyproj.CRS.from_string(raster_is_ingest['crs'])
             )
 
+        if vl.get_feature_type() == "LineString":
+            print("OPTIMIZER: Vector is LineString, selecting PostGIS with raster alignment.")
+
+            return BenchmarkParameters(
+                system = System.POSTGIS,
+                align_to_crs=DataType.RASTER,
+                align_crs_at_stage=Stage.PREPROCESS,
+                vector_filter_at_stage=Stage.PREPROCESS,
+                raster_clip=True,
+                raster_singlefile=True,
+                raster_tile_size=tile_size
+            )
+
         if (rl.get_pixels() >= 500_000_000) and (vl.get_feature_count() <= 70):
+            print("OPTIMIZER: Large raster with few vector features, selecting Rasdaman.")
+
             return BenchmarkParameters(
                 system = System.RASDAMAN,
                 align_to_crs=DataType.RASTER,
@@ -227,9 +251,11 @@ class Optimizer:
 
 
         if (rl.get_pixels() <= 5_000_000) and (vl.get_feature_count() <= 100_000):
+            print("OPTIMIZER: Small raster and vector, selecting PostGIS without raster clipping.")
+
             return BenchmarkParameters(
                 system=System.POSTGIS,
-                align_to_crs=DataType.RASTER if rl.should_preprocess else DataType.VECTOR,
+                align_to_crs=align_to_crs,
                 align_crs_at_stage=Stage.PREPROCESS,
                 vector_filter_at_stage=Stage.PREPROCESS,
                 raster_clip=False,
@@ -240,12 +266,11 @@ class Optimizer:
             if not dry_run:
                 raster_is_ingested = postgis_ingested_raster.iloc[0]
                 rl.set_ingested(True, raster_is_ingested['location_raster'][0])
-            else:
-                print("Dry run: found matching ingested file for raster with low extent selectivity.")
+            print("OPTIMIZER: found matching ingested file for raster with low extent selectivity.")
 
             return BenchmarkParameters(
                 system=System.POSTGIS,
-                align_to_crs=DataType.RASTER if rl.should_preprocess else DataType.VECTOR,
+                align_to_crs=align_to_crs,
                 align_crs_at_stage=Stage.PREPROCESS,
                 vector_filter_at_stage=Stage.PREPROCESS,
                 raster_clip=True,
@@ -256,21 +281,23 @@ class Optimizer:
             if not dry_run:
                 vector_is_ingested = postgis_ingested_vector.iloc[0]
                 vl.set_ingested(True, vector_is_ingested['location_vector'][0])
-            else:
-                print("Dry run: found matching ingested file for vector with low extent selectivity.")
+            print("OPTIMIZER: found matching ingested file for vector with low extent selectivity.")
 
             return BenchmarkParameters(
                 system=System.POSTGIS,
-                align_to_crs=DataType.VECTOR if vl.should_preprocess else DataType.RASTER,
+                align_to_crs=align_to_crs,
                 align_crs_at_stage=Stage.PREPROCESS,
                 vector_filter_at_stage=Stage.PREPROCESS,
                 raster_clip=True,
                 raster_tile_size=tile_size
             )
 
+        print("OPTIMIZER: no raster selected, no vector selected. Using default Beast configuration.")
+
         return BenchmarkParameters(
             system=System.BEAST,
-            align_crs_at_stage=Stage.EXECUTION,
+            align_crs_at_stage=Stage.PREPROCESS,
+            align_to_crs=DataType.RASTER,
             vector_filter_at_stage=Stage.PREPROCESS if filter_selectivity <= 0.05 else Stage.EXECUTION,
             raster_clip=extent_selectivity <= 0.1,
         )

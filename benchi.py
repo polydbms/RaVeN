@@ -1,10 +1,12 @@
 import argparse
+from functools import wraps
 from pathlib import Path
 
 import pandas as pd
 
 from hub.raven import Setup
 import geopandas as gpd
+
 
 
 class Raven:
@@ -126,6 +128,9 @@ class Raven:
                     last_run_id = -2
                     for experiment_file_name in experiments:
                         last_run_id = setup.optimize(str(experiment_file_name), args.config, last_run_id, exp_group=exp_list, dry_run=args.dryrun)
+
+                    if not args.postcleanup:
+                        return
 
                     setup.clean(args.config)
 

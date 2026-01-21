@@ -122,7 +122,7 @@ class FileTransporter:
         :return:
         """
         # print(file)
-        host_dir_up = file.host_dir.joinpath("../")
+        host_dir_up = file.host_data_base
         self.network_manager.run_remote_mkdir(file.host_dir)
         self.network_manager.run_remote_mkdir(file.host_dir_preprocessed)
         if file.type == FileType.FILE:

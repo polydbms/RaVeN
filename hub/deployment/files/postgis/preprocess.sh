@@ -5,9 +5,9 @@ parameters=$(echo $1 | base64 -d)
 eval "ARGS=($parameters)"
 
 echo "Preprocessing data"
-docker pull ghcr.io/polydbms/preprocess:0.11.4-0
+docker pull ghcr.io/polydbms/preprocess:0.11.5-0
 echo "benchi_marker,$(date +%s.%N),start,preprocess,postgis,,"
-docker run -e PYTHONUNBUFFERED=1 -v $(dirname $0)/../../data:/data --name "preprocess_postgis" --rm  ghcr.io/polydbms/preprocess:0.11.4-0 python preprocess.py "${ARGS[@]}"
+docker run -e PYTHONUNBUFFERED=1 -v $(dirname $0)/../../data:/data --name "preprocess_postgis" --rm  ghcr.io/polydbms/preprocess:0.11.5-0 python preprocess.py "${ARGS[@]}"
 echo "benchi_marker,$(date +%s.%N),end,preprocess,postgis,,"
 
 echo "Starting Container in background"

@@ -135,6 +135,9 @@ class PreprocessConfig:
 
         self.capabilities = capabilities
 
+        self.should_preprocess_vector = args.preprocess_vector
+        self.should_preprocess_raster = args.preprocess_raster
+
 
 
     def set_vector_folder(self, folder: Path):
@@ -195,29 +198,31 @@ class PreprocessConfig:
         copy the final intermediate result to the output folder
         :return:
         """
-        print(f"copying vector files from {self.vector_folder}")
-        shutil.rmtree(self.vector_output_folder, ignore_errors=True)
-        self.vector_output_folder.mkdir(parents=True, exist_ok=True)
-        for f in self.vector_folder.iterdir():
-            if f.is_file():
-                print(f"copy {f} to {self.vector_output_folder}")
-                shutil.copy(f, self.vector_output_folder)
-        # shutil.copytree(self.vector_folder, self.vector_output_folder, dirs_exist_ok=True)
+        if self.should_preprocess_vector:
+            print(f"copying vector files from {self.vector_folder}")
+            shutil.rmtree(self.vector_output_folder, ignore_errors=True)
+            self.vector_output_folder.mkdir(parents=True, exist_ok=True)
+            for f in self.vector_folder.iterdir():
+                if f.is_file():
+                    print(f"copy {f} to {self.vector_output_folder}")
+                    shutil.copy(f, self.vector_output_folder)
+            # shutil.copytree(self.vector_folder, self.vector_output_folder, dirs_exist_ok=True)
 
-        print(f"copying raster files from {self.raster_folder}")
-        shutil.rmtree(self.raster_output_folder, ignore_errors=True)
-        self.raster_output_folder.mkdir(parents=True, exist_ok=True)
-        for f in self.raster_folder.iterdir():
-            if f.is_file():
-                print(f"copy {f} to {self.raster_output_folder}")
-                shutil.copy(f, self.raster_output_folder)
+        if self.should_preprocess_raster:
+            print(f"copying raster files from {self.raster_folder}")
+            shutil.rmtree(self.raster_output_folder, ignore_errors=True)
+            self.raster_output_folder.mkdir(parents=True, exist_ok=True)
+            for f in self.raster_folder.iterdir():
+                if f.is_file():
+                    print(f"copy {f} to {self.raster_output_folder}")
+                    shutil.copy(f, self.raster_output_folder)
 
-        if self.system in self.capabilities["require_geotiff_ending"] or True:
-            for f in self.raster_output_folder.iterdir():
-                if f.suffix == ".tiff":
-                    f.with_suffix(".geotiff").symlink_to(f)
-                    print(f'created symlink {f.with_suffix(".geotiff")} to file {f}')
-        # shutil.copytree(self.raster_folder, self.raster_output_folder, dirs_exist_ok=True)
+            if self.system in self.capabilities["require_geotiff_ending"] or True:
+                for f in self.raster_output_folder.iterdir():
+                    if f.suffix == ".tiff":
+                        f.with_suffix(".geotiff").symlink_to(f)
+                        print(f'created symlink {f.with_suffix(".geotiff")} to file {f}')
+            # shutil.copytree(self.raster_folder, self.raster_output_folder, dirs_exist_ok=True)
 
     @staticmethod
     def get_random_str(length):
@@ -905,8 +910,8 @@ def main():
     preprocess_config = PreprocessConfig(parser.parse_args(), capabilities)
     print(preprocess_config)
 
-    should_preprocess_vector = parser.parse_args().preprocess_vector
-    should_preprocess_raster = parser.parse_args().preprocess_raster
+    should_preprocess_vector = preprocess_config.should_preprocess_vector
+    should_preprocess_raster = preprocess_config.should_preprocess_raster
 
 
     mf_preprocessor = MultiFilePreprocessor(preprocess_config)

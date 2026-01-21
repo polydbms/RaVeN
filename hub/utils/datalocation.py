@@ -209,6 +209,14 @@ class DataLocation:
         return self._docker_base.joinpath(self._dir_name).joinpath(self._preprocessed_dir)
 
     @property
+    def host_data_base(self) -> Path:
+        """
+        the base data directory as seen from the host
+        :return:
+        """
+        return self._host_base
+
+    @property
     def host_dir(self) -> Path:
         """
         the dataset directory as seen from the host
@@ -605,6 +613,13 @@ class VectorLocation(DataLocation):
         crs = self.get_remote_metadata(nm)[0]["layers"][0]["geometryFields"][0]["coordinateSystem"]["projjson"]["id"]["code"]
 
         return pyproj.CRS.from_epsg(crs)
+
+    def get_feature_type(self) -> str:
+        """
+        return the feature type of the dataset
+        :return:
+        """
+        return self._metadata[0]["layers"][0]["geometryFields"][0]["type"]
 
 
     def get_feature_type(self) -> str:

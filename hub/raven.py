@@ -3,8 +3,9 @@ import copy
 import importlib
 import json
 import subprocess
+from functools import wraps
 from pathlib import Path
-from time import sleep
+from time import sleep, time
 
 import jinja2
 import yaml
@@ -24,6 +25,25 @@ from hub.utils.network import BasicNetworkManager
 from hub.optimizer.optimizer import Optimizer
 from hub.zsresultsdb.init_duckdb import InitializeDuckDB
 
+def print_timings(stage):
+    """
+    print the amount of time taken for a given function as timing marker strings
+    :return:
+    """
+
+    def decorator_print_timings(func):
+        @wraps(func)
+        def _decorator_print_timings(self, *args, **kwargs):
+            self.timings_list.append(f"raven_marker,{time()},start,{stage},raven,,")
+
+            return_value = func(self, *args, **kwargs)
+            self.timings_list.append(f"raven_marker,{time()},start,{stage},raven,,")
+
+            return return_value
+
+        return _decorator_print_timings
+
+    return decorator_print_timings
 
 class Setup:
     """
@@ -37,6 +57,7 @@ class Setup:
         self._progress_listener = progress_listener
         self.workers_nm: list[BasicNetworkManager] = []
         self.workers_ft: list[FileTransporter] = []
+        self.timings_list = []
 
     @property
     def progress(self) -> int:
@@ -101,8 +122,14 @@ class Setup:
         if do_teardown:
             self.do_teardown(run, transporter)
 
+        for timing in self.timings_list:
+            network_manager.write_timings_marker(timing)
+
+        self.timings_list = []
+
         return list(map(lambda resfile: resfile[0], result_files_not_empty)), run_cursor.run_id
 
+    @print_timings(stage="setup")
     def setup_host(self,
                    iteration: int,
                    run: BenchmarkRun,
@@ -247,6 +274,7 @@ class Setup:
     #         worker_ft.send_configs(log_time=self.logger)
 
 
+    @print_timings(stage="preprocess")
     def do_preprocess(self,
                       network_manager: NetworkManager,
                       run: BenchmarkRun,
@@ -337,6 +365,7 @@ class Setup:
         #                           log_time=self.logger)
 
 
+    @print_timings(stage="ingestion")
     def do_ingestion(self,
                      network_manager: NetworkManager,
                      run: BenchmarkRun,
@@ -367,6 +396,7 @@ class Setup:
 
             network_manager.stop_measure_docker()
 
+    @print_timings(stage="execution")
     def do_execution(self,
                      network_manager: NetworkManager,
                      run: BenchmarkRun,
@@ -400,6 +430,7 @@ class Setup:
 
         return executor, result_files
 
+    @print_timings(stage="pull_data")
     def pull_data(self,
                   executor: ExecutorInterface,
                   result_files: list[Path],
@@ -421,6 +452,7 @@ class Setup:
 
         return result_files_not_empty
 
+    @print_timings(stage="teardown")
     def do_teardown(self,
                     run: BenchmarkRun,
                     transporter: FileTransporter) -> None:
@@ -439,6 +471,7 @@ class Setup:
         #     worker_nm.run_ssh(f"docker compose -f {worker_nm.host_params.host_base_path.joinpath(worker_nm.host_params.host_base_path, 'config', system, 'docker-compose.worker.yml')} down",
         #                       log_time=self.logger)
 
+    @print_timings(stage="optimize")
     def optimize(self, experiment_file_name: str, config_file: str, last_run_id: int = -1, exp_group: str = "", dry_run: bool = False) -> int:
         workload, raster_location, vector_location, host_config, controller_config = FileIO.read_experiment_essentials(
             experiment_file_name, config_file)
@@ -476,7 +509,7 @@ class Setup:
                            benchmark_params=params,
                            controller_params=controller_config,
                            experiment_name_file=exp_file,
-                           warm_starts=0,
+                           warm_starts=1,
                            query_timeout=3600,
                            resource_limits={},
                            )
@@ -486,7 +519,7 @@ class Setup:
 
         run.host_params.controller_db_connection.initialize_benchmark_set(exp_file, {})
 
-        print(str(run))
+        print("OPTIMIZER: ", str(run))
 
         result, run_id = self.run_tasks(run, do_teardown=False, optmizer_run=True)
 
