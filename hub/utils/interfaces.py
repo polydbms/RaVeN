@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.utils.network import NetworkManager
-from hub.utils.datalocation import VectorLocation, RasterLocation
+from hub.utils.rasterlocation import RasterLocation
+from hub.utils.vectorlocation import VectorLocation
 
 
 class IngestionInterface(ABC):

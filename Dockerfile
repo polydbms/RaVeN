@@ -12,7 +12,7 @@ RUN python -m pip install --user --break-system-packages -r ./requirements.txt
 #CMD [ "/bin/bash" ]
 
 
-FROM ghcr.io/osgeo/gdal:ubuntu-small-3.10.0 as preprocess
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.12.2 as preprocess
 WORKDIR /preprocess
 COPY --from=requirements /root/.local /root/.local
 COPY ./hub/configuration.py hub/configuration.py
@@ -29,7 +29,7 @@ COPY ./hub/capabilities.yaml hub/capabilities.yaml
 CMD [ "/bin/bash" ]
 
 
-FROM ghcr.io/osgeo/gdal:ubuntu-small-3.10.0 as benchi
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.12.2 as benchi
 COPY --from=requirements /root/.local /root/.local
 RUN apt update && apt upgrade -y && apt install openssh-client rsync -y
 WORKDIR /hub

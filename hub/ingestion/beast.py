@@ -13,7 +13,8 @@ from hub.configuration import PROJECT_ROOT
 from hub.enums.vectorfiletype import VectorFileType
 from hub.evaluation.measure_time import measure_time
 from hub.executor.sqlbased import SQLBased
-from hub.utils.datalocation import VectorLocation, RasterLocation
+from hub.utils.vectorlocation import VectorLocation
+from hub.utils.rasterlocation import RasterLocation
 from hub.utils.filetransporter import FileTransporter
 from hub.utils.interfaces import IngestionInterface
 from hub.utils.network import NetworkManager
@@ -240,9 +241,7 @@ class Ingestor(IngestionInterface):
                 raise Exception(f"type {fieldtype} has not been implemented yet")
 
     def __dtype_to_scala_raster(self):
-        rastertypes = \
-        json.loads(subprocess.check_output(f'gdalinfo -json -nomd -norat -noct -nogcp {self.raster.controller_file[0]}', # Fixme?
-                                           shell=True).decode("utf-8"))["bands"][0]["type"]
+        rastertypes = self.raster.get_remote_metadata(self.network_manager)[0]["bands"][0]["type"]
 
         match rastertypes:
             case "Byte" | "Int8" | "UInt16" | "Int16" | "Int32":

@@ -4,15 +4,16 @@ from hub.benchmarkrun.controller_params import ControllerParameters
 from hub.benchmarkrun.benchmark_params import BenchmarkParameters
 from hub.benchmarkrun.host_params import HostParameters
 from hub.benchmarkrun.measurementslocation import MeasurementsLocation
-from hub.utils.datalocation import DataLocation
+from hub.utils.rasterlocation import RasterLocation
+from hub.utils.vectorlocation import VectorLocation
 
 
 class BenchmarkRun:
     """
     Contains all information necessary for a single benchmark run
     """
-    raster: DataLocation
-    vector: DataLocation
+    raster: RasterLocation
+    vector: VectorLocation
     workload: dict
     benchmark_params: BenchmarkParameters
     host_params: HostParameters
@@ -20,8 +21,8 @@ class BenchmarkRun:
     measurements_loc: MeasurementsLocation
 
     def __init__(self,
-                 raster: DataLocation,
-                 vector: DataLocation,
+                 raster: RasterLocation,
+                 vector: VectorLocation,
                  workload: dict,
                  benchmark_params: BenchmarkParameters,
                  controller_params: ControllerParameters,

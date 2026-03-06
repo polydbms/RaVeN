@@ -16,3 +16,7 @@ class System(Enum):
 
     def __str__(self):
         return self.value
+
+    @staticmethod
+    def get_by_value(value: str):
+        return {v.value: v for v in list(System)}.get(value.lower())

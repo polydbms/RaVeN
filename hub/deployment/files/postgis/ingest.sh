@@ -23,6 +23,10 @@ case $i in
     tile="${i#*=}"
     shift
     ;;
+    -m=*|--mode=*)
+    mode="${i#*=}"
+    shift
+    ;;
     --default)
     DEFAULT=YES
     shift
@@ -42,7 +46,7 @@ export DOCKER_CONTAINER=$(docker ps --format '{{.Names}}' | grep postgis)
 echo "Ingesting data"
 if [ ! -z ${raster+x} ]; then
     echo "benchi_marker,$(date +%s.%N),pre,ingestion,postgis,raster,"
-    docker exec $DOCKER_CONTAINER bash -c "time raster2pgsql -s $srid -I -C -M $raster -F -t $tile $name > raster.sql"
+    docker exec $DOCKER_CONTAINER bash -c "time raster2pgsql -s $srid -I -C -M $raster -F -$mode -t $tile $name > raster.sql"
     echo "benchi_marker,$(date +%s.%N),start,ingestion,postgis,raster,"
     docker exec $DOCKER_CONTAINER bash -c 'time PGPASSWORD=${POSTGRES_PASS} psql -d gis -f raster.sql -h localhost -U ${POSTGRES_USER}'
     echo "benchi_marker,$(date +%s.%N),end,ingestion,postgis,raster,"

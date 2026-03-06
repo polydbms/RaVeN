@@ -35,7 +35,6 @@ systems:
   requires_single_raster_file:
     - beast
     - omnisci
-    - sedona
     - sedona-vec
     #- postgis
     - postgis-vec

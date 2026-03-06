@@ -11,5 +11,5 @@ class VectorFileType(Enum):
     WKB = ".wkb"
 
     @staticmethod
-    def get_by_value(value):
-        return {v.value: v for v in list(VectorFileType)}.get(f".{value.lstrip('.')}")  # removeprefix
+    def get_by_value(value: str):
+        return {v.value: v for v in list(VectorFileType)}.get(f".{value.lower().lstrip('.')}")  # removeprefix

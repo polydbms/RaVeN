@@ -18,7 +18,8 @@ from hub.enums.datatype import DataType
 from hub.utils.capabilities import Capabilities
 from hub.utils.datalocation import DataLocation
 from hub.utils.system import System
-from hub.utils.datalocation import RasterLocation, VectorLocation
+from hub.utils.rasterlocation import RasterLocation
+from hub.utils.vectorlocation import VectorLocation
 
 
 class FileIO:
@@ -79,6 +80,7 @@ class FileIO:
 
                 _, controller_params = FileIO.get_host_params(controller_config_filename)
                 init_db = InitializeDuckDB(controller_params.controller_db_connection)
+                init_db.initialize_files(runs_no_dupes[0].raster_location, runs_no_dupes[0].vector_location)
                 init_db.initialize(runs_no_dupes, experiments_filename)
 
                 return runs_no_dupes, iterations

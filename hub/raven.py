@@ -8,7 +8,9 @@ from pathlib import Path
 from time import sleep, time
 
 import jinja2
+import pyproj
 import yaml
+from shapely import box
 
 from hub.configuration import PROJECT_ROOT
 from hub.benchmarkrun.benchmark_run import BenchmarkRun
@@ -100,6 +102,9 @@ class Setup:
 
         system: System = run.benchmark_params.system
         print(system)
+
+        run.raster.end_init()
+        run.vector.end_init()
 
         network_manager, run_cursor, transporter = self.setup_host(iteration, run, system)
 
@@ -322,12 +327,13 @@ class Setup:
                          f'--vectorization_type {run.benchmark_params.vectorize_type.value} ' \
                          f'--vector_simplify {run.benchmark_params.vector_simplify} ' \
                          f'--raster_path {run.raster.docker_dir} ' \
+                         f'--raster_file {" ".join([str(f) for f in run.raster.files])} ' \
                          f'--raster_source_suffix {run.raster.suffix.value} ' \
                          f'--raster_target_suffix {run.benchmark_params.raster_target_format.value} ' \
                          f'--raster_output_folder {run.raster.docker_dir_preprocessed} ' \
                          f'--raster_target_crs {raster_target_crs} ' \
                          f'--raster_resolution {run.benchmark_params.raster_resolution} ' \
-                         f'--{"" if run.benchmark_params.raster_clip else "no-"}raster_clip ' \
+                         f'--{"" if run.benchmark_params.raster_clip and not run.raster.is_multifile else "no-"}raster_clip ' \
                          f'{"--vector_filter " + vector_filter_str if run.benchmark_params.vector_filter_at_stage == Stage.PREPROCESS else ""} ' \
                          f'''{f'--bbox {bbox_str} --bbox_srs {bbox["srid"]}' if bbox else ""} ''' \
                          f'--{"" if run.benchmark_params.raster_singlefile else "no-"}raster_singlefile ' \
@@ -336,13 +342,18 @@ class Setup:
                          f''
                          # f'''{'--extent "' + extent_str + '"' if extent else ""} ''' \
 
+            if run.benchmark_params.raster_singlefile:
+                run.raster.prepare_merged_name()
+                parameters += f'--raster_merged_name {run.raster.merged_name} '
+
 
 
             print(f"running {command} {parameters}")
-            "create a string that encodess parameters to a base64 string"
+            "create a string that encodes parameters to a base64 string"
             network_manager.run_ssh(f"{command} {base64.b64encode(parameters.encode('utf-8')).decode('utf-8')}",
                                     log_time=self.logger,
                                     )
+            run.raster.check_file_is_merged(run.benchmark_params.raster_singlefile)
             run.raster.set_preprocessed(run.controller_params.controller_db_connection.get_cursor(), run.benchmark_params, run.workload, network_manager, optimizer_run)
             run.vector.set_preprocessed(run.controller_params.controller_db_connection.get_cursor(), run.benchmark_params, run.workload, network_manager, optimizer_run)
             network_manager.stop_measure_docker()
@@ -384,14 +395,15 @@ class Setup:
             if not run.raster.is_ingested:
                 ingestor.ingest_raster(log_time=self.logger)
                 if system in (System.POSTGIS, System.RASDAMAN, System.POSTGIS_VEC) and not run.raster.is_ingested:
-                    run.raster.register_file(run.controller_params.controller_db_connection.get_cursor(), run.benchmark_params, run.workload, run.raster.get_remote_extent(network_manager), False, optimizer_run=optimizer_run)
+                    run.raster.register_file(run.controller_params.controller_db_connection.get_cursor(), run.benchmark_params, run.workload, run.raster.get_remote_extent(network_manager), False, optimizer_run=optimizer_run, network_manager=network_manager)
+                    run.raster.register_available_tiles(str(system), run.controller_params.controller_db_connection.get_cursor(), network_manager)
 
             self.increase_progress()
 
             if not run.vector.is_ingested:
                 ingestor.ingest_vector(log_time=self.logger)
                 if system in (System.POSTGIS, System.POSTGIS_VEC) and not run.vector.is_ingested:
-                    run.vector.register_file(run.controller_params.controller_db_connection.get_cursor(), run.benchmark_params, run.workload, run.vector.get_remote_extent(network_manager), False,  optimizer_run=optimizer_run)
+                    run.vector.register_file(run.controller_params.controller_db_connection.get_cursor(), run.benchmark_params, run.workload, run.vector.get_remote_extent(network_manager), False,  optimizer_run=optimizer_run, network_manager=network_manager)
             self.increase_progress()
 
             network_manager.stop_measure_docker()
@@ -482,8 +494,14 @@ class Setup:
         raster_location.use_uuid_name()
         vector_location.use_uuid_name()
 
+        init_db.initialize_files(raster_location, vector_location)
+
+        raster_location.optimization_started()
+        vector_location.optimization_started()
+
         print("Pre Optimizer DL: {}, {}".format(str(raster_location), str(vector_location)))
 
+        raster_location.select_relevant_tiles(vector_location.get_extent(), "filesystem", controller_config.controller_db_connection.get_cursor())
         params = Optimizer.create_run_config(workload, raster_location, vector_location, controller_config.controller_db_connection.get_cursor(), network_manager, dry_run)
 
         print("Post Optimizer DL: {}, {}".format(str(raster_location), str(vector_location)))
@@ -491,6 +509,9 @@ class Setup:
         if dry_run:
             print("Dry run - not executing optimization")
             return -10
+
+        raster_location.optimization_finished()
+        vector_location.optimization_finished()
 
         FileIO.adjust_by_capabilities(params, capabilities, vector_location, raster_location)
         vector_location.adjust_target_files(params)
@@ -558,21 +579,31 @@ class Setup:
 
         runs[0].host_params.controller_db_connection.initialize_benchmark_set(Path(experiment_file_name).parts[-1], runs[0].resource_limits)
 
+
         result_files = []
         if system:
             if single_run:
                 run = next(r for r in runs if r.benchmark_params.system.name == system)
                 print(str(run))
+
+                run.raster.select_relevant_tiles(run.vector.get_extent(), "filesystem", run.controller_params.controller_db_connection.get_cursor())
+
                 result_files.extend(self.run_tasks(run, stop_at_preprocess=stop_at_preprocess)[0])
                 if post_cleanup:
                     self.clean(config_file)
             else:
                 for run in list(filter(lambda r: r.benchmark_params.system.name == system, runs)):
+                    run.raster.select_relevant_tiles(run.vector.get_extent(), "filesystem",
+                                                     run.controller_params.controller_db_connection.get_cursor())
+
                     result_files.extend(self.run_tasks(run, stop_at_preprocess=stop_at_preprocess)[0])
                     self.clean(config_file)
 
         else:
             for run in runs:
+                run.raster.select_relevant_tiles(run.vector.get_extent(), "filesystem",
+                                                 run.controller_params.controller_db_connection.get_cursor())
+
                 result_files.extend(self.run_tasks(run, stop_at_preprocess=stop_at_preprocess)[0])
                 self.clean(config_file)
 

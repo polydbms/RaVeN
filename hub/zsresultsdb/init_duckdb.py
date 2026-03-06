@@ -1,9 +1,12 @@
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 
 from hub.benchmarkrun.benchmark_run import BenchmarkRun
 from hub.zsresultsdb.submit_data import DuckDBConnector
+from hub.utils.rasterlocation import RasterLocation
+from hub.utils.vectorlocation import VectorLocation
 
 
 class InitializeDuckDB:
@@ -17,7 +20,6 @@ class InitializeDuckDB:
         self.setup_duckdb_tables()
 
     def initialize(self, runs: list[BenchmarkRun], filename: str):
-        self.initialize_files(runs)
         self.initialize_parameters(runs)
         self.initialize_experiments(runs, Path(filename).parts[-1])
 
@@ -28,7 +30,8 @@ class InitializeDuckDB:
         create table if not exists files (
             filename varchar,
             type varchar,
-            name varchar primary key
+            name varchar primary key,
+            crs varchar,
         )
         """)  # files_table
 
@@ -179,9 +182,57 @@ class InitializeDuckDB:
             raster_tile_size struct(width int, height int),
             system varchar,
             is_converted_datatype boolean,
+            is_clipped boolean,
             
             primary key (id, system),
             foreign key (name) references files(name),
+        )
+        """)
+
+        self._connection.execute("""
+        create table if not exists tiles_raster (
+            name varchar,
+            tile_stem varchar,
+            extent POLYGON_2D,
+            primary key (name, tile_stem),
+            foreign key (name) references files(name)
+        )
+        """)
+
+        self._connection.execute("""
+        create table if not exists tile_in_available (
+            name_tile varchar,
+            tile_stem_tile varchar,
+            id_available uuid,
+            system_available varchar,
+            fully_ingested boolean,
+            extent_ingested POLYGON_2D,
+            primary key (name_tile, tile_stem_tile, id_available, system_available),
+            foreign key (name_tile, tile_stem_tile) references tiles_raster(name, tile_stem),
+            foreign key (id_available, system_available) references available_files(id, system)
+        )
+        """)
+
+        self._connection.execute("""
+        create table if not exists merged_file (
+            filename_stem varchar,
+            available_id uuid,
+            available_system varchar,
+            extent POLYGON_2D,
+            primary key (filename_stem, available_id),
+            foreign key (available_id, available_system) references available_files(id, system)
+        )
+        """)
+
+        self._connection.execute("""
+        create table if not exists tile_in_merged (
+            filename_stem varchar,
+            available_id uuid,
+            name_tile varchar,
+            tile_stem_tile varchar,
+            primary key (filename_stem, available_id, name_tile, tile_stem_tile),
+            foreign key (filename_stem, available_id) references merged_file(filename_stem, available_id),
+            foreign key (name_tile, tile_stem_tile) references tiles_raster(name, tile_stem)
         )
         """)
 
@@ -198,21 +249,32 @@ class InitializeDuckDB:
 
         print("initialized tables")
 
-    def initialize_files(self, experiments: list[BenchmarkRun]) -> None:
+    def initialize_files(self, rasterfile: RasterLocation, vectorfile: VectorLocation) -> None:
         """
         inserts data into the files table based on the first benchmark run parameters object
         :param experiments: the list of benchmark runs
         """
-        experiment = experiments[0]
-        rasterfile = experiment.raster
         raster_ingest = self._connection.execute(
-            "insert into files (name, type, filename) select $ds_name as name, $ds_type as type, $filename as filename where $ds_name not in (select name from files) returning *",
-            {"ds_name": rasterfile.dataset_name, "ds_type": "raster", "filename": str(rasterfile)}).fetchone()
+            "insert into files (name, type, filename, crs) select $ds_name as name, $ds_type as type, $filename as filename, $crs as crs where $ds_name not in (select name from files) returning *",
+            {"ds_name": rasterfile.dataset_name, "ds_type": "raster", "filename": str(rasterfile.host_dir), "crs": rasterfile.get_crs().to_epsg()}) \
+                         .fetchone()
 
-        vectorfile = experiment.vector
+        if raster_ingest is not None:
+            for tile, extent in rasterfile.get_extent_per_file().items():
+                self._connection.execute("""
+                insert into  tiles_raster (name, tile_stem, extent) VALUES 
+                    ($name, $tile_stem, ST_GeomFromText($extent_wkt::VARCHAR)
+                )
+                """, {"name": rasterfile.dataset_name,
+                                "tile_stem": Path(tile).stem,
+                                "extent_wkt": extent.wkt,
+                                })
+
+
         vector_ingest = self._connection.execute(
-            "insert into files (name, type, filename) select $ds_name as name, $ds_type as type, $filename as filename where $ds_name not in (select name from files) returning *",
-            {"ds_name": vectorfile.dataset_name, "ds_type": "vector", "filename": str(vectorfile)}).fetchone()
+            "insert into files (name, type, filename, crs) select $ds_name as name, $ds_type as type, $filename as filename, $crs as crs where $ds_name not in (select name from files) returning *",
+            {"ds_name": vectorfile.dataset_name, "ds_type": "vector", "filename": str(vectorfile.host_dir), "crs": vectorfile.get_crs().to_epsg()}) \
+                            .fetchone()
 
         print(
             f"initialized files, added raster: {True if raster_ingest else False}, vector: {True if vector_ingest else False}")

@@ -131,6 +131,7 @@ class DuckDBConnector:
         :return:
         """
         with self._connection.cursor() as conn:
+            conn.execute("delete from tile_in_available")
             conn.execute("delete from available_files")
 
     def get_available_files_by_name(self, name: str) -> DataFrame:

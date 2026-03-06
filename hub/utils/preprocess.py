@@ -7,7 +7,7 @@ import re
 import shutil
 import string
 import subprocess
-from time import time
+from time import time, sleep
 from functools import wraps
 from pathlib import Path
 from typing import Optional, Any
@@ -116,7 +116,8 @@ class PreprocessConfig:
         self.raster_name = self._raster_folder.name
         self.raster_source_suffix = args.raster_source_suffix
         self._raster_files = self._find_files(self._raster_folder,
-                                              RasterFileType.get_by_value(self.raster_source_suffix))
+                                              RasterFileType.get_by_value(self.raster_source_suffix)) \
+            if not args.raster_file else [Path(f) for f in args.raster_file]
 
         self.raster_target_suffix = args.raster_target_suffix
         self.raster_output_folder = Path(args.raster_output_folder)
@@ -124,6 +125,7 @@ class PreprocessConfig:
         self.raster_resolution = args.raster_resolution
         self.raster_datatype = args.raster_datatype
         self.raster_singlefile = args.raster_singlefile
+        self.raster_merged_name = args.raster_merged_name
 
         self.vector_filter = json.loads(
             base64.b64decode(args.vector_filter).decode("utf-8")) if args.vector_filter else {}
@@ -158,6 +160,15 @@ class PreprocessConfig:
     def vector_file(self, file: list[Path]):
         self._vector_files = file
 
+    def check_vector_files_exist(self):
+        missing_counter = 0
+        while not all(self._vector_folder.joinpath(f).exists() for f in self._vector_files):
+            print(f"waiting for vector files to be created, missing files: {[f for f in self._vector_files if not self._vector_folder.joinpath(f).exists()]}")
+            missing_counter += 1
+            if missing_counter > 10:
+                raise FileNotFoundError(f"Vector files {self._vector_files} not found in folder {self._vector_folder} after waiting for a while. Please check if the previous steps are working correctly.")
+            sleep(0.5)
+
     @property
     def vector_file_path(self) -> list[Path]:
         return [self._vector_folder.joinpath(f) for f in self._vector_files]
@@ -165,7 +176,7 @@ class PreprocessConfig:
     def set_raster_folder(self, folder: Path):
         self._raster_folder = folder
 
-    def set_raster_suffix(self, suffix: str):
+    def set_raster_suffix(self, suffix: str, skip_check=False):
         self._raster_files = [Path(f).with_suffix(suffix) for f in self._raster_files]
 
     @property
@@ -179,6 +190,16 @@ class PreprocessConfig:
     @raster_file.setter
     def raster_file(self, file: list[Path]):
         self._raster_files = file
+
+
+    def check_raster_files_exist(self):
+        missing_counter = 0
+        while not all(self._raster_folder.joinpath(f).exists() for f in self._raster_files):
+            print(f"waiting for raster files to be created, missing files: {[f for f in self._raster_files if not self._raster_folder.joinpath(f).exists()]}")
+            missing_counter += 1
+            if missing_counter > 10:
+                raise FileNotFoundError(f"Raster files {self._raster_files} not found in folder {self._raster_folder} after waiting for a while. Please check if the previous steps are working correctly.")
+            sleep(0.5)
 
     @property
     def raster_file_path(self) -> list[Path]:
@@ -416,19 +437,21 @@ class MultiFilePreprocessor(Preprocessor):
         """
         print(f"merging raster files {self.config.raster_file}")
 
-        output_file = self._raster_tmp_out_folder.joinpath(self.config.raster_folder.stem + "_merged").with_suffix(
-            self.config.raster_source_suffix)
+        output_file = self._raster_tmp_out_folder.joinpath(self.config.raster_merged_name).with_suffix(".tiff")
 
         input_files = " ".join([str(self.config.raster_folder.joinpath(f)) for f in self.config.raster_file])
 
-        cmd_string = f"gdal_warp -multi --config GDAL_CACHEMAX 200000 -wm 200000 " \
+        cmd_string = f"gdalwarp -multi --config GDAL_CACHEMAX 200000 -wm 200000 " \
                      f"-t_srs {self.config.raster_target_crs} " \
                      f"{input_files} " \
                      f"{output_file}"
 
         subprocess.call(cmd_string, shell=True)
 
-        self.config.raster_file = [output_file]
+        print("merged files with command:", cmd_string)
+
+        self.config.set_raster_suffix(".tiff")
+        self.config.raster_file = [Path(output_file.name)]
         self.update_raster_folder()
 
     @measure_time
@@ -454,7 +477,7 @@ class MultiFilePreprocessor(Preprocessor):
 
         subprocess.call(cmd_string, shell=True)
 
-        self.config.vector_file = [output_file]
+        self.config.vector_file = [Path(output_file.name)]
         self.update_vector_folder()
 
     @measure_time
@@ -561,7 +584,6 @@ class CRSFilterPreprocessor(Preprocessor):
                                                       always_xy=True).transform
 
             extent_proj = np.asarray(shapely.transform(shapely.geometry.box(*extent), transformer, include_z=False,
-                                               # FIXME switch back to shapely if possible
                                                interleaved=False).bounds).reshape((2, 2))
 
             px_count = (extent_proj - fixpoint) / pixel_size
@@ -614,6 +636,7 @@ class CRSFilterPreprocessor(Preprocessor):
         # TODO this could probably be streamlined for efficiency
 
         self.update_raster_folder()
+        self.update_raster_suffix()
 
         print(f"Transferred {self.config.raster_file_path} CRS to {self.config.raster_target_crs}")
 
@@ -689,7 +712,9 @@ class FileConverterPreprocessor(Preprocessor):
             output_file = self._raster_tmp_out_folder \
                 .joinpath(f.name).with_suffix(self.config.raster_target_suffix)
 
-            subprocess.call(f"gdal_translate -of GTiff {f} {output_file}", shell=True)
+            command_string = f"gdal_translate -of GTiff {f} {output_file}"
+            print(f"executing command for raster: {command_string}")
+            subprocess.call(command_string, shell=True)
 
             print(f"translated raster file to {output_file}")
 
@@ -885,6 +910,7 @@ def main():
     parser.add_argument("--vector_simplify", help="simplify the vector geometries using douglas-peucker",
                         required=False, default=0.0, type=float)
     parser.add_argument("--raster_path", help="Specify the absolute path to raster dataset", required=True)
+    parser.add_argument("--raster_file", help="list of raster files to be processed", required=True, nargs="+", default=[], action="extend")
     parser.add_argument("--raster_source_suffix", help="source file suffix of the raster files", required=True)
     parser.add_argument("--raster_target_suffix", help="target file suffix of the raster files", required=True)
     parser.add_argument("--raster_output_folder", help="absolute path to the output folder of the raster files",
@@ -895,6 +921,7 @@ def main():
     parser.add_argument("--raster_singlefile", help="whether the output of the raster should be a single file",
                         required=False,
                         action=argparse.BooleanOptionalAction)
+    parser.add_argument("--raster_merged_name", help="the name of the merged raster file if raster_singlefile is set to true", required=False, default="merged")
     parser.add_argument("--raster_datatype", help="the datatype of the raster file", required=False, default=None)
     parser.add_argument("--system", help="Specify which system should be benchmarked")
     parser.add_argument("--vector_filter", help="Filters to be applied on the vector feature fields", required=False,
@@ -922,6 +949,7 @@ def main():
 
     if preprocess_config.raster_singlefile and len(preprocess_config.raster_file) > 1:
         mf_preprocessor.merge_raster()
+        mf_preprocessor.config.check_raster_files_exist()
 
 
     # todo if CRS already correct
@@ -929,12 +957,15 @@ def main():
 
     if will_reproject_vector and (should_preprocess_vector or (preprocess_config.raster_clip and preprocess_config.vector_filter)):
         crs_preprocessor.filter_reproject_simplify_vector(log_time=crs_preprocessor.logger)
+        crs_preprocessor.config.check_vector_files_exist()
 
     if will_reproject_raster and should_preprocess_raster:
         crs_preprocessor.clip_reproject_resolution_raster(log_time=crs_preprocessor.logger)
+        crs_preprocessor.config.check_raster_files_exist()
 
     if preprocess_config.system in capabilities["raster_max_2gb"]:
         mf_preprocessor.split_raster(has_next_step=False)
+        mf_preprocessor.config.check_raster_files_exist()
 
     # TODO if raster -> raster needs to be converted
 
@@ -943,6 +974,7 @@ def main():
             and should_preprocess_raster):
         file_converter = FileConverterPreprocessor(preprocess_config)
         file_converter.raster_to_geotiff()
+        file_converter.config.check_raster_files_exist()
 
     # todo if vector -> vector needs to be converted
 
@@ -950,12 +982,14 @@ def main():
         if preprocess_config.vectorization_type == VectorizationType.TO_POLYGONS:
             data_preprocessor = DataModelProcessor(preprocess_config)
             data_preprocessor.vectorize_polygons()
+            data_preprocessor.config.check_raster_files_exist()
         elif preprocess_config.vectorization_type == VectorizationType.TO_POINTS:
             file_converter = FileConverterPreprocessor(preprocess_config)
             file_converter.raster_to_xyz()
 
             data_preprocessor = DataModelProcessor(preprocess_config)
             data_preprocessor.vectorize_points()
+            data_preprocessor.config.check_raster_files_exist()
 
     # todo fi rasterize
 
