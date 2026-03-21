@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 
+import pyproj
 import yaml
 from pyproj import CRS
 
@@ -80,7 +81,7 @@ class FileIO:
 
                 _, controller_params = FileIO.get_host_params(controller_config_filename)
                 init_db = InitializeDuckDB(controller_params.controller_db_connection)
-                init_db.initialize_files(runs_no_dupes[0].raster_location, runs_no_dupes[0].vector_location)
+                init_db.initialize_files(runs_no_dupes[0].raster, runs_no_dupes[0].vector)
                 init_db.initialize(runs_no_dupes, experiments_filename)
 
                 return runs_no_dupes, iterations
@@ -182,6 +183,11 @@ class FileIO:
             if benchmark_params.align_crs_at_stage is Stage.PREPROCESS:
                 benchmark_params.align_to_crs = DataType.VECTOR if benchmark_params.vector_target_format is None \
                     else benchmark_params.align_to_crs
+
+        if benchmark_params.system.name in capabilities["require_crs_4326"]:
+            benchmark_params.raster_target_crs = pyproj.CRS.from_epsg(4326)
+            benchmark_params.vector_target_crs = pyproj.CRS.from_epsg(4326)
+
 
         if benchmark_params.system.name in capabilities["ingest_raster_tiff_only"]:
             benchmark_params.raster_target_format = RasterFileType.TIFF

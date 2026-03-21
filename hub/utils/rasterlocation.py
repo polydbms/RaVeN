@@ -70,7 +70,7 @@ class RasterLocation(DataLocation):
     def files(self):
         if self._should_preprocess and not self._preprocessed and not self._while_init:
             ret_files = [self._merged_base] if self._merged_base else []
-            ret_files += list(self._tiles[self._tiles["is_relevant"] & (~self._tiles["is_preprocessed"])]["tile_stem"].apply(lambda s: Path(s).with_suffix(self._suffix.value)))
+            ret_files += list(self._tiles[self._tiles["is_relevant"] & (~self._tiles["is_preprocessed"])]["tile_stem"].apply(lambda s: Path(s + self._suffix.value)))
 
             return ret_files
 
@@ -109,7 +109,7 @@ class RasterLocation(DataLocation):
         if status not in {"is_relevant", "is_preprocessed", "is_ingested", "is_merged"}:
             raise ValueError(f"Invalid status: {status}")
 
-        return self._tiles[self._tiles["is_relevant"]]["tile_stem", "status"]
+        return self._tiles[self._tiles["is_relevant"]][["tile_stem", status]]
 
     def get_tiles(self) -> DataFrame:
         return self._tiles
@@ -279,7 +279,7 @@ class RasterLocation(DataLocation):
         else:
             crs = params.raster_target_crs
 
-        locations = [str(f) for f in self.files]
+        locations = []
         preprocessed_dir = str(self._preprocessed_dir)
         if params.system == System.POSTGIS and not from_preprocess:
             system = System.POSTGIS
@@ -300,7 +300,7 @@ class RasterLocation(DataLocation):
             dataset = conn.execute(
                 """insert into available_files (id, name, preprocessed_dir, filetype, crs, datatype,
                                                 raster_resolution, raster_depth, raster_tile_size, system,
-                                                is_converted_datatype, is_clipped)
+                                                is_converted_datatype, is_clipped, location)
                    values ($uuid,
                            $name,
                            $preprocessed_dir,
@@ -312,7 +312,8 @@ class RasterLocation(DataLocation):
                            $raster_tile_size,
                            $system,
                            $is_converted_datatype,
-                           $is_clipped) returning id""",
+                           $is_clipped,
+                           $locations) returning id""",
                 {"uuid": self._uuid,
                  "name": self.dataset_name,
                  "preprocessed_dir": preprocessed_dir,
@@ -324,7 +325,8 @@ class RasterLocation(DataLocation):
                  "raster_tile_size": params.raster_tile_size.__dict__,
                  "system": str(system),
                  "is_converted_datatype": is_converted_datatype,
-                 "is_clipped": self.is_clipped
+                 "is_clipped": self.is_clipped,
+                 "locations": locations,
                  }
             ).fetchone()
 
@@ -337,7 +339,7 @@ class RasterLocation(DataLocation):
 
             super().register_file(db_connection, params, workload, extent, from_preprocess, optimizer_run, network_manager)
 
-            self.register_available_tiles("filesystem", db_connection, network_manager)
+            self.register_available_tiles(str(system), db_connection, network_manager)
 
     def check_file_is_merged(self, raster_singlefile: bool):
         if raster_singlefile and len(self.files) > 1:
@@ -413,7 +415,7 @@ class RasterLocation(DataLocation):
             results = conn.execute(
                 """
                 with files_available as (
-                    select * EXCLUDE (location, extent),
+                    select * EXCLUDE (location, extent)
                     from available_files
                     where name = $name
                         and filetype = 'raster'),
@@ -504,25 +506,40 @@ class RasterLocation(DataLocation):
                                               on tmr.id = ir.id
                                                   and tmr.system = ir.system
                                 group by ir.id, ir.system, ir.location, ir.extent)
-                select *,
-                       ST_Contains(extent, ST_GeomFromText($vector_extent::VARCHAR)::POLYGON_2D) as existing_contains_vector,
-                       ST_AsText(available_locations.extent) as extent_wkt,
-                       0 as score
-                from 
-                    files_available fa join
-                        (select (* EXCLUDE (filename_stem))
-                         from merged_tiles_available mta
-                            join meta_merged mm
-                                on mta.id = mm.id
-                                and mta.system = mm.system
-                                and mta.filename_stem = mm.filename_stem
+                    select
+                        fa.id,
+                        fa.system,
+                        (* exclude (id, system)),
+                        ST_Contains(extent, ST_GeomFromText('POLYGON ((1643855.3825341708 5717959.315939233, 1642529.420609077 5962809.635731881, 1250352.0504082849 5956225.052259065, 1270697.6426598313 5711874.182851272, 1643855.3825341708 5717959.315939233))'::VARCHAR)::POLYGON_2D) as existing_contains_vector,
+                        ST_AsText(available_locations.extent) as extent_wkt
+                    from
+                        files_available fa
+                    join
+                                            (
+                        select
+                            mta.id, 
+                            mta.system,
+                            (* EXCLUDE (id, system, filename_stem))
+                        from
+                            merged_tiles_available mta
+                        join meta_merged mm
+                                                    on
+                            mta.id = mm.id
+                            and mta.system = mm.system
+                            and mta.filename_stem = mm.filename_stem
                     union
-                        select *
-                        from tile_locations_available
-                            join meta_available ma
-                                on tile_locations_available.id = ma.id
-                                and tile_locations_available.system = ma.system)
-                            as available_locations on fa.id = available_locations.id
+                        select
+                            tla.id,
+                            tla.system,
+                            (* exclude (id, system))
+                        from
+                            tile_locations_available tla
+                        join meta_available ma
+                                                    on
+                            tla.id = ma.id
+                            and tla.system = ma.system)
+                                                as available_locations on
+                        fa.id = available_locations.id and fa.system = available_locations.system
                 """,
                 {
                     "name": self.dataset_name,

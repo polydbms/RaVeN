@@ -254,28 +254,28 @@ class VectorLocation(DataLocation):
 
             super().register_file(db_connection, params, workload, extent, from_preprocess, optimizer_run, network_manager)
 
-    def find_available_ingested_files(self,
-                                      db_connection: DuckDBPyConnection,
-                                      ) -> DataFrame:
-        """
-        find available files in the database that match the current dataset
-        :param db_connection: the database connection
-        :return: a list of available files
-        """
-        with db_connection as conn:
-            results = conn.execute(
-                """select *
-                   from available_files
-                   where name = $name
-                     and filetype = 'vector'
-                     and system <> 'filesystem'
-                """, # use filter
-                {
-                    "name": self.dataset_name,
-                }).df()
-
-            return results
-
+    # def find_available_ingested_files(self,
+    #                                   db_connection: DuckDBPyConnection,
+    #                                   ) -> DataFrame:
+    #     """
+    #     find available files in the database that match the current dataset
+    #     :param db_connection: the database connection
+    #     :return: a list of available files
+    #     """
+    #     with db_connection as conn:
+    #         results = conn.execute(
+    #             """select *
+    #                from available_files
+    #                where name = $name
+    #                  and filetype = 'vector'
+    #                  and system <> 'filesystem'
+    #             """, # use filter
+    #             {
+    #                 "name": self.dataset_name,
+    #             }).df()
+    #
+    #         return results
+    #
     def find_available_files(self,
                              db_connection: DuckDBPyConnection,
                              extent: Polygon,
@@ -291,7 +291,7 @@ class VectorLocation(DataLocation):
                    from available_files
                    where name = $name
                      and filetype = 'vector'
-                     and system = 'filesystem'
+                     --and system = 'filesystem'
                 """, # use filter
                 {
                     "name": self.dataset_name,

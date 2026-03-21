@@ -146,9 +146,9 @@ class Optimizer:
         if pixels_per_feature >= 10_000_000:
             tile_size = TileSize(1000, 1000)
         elif pixels_per_feature >= 5_000_000:
-            tile_size = TileSize(800, 800)
-        else:
             tile_size = TileSize(600, 600)
+        else:
+            tile_size = TileSize(250, 250)
 
         print("OPTIMIZER: pixels per feature:", pixels_per_feature)
         print("OPTIMIZER: selected tile size:", tile_size)
@@ -164,10 +164,10 @@ class Optimizer:
         preprocessed_raster = preprocessed_raster[~preprocessed_raster['is_converted_datatype']]
         preprocessed_vector = preprocessed_vector[~preprocessed_vector['is_converted_datatype']]
 
-        preprocessed_raster = pd.merge(preprocessed_raster, preprocessed_vector, on=["crs", "system"], how="left", indicator="matching_vector", suffixes=(None, "_REMOVE"))
+        preprocessed_raster = pd.merge(preprocessed_raster, preprocessed_vector[["crs"]].drop_duplicates(), on=["crs"], how="left", indicator="matching_vector", suffixes=(None, "_REMOVE"))
         preprocessed_raster.drop(columns=[c for c in preprocessed_raster.columns if c.endswith("_REMOVE")], inplace=True)
         preprocessed_raster["vector_crs_match_preprocessed"] = preprocessed_raster["matching_vector"] == "both"
-        preprocessed_vector = pd.merge(preprocessed_vector, preprocessed_raster, on=["crs", "system"], how="left", indicator="matching_raster", suffixes=(None, "_REMOVE"))
+        preprocessed_vector = pd.merge(preprocessed_vector, preprocessed_raster[["crs"]].drop_duplicates(), on=["crs"], how="left", indicator="matching_raster", suffixes=(None, "_REMOVE"))
         preprocessed_vector.drop(columns=[c for c in preprocessed_vector.columns if c.endswith("_REMOVE")], inplace=True)
         preprocessed_vector["raster_crs_match_preprocessed"] = preprocessed_vector["matching_raster"] == "both"
 
@@ -224,6 +224,9 @@ class Optimizer:
             # increase score for system_name == Rasdaman
             optimized_raster.loc[(optimized_raster['target_system_name'] == System.RASDAMAN.value), 'score_base'] += 100
             optimized_vector.loc[(optimized_vector['target_system_name'] == System.RASDAMAN.value), 'score_base'] += 100
+        else:
+            optimized_raster.loc[(optimized_raster['target_system_name'] == System.RASDAMAN.value), 'score_base'] -= 20
+            optimized_vector.loc[(optimized_vector['target_system_name'] == System.RASDAMAN.value), 'score_base'] -= 20
 
 
         if (rl.get_pixels() <= 5_000_000) and (vl.get_feature_count() <= 100_000):
@@ -251,15 +254,19 @@ class Optimizer:
         optimized_raster = optimized_raster.sort_values(by=['score_base'], ascending=False)
         optimized_vector = optimized_vector.sort_values(by=['score_base'], ascending=False)
 
-        optimized = pd.merge(optimized_raster, optimized_vector, how='outer', on=['target_system_name'], suffixes=('_raster', '_vector'))
+        optimized_raster.rename(columns=lambda c: c + "_raster" if c != "target_system_name" else c, inplace=True)
+        optimized_vector.rename(columns=lambda c: c + "_vector" if c != "target_system_name" else c, inplace=True)
+
+        optimized = pd.merge(optimized_raster, optimized_vector, how='outer', on=['target_system_name'])
         optimized['total_score'] = optimized['score_base_raster'].fillna(0) + optimized['score_base_vector'].fillna(0)
+        optimized.loc[(optimized['system_raster'] == optimized['system_vector']) & (optimized['system_raster'] != 'filesystem'), "total_score"] += 100
         optimized = optimized.sort_values(by=['total_score'], ascending=False)
 
 
 
         optimized_config = optimized.iloc[0]
 
-        if optimized_config['system_raster'] is not None:
+        if optimized_config['system_raster'] != 'none':
             rl.set_tiles_status(optimized_config['tile_stems_raster'], "is_preprocessed", True)
 
         if optimized_config['system_raster'] in [s.value for s in System]:
@@ -322,6 +329,15 @@ class Optimizer:
 
         rl.end_init()
         vl.end_init()
+
+        print("[OPTIMIZE_CONFIG] system: {}, align_to_crs: {}, align_crs_at_stage: {}, vector_filter_at_stage: {}, raster_clip: {}, raster_tile_size: {}".format(
+            system,
+            align_to_crs,
+            align_crs_at_stage,
+            vector_filter_at_stage,
+            raster_clip,
+            raster_tile_size,
+        ))
 
         return BenchmarkParameters(
             system=system,

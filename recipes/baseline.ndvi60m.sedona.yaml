@@ -49,7 +49,7 @@ experiments:
 
 
   timeout: 3600
-  warm_starts: 0
+  warm_starts: 1
 
   systems:
     - name: postgis

@@ -51,6 +51,9 @@ systems:
     - sedona-vec
   raster_max_2gb:
     - sedona
+  require_crs_4326:
+    - sedona
+    - sedona-vec
 
 #  align_crs_at:
 #    preprocess:

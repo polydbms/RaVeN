@@ -396,7 +396,6 @@ class Setup:
                 ingestor.ingest_raster(log_time=self.logger)
                 if system in (System.POSTGIS, System.RASDAMAN, System.POSTGIS_VEC) and not run.raster.is_ingested:
                     run.raster.register_file(run.controller_params.controller_db_connection.get_cursor(), run.benchmark_params, run.workload, run.raster.get_remote_extent(network_manager), False, optimizer_run=optimizer_run, network_manager=network_manager)
-                    run.raster.register_available_tiles(str(system), run.controller_params.controller_db_connection.get_cursor(), network_manager)
 
             self.increase_progress()
 
